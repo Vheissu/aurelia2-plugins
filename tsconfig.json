@@ -6,6 +6,7 @@
       "emitDecoratorMetadata": true,
       "noImplicitAny": false,
       "module": "esnext",
+      "lib": ["esnext", "DOM"],
       "moduleResolution": "node",
       "resolveJsonModule": true,
       "declaration": true,
@@ -15,6 +16,13 @@
       "forceConsistentCasingInFileNames": true,
       "strict": true,
       "skipLibCheck": true,
-      "preserveConstEnums": true
+      "preserveConstEnums": true,
+      "typeRoots": [
+        "./types/",
+        "./node_modules/@types/",
+      ]
     },
+    "files": [
+        "./types/global.d.ts"
+    ]
   }
