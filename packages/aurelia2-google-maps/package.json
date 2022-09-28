@@ -1,7 +1,7 @@
 {
-    "name": "aurelia2-table",
-    "version": "0.0.12",
-    "description": "A port of the Aurelia Table plugin to v2",
+    "name": "aurelia2-google-maps",
+    "version": "0.0.15",
+    "description": "A port of the Aurelia Maps plugin to v2",
     "main": "./dist/index.js",
     "typings": "./dist/types/index.d.ts",
     "repository": "https://github.com/Vheissu/aurelia2-plugins",
