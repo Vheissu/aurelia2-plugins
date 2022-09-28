@@ -1,6 +1,8 @@
-import { DI, IContainer, IRegistry, noop } from '@aurelia/kernel';
+import { IContainer, IRegistry, noop } from '@aurelia/kernel';
 import { ConfigInterface, IGoogleMapsConfiguration } from './configure';
 import { GoogleMaps } from './google-maps';
+
+export { GoogleMaps, ConfigInterface, IGoogleMapsConfiguration };
 
 const DefaultComponents: IRegistry[] = [
     GoogleMaps as unknown as IRegistry,
