@@ -2,6 +2,12 @@ import { DI, IContainer, IRegistry, noop } from '@aurelia/kernel';
 import { ConfigInterface, IGoogleMapsConfiguration } from './configure';
 import { GoogleMaps } from './google-maps';
 
+export { GoogleMapsAPI } from './google-maps-api';
+export { GoogleMaps } from './google-maps';
+export { Configure } from './configure';
+export { Events } from './events';
+export { MarkerClustering } from './marker-clustering';
+
 const DefaultComponents: IRegistry[] = [
     GoogleMaps as unknown as IRegistry,
 ];

@@ -1,0 +1,22 @@
+{
+    "name": "aurelia2-google-maps",
+    "version": "0.0.14",
+    "description": "A port of the Aurelia Table plugin to v2",
+    "main": "dist/index.js",
+    "module": "dist/index.es.js",
+    "browser": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "repository": "https://github.com/Vheissu/aurelia2-plugins",
+    "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
+    "license": "MIT",
+    "scripts": {
+        "clean": "rimraf ./dist",
+        "prebuild": "npm run clean",
+        "build": "rollup -c && tsc",
+        "build:watch": "rollup -cw",
+        "test": "jest"
+    },
+    "dependencies": {
+        "aurelia": "latest"
+    }
+}

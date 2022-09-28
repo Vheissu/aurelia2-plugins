@@ -1,5 +1,5 @@
 {
-    "name": "@vheissu/aurelia2-table",
+    "name": "aurelia2-table",
     "version": "0.0.12",
     "description": "A port of the Aurelia Table plugin to v2",
     "main": "./dist/index.js",
