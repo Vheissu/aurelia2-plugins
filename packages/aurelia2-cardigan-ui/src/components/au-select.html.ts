@@ -1,0 +1,1 @@
+export default `<select class="select \${size}" part="select \${size}" value.bind="value"></select>`;

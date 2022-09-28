@@ -1,0 +1,1 @@
+export default `<button disabled.bind="disabled" class="button \${color} \${size}" title.bind="title" type.bind="type" part="button \${color} \${size}" click.trigger="innerCallback()"><slot></slot></button>`;
