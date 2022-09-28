@@ -1,6 +1,6 @@
 {
     "name": "@vheissu/table",
-    "version": "0.0.10",
+    "version": "0.0.11",
     "description": "A port of the Aurelia Table plugin to v2",
     "main": "./dist/index.js",
     "typings": "./dist/types/index.d.ts",
@@ -18,5 +18,8 @@
         "test:debug": "cross-env DEBUG=true npm run test",
         "test:watch": "cross-env DEV=true npm run test",
         "test": "jest"
+    },
+    "dependencies": {
+        "aurelia": "latest"
     }
 }
