@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declarationDir": "./dist/types",
+    "tsBuildInfoFile": "./dist/.tsbuildinfo",
+    "typeRoots": [
+      "../../types/",
+      "../../node_modules/@types/",
+    ]
+  },
+  "include": [
+    "src"
+  ]
+}

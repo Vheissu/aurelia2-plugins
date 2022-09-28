@@ -1,0 +1,24 @@
+{
+    "name": "@vheissu/table",
+    "version": "0.0.7",
+    "description": "A port of the Aurelia Table plugin to v2",
+    "main": "./dist/index.js",
+    "module": "./dist/index.js",
+    "typings": "./dist/types/index.d.ts",
+    "type": "module",
+    "repository": "https://github.com/Vheissu/aurelia2-plugins",
+    "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
+    "license": "MIT",
+    "scripts": {
+        "clean": "rimraf ./dist",
+        "prebuild": "npm run clean",
+        "build:ts": "tsc",
+        "build:other": "cpx ./src/**/*.{html,css} ./dist",
+        "build": "npm run build:ts && npm run build:other",
+        "watch:ts": "tsc --watch --preserveWatchOutput",
+        "watch:other": "cpx ./src/**/*.{html,css} ./dist --watch",
+        "test:debug": "cross-env DEBUG=true npm run test",
+        "test:watch": "cross-env DEV=true npm run test",
+        "test": "jest"
+    }
+}
