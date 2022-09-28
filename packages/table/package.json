@@ -1,6 +1,6 @@
 {
     "name": "@vheissu/table",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "A port of the Aurelia Table plugin to v2",
     "main": "./dist/index.js",
     "module": "./dist/index.js",

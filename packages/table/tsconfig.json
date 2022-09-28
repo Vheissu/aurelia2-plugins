@@ -3,11 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "declarationDir": "./dist/types",
-    "tsBuildInfoFile": "./dist/.tsbuildinfo",
-    "typeRoots": [
-      "../../types/",
-      "../../node_modules/@types/",
-    ]
+    "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": [
     "src"
