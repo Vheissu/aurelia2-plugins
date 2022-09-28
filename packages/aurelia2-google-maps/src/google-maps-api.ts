@@ -4,7 +4,7 @@ import { IGoogleMapsConfiguration } from './configure';
 export const IGoogleMapsAPI = DI.createInterface<IGoogleMapsAPI>('IGoogleMapsAPI', x => x.singleton(GoogleMapsAPI));
 export interface IGoogleMapsAPI extends GoogleMapsAPI {}
 export class GoogleMapsAPI {
-    _scriptPromise: any = null;
+    _scriptPromise = null;
 
     constructor(@IGoogleMapsConfiguration readonly config: IGoogleMapsConfiguration) {
 

@@ -2,6 +2,7 @@ import {
   bindable,
   customElement,
   ICustomElementViewModel,
+  IObserverLocator,
   IPlatform,
 } from "@aurelia/runtime-html";
 
@@ -11,7 +12,6 @@ import { IMarkerClustering } from "./marker-clustering";
 
 import { Events } from "./events";
 import { ILogger } from "@aurelia/kernel";
-import { IObserverLocator } from "aurelia";
 
 declare let google: any;
 export interface Marker {
@@ -52,8 +52,8 @@ export class GoogleMaps implements ICustomElementViewModel {
   @bindable drawEnabled: boolean = false;
   @bindable drawMode = "MARKER";
   @bindable polygons: any = [];
-  @bindable drawingControl: boolean = true;
-  @bindable drawingControlOptions: any = {};
+  @bindable drawingControl: true;
+  @bindable drawingControlOptions: {};
 
   public map: any = null;
   public _renderedMarkers: any[] = [];
@@ -451,7 +451,7 @@ export class GoogleMaps implements ICustomElementViewModel {
     }
 
     // Render all markers again
-    let markerPromises: any[] = [];
+    let markerPromises = [];
 
     this._mapPromise
       .then(() => {
@@ -486,7 +486,7 @@ export class GoogleMaps implements ICustomElementViewModel {
    *
    */
   markerCollectionChange() {
-    let renderPromises: any[] = [];
+    let renderPromises = [];
 
     this.clearMarkers();
 
