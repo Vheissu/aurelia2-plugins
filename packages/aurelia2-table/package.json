@@ -1,6 +1,6 @@
 {
     "name": "aurelia2-table",
-    "version": "0.0.12",
+    "version": "0.0.13",
     "description": "A port of the Aurelia Table plugin to v2",
     "main": "./dist/index.js",
     "typings": "./dist/types/index.d.ts",
