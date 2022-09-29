@@ -1,15 +1,10 @@
-export default `<template if.bind="type == 'pre'">
-
-    <pre class="pre" part="pre">
+export default `
+    <pre class="pre" part="pre" if.bind="type == 'pre'">
         <code class="code" part="code">
             <slot></slot>
         </code>
     </pre>
-
-</template>
-
-<template else>
-    <code class="code" part="code">
+    <code else class="code" part="code">
         <slot></slot>
     </code>
-</template>`;
+`;

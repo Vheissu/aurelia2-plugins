@@ -1,6 +1,7 @@
 import { Home } from './home';
 import { Buttons } from './buttons';
 import { Headings } from './headings';
+import { CardiganCode } from './cardigan-code';
 
 import { IRoute } from '@aurelia/router';
 
@@ -20,6 +21,11 @@ export class MyApp {
       component: Headings,
       path: 'headings',
       title: 'Headings'
+    },
+    {
+      component: CardiganCode,
+      path: 'code',
+      title: 'Code'
     },
   ];
 }

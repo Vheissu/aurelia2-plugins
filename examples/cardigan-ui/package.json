@@ -8,7 +8,7 @@
   },
   "license": "UNLICENSED",
   "dependencies": {
-    "au-cardigan": "0.0.25",
+    "au-cardigan": "0.0.26",
     "aurelia": "latest",
     "bootstrap": "^4.5.3"
   },
