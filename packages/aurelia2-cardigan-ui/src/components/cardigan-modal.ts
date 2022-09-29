@@ -2,8 +2,8 @@ import { bindable, ICustomElementViewModel, customElement, shadowCSS } from 'aur
 
 import SharedStyles from '../variables.css';
 
-import styles from './au-modal.css';
-import template from './au-modal.html';
+import styles from './cardigan-modal.css';
+import template from './cardigan-modal.html';
 
 export type ModalSize = 'sm' | 'md' | 'lg' | number;
 export type ModalRole = 'alertdialog' | 'dialog';
@@ -17,14 +17,14 @@ const SIZES = {
 const ESCAPE_KEY_CODE = 27;
 
 @customElement({
-    name: 'au-modal',
+    name: 'cardigan-modal',
     template,
     dependencies: [
         shadowCSS(SharedStyles, styles)
     ],
     shadowOptions: { mode: 'open' }
 })
-export class AuModalCustomElement implements ICustomElementViewModel {
+export class CardiganModalCustomElement implements ICustomElementViewModel {
     @bindable private size: ModalSize = 'sm';
     @bindable private label: string = '';
     @bindable private clickClose: boolean = true;

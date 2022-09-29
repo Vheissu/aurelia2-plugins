@@ -2,16 +2,16 @@ import { bindable, ICustomElementViewModel, customElement, shadowCSS } from 'aur
 
 import SharedStyles from '../variables.css';
 
-import styles from './au-code.css';
-import template from './au-code.html';
+import styles from './cardigan-code.css';
+import template from './cardigan-code.html';
 @customElement({
-    name: 'au-code',
+    name: 'cardigan-code',
     template,
     dependencies: [
         shadowCSS(SharedStyles, styles)
     ],
     shadowOptions: { mode: 'open' }
 })
-export class AuCodeCustomElement implements ICustomElementViewModel {
+export class CardiganCodeCustomElement implements ICustomElementViewModel {
     @bindable public type: 'pre' | 'code'  ='pre';
 }

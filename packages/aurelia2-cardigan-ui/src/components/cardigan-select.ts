@@ -2,17 +2,17 @@ import { bindable, BindingMode, ICustomElementViewModel, customElement, shadowCS
 
 import SharedStyles from '../variables.css';
 
-import styles from './au-select.css';
-import template from './au-select.html';
+import styles from './cardigan-select.css';
+import template from './cardigan-select.html';
 @customElement({
-    name: 'au-select',
+    name: 'cardigan-select',
     template,
     dependencies: [
         shadowCSS(SharedStyles, styles)
     ],
     shadowOptions: { mode: 'open' }
 })
-export class AuSelectCustomElement implements ICustomElementViewModel {
+export class CardiganSelectCustomElement implements ICustomElementViewModel {
     @bindable public size: 'small' | 'medium' | 'large' = 'medium';
     @bindable public disabled: boolean = false;
     @bindable({ mode: BindingMode.twoWay }) public value: unknown;

@@ -2,17 +2,17 @@ import { bindable, ICustomElementViewModel, customElement, shadowCSS } from 'aur
 
 import SharedStyles from '../variables.css';
 
-import styles from './au-image.css';
-import template from './au-image.html';
+import styles from './cardigan-image.css';
+import template from './cardigan-image.html';
 @customElement({
-    name: 'au-image',
+    name: 'cardigan-image',
     template,
     dependencies: [
         shadowCSS(SharedStyles, styles)
     ],
     shadowOptions: { mode: 'open' }
 })
-export class AuImageCustomElement implements ICustomElementViewModel {
+export class CardiganImageCustomElement implements ICustomElementViewModel {
     @bindable public alt: string = '';
     @bindable public color: string = 'transparent';
     @bindable public naturalHeight: string = '';

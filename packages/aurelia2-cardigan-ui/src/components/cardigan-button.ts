@@ -2,17 +2,17 @@ import { bindable, ICustomElementViewModel, customElement, shadowCSS } from 'aur
 
 import SharedStyles from '../variables.css';
 
-import styles from './au-button.css';
-import template from './au-button.html';
+import styles from './cardigan-button.css';
+import template from './cardigan-button.html';
 @customElement({
-    name: 'au-button',
+    name: 'cardigan-button',
     template,
     dependencies: [
         shadowCSS(SharedStyles, styles)
     ],
     shadowOptions: { mode: 'open' }
 })
-export class AuButtonCustomElement implements ICustomElementViewModel {
+export class CardiganButtonCustomElement implements ICustomElementViewModel {
     @bindable public disabled: boolean = false;
     @bindable public color: string | null = '';
     @bindable public icon: string | null = null;

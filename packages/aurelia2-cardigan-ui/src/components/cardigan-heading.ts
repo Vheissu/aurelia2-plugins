@@ -2,21 +2,21 @@ import { bindable, ICustomElementViewModel, customElement, shadowCSS } from 'aur
 
 import SharedStyles from '../variables.css';
 
-import styles from './au-heading.css';
-import template from './au-heading.html';
+import styles from './cardigan-heading.css';
+import template from './cardigan-heading.html';
 
 // Create a constant and populate it with an array of string numbers from 1 to 6
 const headingLevels = Array.from(Array(6).keys()).map(i => `${i + 1}`);
 
 @customElement({
-    name: 'au-heading',
+    name: 'cardigan-heading',
     template,
     dependencies: [
         shadowCSS(SharedStyles, styles)
     ],
     shadowOptions: { mode: 'open' }
 })
-export class AuHeadingCustomElement implements ICustomElementViewModel {
+export class CardiganHeadingCustomElement implements ICustomElementViewModel {
     @bindable public size: 'small' | 'medium' | 'large' = 'medium';
     @bindable({
         set: (val: any) => {
