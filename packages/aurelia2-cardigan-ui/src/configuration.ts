@@ -1,5 +1,5 @@
 import { DefaultComponents } from './components';
-import { DI, IContainer } from '@aurelia/kernel';
+import { DI, IContainer } from 'aurelia';
 
 const cardiganConfiguration = {
     register(container: IContainer): IContainer {

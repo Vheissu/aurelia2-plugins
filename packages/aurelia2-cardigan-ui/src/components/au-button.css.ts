@@ -1,4 +1,4 @@
-:host {
+export default `:host {
     --button-color: #333;
     --button-font-family: Arial, Helvetica, sans-serif;
     --button-font-size: 1rem;
@@ -121,4 +121,4 @@
 
 .xlarge {
     padding: var(--button-xlarge-padding);
-}
+}`;

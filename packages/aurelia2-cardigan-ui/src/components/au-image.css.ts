@@ -1,4 +1,4 @@
-.img {
+export default `.img {
     height: auto;
     max-width: 100%;
 }
@@ -23,4 +23,4 @@ img[alt] {
 .cover {
     composes: scaled-img;
     background-size: cover;
-}
+}`;

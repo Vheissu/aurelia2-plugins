@@ -1,4 +1,4 @@
-import { bindable, ICustomElementViewModel, customElement, shadowCSS } from '@aurelia/runtime-html';
+import { bindable, ICustomElementViewModel, customElement, shadowCSS } from 'aurelia';
 
 import SharedStyles from '../variables.css';
 
@@ -14,8 +14,8 @@ import template from './au-button.html';
 })
 export class AuButtonCustomElement implements ICustomElementViewModel {
     @bindable public disabled: boolean = false;
-    @bindable public color = '';
-    @bindable public icon = null;
+    @bindable public color: string | null = '';
+    @bindable public icon: string | null = null;
     @bindable public iconSize = '1rem';
     @bindable public size = 'medium';
     @bindable public title: string = '';

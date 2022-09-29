@@ -1,4 +1,4 @@
-import { bindable, ICustomElementViewModel, customElement, shadowCSS } from '@aurelia/runtime-html';
+import { bindable, ICustomElementViewModel, customElement, shadowCSS } from 'aurelia';
 
 import SharedStyles from '../variables.css';
 

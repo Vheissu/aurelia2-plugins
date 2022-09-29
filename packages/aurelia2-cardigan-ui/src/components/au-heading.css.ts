@@ -1,4 +1,4 @@
-:host {
+export default `:host {
     --heading-one-font-size: 36px;
     --heading-two-font-size: 28px;
     --heading-three-font-size: 20px;
@@ -80,4 +80,4 @@ h3 {
 
 .blueAlt {
     color: var(--color-blue-alt);
-}
+}`;

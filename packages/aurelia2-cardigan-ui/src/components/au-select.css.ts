@@ -1,4 +1,4 @@
-:host {
+export default `:host {
     --select-padding: .375rem 1.75rem .375rem .75rem;
 }
 
@@ -47,4 +47,4 @@
     padding-bottom: .5rem;
     padding-left: 1rem;
     font-size: 1.25rem;
-}
+}`;

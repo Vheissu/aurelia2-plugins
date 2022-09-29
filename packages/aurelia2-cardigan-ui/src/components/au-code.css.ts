@@ -1,4 +1,4 @@
-:host {
+export default `:host {
 
 }
 
@@ -33,4 +33,4 @@
     overflow-x: scroll;
     padding: 15px 20px 12px 22px;
     white-space: pre;
-}
+}`;

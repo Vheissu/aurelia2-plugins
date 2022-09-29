@@ -1,4 +1,4 @@
-import {IRegistry } from '@aurelia/kernel';
+import {IRegistry } from 'aurelia';
 
 import { AuSelectCustomElement } from './au-select';
 import { AuModalCustomElement } from './au-modal';

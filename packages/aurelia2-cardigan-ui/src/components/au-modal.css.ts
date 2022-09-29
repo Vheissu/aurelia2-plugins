@@ -1,4 +1,4 @@
-:host {
+export default `:host {
     --modal-backdrop-background: rgba(0, 0, 0, 0.4);
     --modal-wrapper-background: var(--color-white);
 }
@@ -57,4 +57,4 @@
     min-height: 0;
     min-width: 0;
     overflow: auto;
-}
+}`;

@@ -1,6 +1,6 @@
 {
     "name": "au-cardigan",
-    "version": "0.0.22",
+    "version": "0.0.24",
     "description": "A robust set of UI components for Aurelia 2",
     "main": "./dist/index.js",
     "types": "./dist/types/index.d.ts",
