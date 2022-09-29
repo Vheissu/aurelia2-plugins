@@ -11,6 +11,6 @@ export default {
         "\\.(ts|js|html)$": ["@aurelia/ts-jest", { "defaultShadowOptions": { "mode": "open" } }]
     },
     setupFiles: [
-        "<rootDir>/test/jest.setup.ts"
+        "../../test/jest.setup.ts"
     ],
 };
