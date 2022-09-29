@@ -1,3 +1,4 @@
+import { IAuthentication } from './authentication';
 import { FetchConfig } from './auth-fetch-config';
 import { IAuthConfigOptions, IAuthOptions } from './configuration';
 import { defaultAuthConfigOptions } from './base-config';
@@ -38,4 +39,5 @@ export {
   IAuthConfigOptions,
   FetchConfig,
   IAuthService,
+  IAuthentication
 };

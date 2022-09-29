@@ -1,6 +1,11 @@
+import { DI } from '@aurelia/kernel';
 import { Storage } from './storage';
 import { joinUrl, isObject, isString } from './auth-utilities';
 import { IAuthOptions, IAuthConfigOptions } from './configuration';
+
+export const IAuthentication = DI.createInterface<IAuthentication>("IAuthentication", x => x.singleton(Authentication));
+
+export interface IAuthentication extends Authentication {  }
 
 export class Authentication {
   private tokenName;

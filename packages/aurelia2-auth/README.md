@@ -1,8 +1,6 @@
 # aurelia2-auth
 A port of the ever-popular v1 plugin aurelia-auth (https://github.com/paulvanbladel/aurelia-auth) for Aurelia 2.
 
-**Full disclosure**: this plugin might not be very stable just yet. Use at your own risk.
-
 ## Installing it
 
 `npm install aurelia2-auth` or `yarn add aurelia2-auth`
@@ -33,5 +31,5 @@ Aurelia.register(AureliaAuthConfiguration.configure(configOptions);
 
 There are a few differences in Aurelia 2 which mean the plugin works slightly differently.
 
-- There are no longer router pipeline steps, instead you register a router hook which is exported as `AuthorizeHook` and can be supplied to register or the dependencies in a component
+- There are no longer router pipeline steps, instead, you register a router hook which is exported as `AuthorizeHook` and can be supplied to register or the dependencies in a component
 - The plugin is called `aurelia2-auth`

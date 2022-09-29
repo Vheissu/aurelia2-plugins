@@ -1,11 +1,11 @@
-import { lifecycleHooks } from '@aurelia/runtime-html';
+import { lifecycleHooks, ILifecycleHooks } from '@aurelia/runtime-html';
 import { IRouter } from '@aurelia/router';
-import { Authentication } from './authentication';
+import { IAuthentication } from './authentication';
 
 @lifecycleHooks()
-export class AuthorizeHook {
-  constructor(private auth: Authentication, @IRouter private router: IRouter) {
-    this.auth = auth;
+export class AuthorizeHook implements ILifecycleHooks {
+  constructor(@IAuthentication readonly auth: IAuthentication, @IRouter private router: IRouter) {
+
   }
 
   canLoad(vm, params, next, current) {
