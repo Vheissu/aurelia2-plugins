@@ -1,0 +1,1 @@
+export { IAureliaCookie } from './aurelia-cookie';
