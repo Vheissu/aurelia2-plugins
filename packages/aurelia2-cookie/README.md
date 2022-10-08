@@ -1,3 +1,3 @@
-# aurelia2-hooks
+# aurelia2-cookie
 
-A WordPress inspired filter and hooks based system for your Aurelia applications.
+A simplistic class for working with cookies in Aurelia 2.
