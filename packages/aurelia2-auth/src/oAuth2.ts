@@ -1,3 +1,4 @@
+import { DI } from '@aurelia/kernel';
 import { IHttpClient, json } from '@aurelia/fetch-client';
 import {
   extend,
@@ -8,18 +9,21 @@ import {
   camelCase,
   status,
 } from './auth-utilities';
-import { Storage } from './storage';
-import { Popup } from './popup';
+import { IStorage } from './storage';
+import { IPopup } from './popup';
 import { IAuthConfigOptions, IAuthOptions } from './configuration';
-import { Authentication } from './authentication';
+import { IAuthentication } from './authentication';
+
+export const IOAuth2 = DI.createInterface<IOAuth2>("IOAuth2", x => x.singleton(OAuth2));
+export type IOAuth2 = OAuth2;
 
 export class OAuth2 {
   protected defaults;
 
   constructor(
-    readonly storage: Storage,
-    readonly popup: Popup,
-    readonly auth: Authentication,
+    @IStorage readonly storage: IStorage,
+    @IPopup readonly popup: IPopup,
+    @IAuthentication readonly auth: IAuthentication,
     @IHttpClient readonly http: IHttpClient,
     @IAuthOptions readonly config: IAuthConfigOptions
   ) {

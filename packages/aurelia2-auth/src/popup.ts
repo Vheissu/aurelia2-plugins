@@ -1,5 +1,9 @@
+import { DI } from '@aurelia/kernel';
 import { IAuthConfigOptions, IAuthOptions } from './configuration';
 import { parseQueryString, extend, forEach } from './auth-utilities';
+
+export const IPopup = DI.createInterface<IPopup>("IPopup", x => x.singleton(Popup));
+export type IPopup = Popup;
 
 export class Popup {
   protected popupWindow = null;

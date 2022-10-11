@@ -1,5 +1,5 @@
 import { DI } from '@aurelia/kernel';
-import { Storage } from './storage';
+import { IStorage } from './storage';
 import { joinUrl, isObject, isString } from './auth-utilities';
 import { IAuthOptions, IAuthConfigOptions } from './configuration';
 
@@ -13,7 +13,7 @@ export class Authentication {
   private initialUrl;
 
   constructor(
-    private storage: Storage,
+    @IStorage readonly storage: IStorage,
     @IAuthOptions readonly config: IAuthConfigOptions
   ) {
     this.storage = storage;

@@ -1,4 +1,8 @@
+import { DI } from '@aurelia/kernel';
 import { IAuthConfigOptions, IAuthOptions } from './configuration';
+
+export const IStorage = DI.createInterface<IStorage>("IStorage", x => x.singleton(Storage));
+export type IStorage = Storage;
 
 export class Storage {
   private storage;
