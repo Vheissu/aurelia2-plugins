@@ -11,7 +11,6 @@ import { IMarkerClustering } from "./marker-clustering";
 
 import { Events } from "./events";
 import { ILogger } from "@aurelia/kernel";
-import { IObserverLocator } from 'aurelia';
 
 declare let google: any;
 export interface Marker {
@@ -70,7 +69,6 @@ export class GoogleMaps implements ICustomElementViewModel {
     @IGoogleMapsConfiguration readonly config: IGoogleMapsConfiguration,
     @IGoogleMapsAPI readonly googleMapsApi: IGoogleMapsAPI,
     @IMarkerClustering readonly markerClustering: IMarkerClustering,
-    @IObserverLocator readonly observerLocator: IObserverLocator,
     @ILogger readonly logger: ILogger,
     @IPlatform readonly platform: IPlatform
   ) {

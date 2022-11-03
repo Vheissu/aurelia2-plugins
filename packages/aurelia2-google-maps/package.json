@@ -1,6 +1,6 @@
 {
     "name": "aurelia2-google-maps",
-    "version": "0.0.15",
+    "version": "0.0.17",
     "description": "A port of the Aurelia Maps plugin to v2",
     "main": "./dist/index.js",
     "types": "./dist/types/index.d.ts",

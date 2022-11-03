@@ -10,26 +10,22 @@ const DefaultComponents: IRegistry[] = [
     GoogleMaps as unknown as IRegistry,
 ];
 
-function createGoogleMapsConfiguration(optionsProvider) {
+function createGoogleMapsConfiguration(options: Partial<ConfigInterface>) {
     return {
-        optionsProvider,
         register(container: IContainer) {
             const configClass = container.get(IGoogleMapsConfiguration);
-            const options = configClass.getOptions();
-
-            optionsProvider(options);
 
             configClass.options(options);
 
             return container.register(...DefaultComponents)
         },
-        customize(cb?: (options: ConfigInterface) => void) {
-            return createGoogleMapsConfiguration(cb ?? optionsProvider);
+        configure(options: ConfigInterface) {
+            return createGoogleMapsConfiguration(options);
         }
     };
 }
 
-export const GoogleMapsConfiguration = createGoogleMapsConfiguration(noop);
+export const GoogleMapsConfiguration = createGoogleMapsConfiguration({});
 
 // export const GoogleMapsConfiguration = {
 //     register(container: IContainer): IContainer {
