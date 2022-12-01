@@ -1,0 +1,26 @@
+{
+    "name": "aurelia2-google-places",
+    "version": "1.0.0",
+    "description": "A port of the Aurelia Google Places plugin",
+    "main": "./dist/index.js",
+    "types": "./dist/types/index.d.ts",
+    "repository": "https://github.com/Vheissu/aurelia2-plugins",
+    "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
+    "license": "MIT",
+    "scripts": {
+        "clean": "rimraf ./dist",
+        "prebuild": "npm run clean",
+        "build:ts": "tsc",
+        "build:other": "cpx ./src/**/*.{html,css} ./dist",
+        "build": "npm run build:ts && npm run build:other",
+        "watch:ts": "tsc --watch --preserveWatchOutput",
+        "watch:other": "cpx ./src/**/*.{html,css} ./dist --watch",
+        "test:debug": "cross-env DEBUG=true npm run test",
+        "test:watch": "cross-env DEV=true npm run test",
+        "test": "jest"
+    },
+    "dependencies": {
+        "aurelia": "latest",
+        "@types/google.analytics": "^0.0.42"
+    }
+}
