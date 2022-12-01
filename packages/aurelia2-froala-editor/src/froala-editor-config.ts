@@ -1,7 +1,7 @@
 import { DI } from 'aurelia';
 
-export const IConfig = DI.createInterface<IConfig>('IConfig', x => x.singleton(Config));
-export interface IConfig extends Config {}
+export const IFroalaConfig = DI.createInterface<IFroalaConfig>('IFroalaConfig', x => x.singleton(Config));
+export interface IFroalaConfig extends Config {}
 
 export class Config {
   _config;
