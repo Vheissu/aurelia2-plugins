@@ -1,40 +1,38 @@
-import {INode, bindable} from "aurelia";
+import { INode, bindable } from "aurelia";
 import velocity from "velocity-animate";
-import {bootstrapOptions} from "../utils/bootstrap-options";
+import { bootstrapOptions } from "../utils/bootstrap-options";
 
 export class AubsCollapseCustomAttribute {
+  @bindable collapsed = false;
+  showClass;
+  isAttached = false;
 
-    @bindable collapsed = false;
-    showClass;
-    isAttached = false;
+  constructor(@INode private element: HTMLElement) {
+  }
 
-    constructor(@INode private element: HTMLElement) {
-        this.element = element;
+  bound() {
+    this.showClass = bootstrapOptions.version === 4 ? "show" : "in";
+  }
+
+  attached() {
+    if (this.collapsed) {
+      this.element.style.display = "none";
     }
 
-    bind(){
-        this.showClass = bootstrapOptions.version === 4 ? 'show' : 'in';
+    this.isAttached = true;
+  }
+
+  collapsedChanged() {
+    if (!this.isAttached) {
+      return;
     }
 
-    attached() {
-        if (this.collapsed) {
-            this.element.style.display = 'none';
-        }
-
-        this.isAttached = true;
+    if (this.collapsed) {
+      velocity(this.element, "slideUp");
+      this.element.classList.remove(this.showClass);
+    } else {
+      this.element.classList.add(this.showClass);
+      velocity(this.element, "slideDown");
     }
-
-    collapsedChanged() {
-        if (!this.isAttached) {
-            return;
-        }
-
-        if (this.collapsed) {
-            velocity(this.element, 'slideUp');
-            this.element.classList.remove(this.showClass);
-        } else {
-            this.element.classList.add(this.showClass);
-            velocity(this.element, 'slideDown');
-        }
-    }
+  }
 }

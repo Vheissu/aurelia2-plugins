@@ -1,9 +1,9 @@
 import {
   inject,
   bindable,
-  bindingMode,
+  BindingMode,
   containerless,
-} from "aurelia-framework";
+} from "aurelia";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 import velocity from "velocity-animate";
 import { AubsAccordionCustomElement } from "./aubs-accordion";
@@ -13,7 +13,7 @@ import { AubsAccordionCustomElement } from "./aubs-accordion";
 export class AubsAccordionGroupCustomElement {
   @bindable title;
   @bindable panelClass = bootstrapOptions.accordionGroupPanelClass;
-  @bindable({ defaultBindingMode: bindingMode.twoWay }) isOpen = false;
+  @bindable({ mode: BindingMode.twoWay }) isOpen = false;
   @bindable disabled = false;
 
   showClass;

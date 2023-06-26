@@ -1,4 +1,4 @@
-import {children, bindable, bindingMode} from "aurelia-framework";
+import {children, bindable, BindingMode} from "aurelia";
 import {bootstrapOptions} from "../utils/bootstrap-options";
 
 @children({ name: "tabs", selector: "aubs-tab" })
