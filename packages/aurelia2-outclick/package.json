@@ -1,6 +1,6 @@
 {
     "name": "aurelia2-outclick",
-    "version": "0.0.1",
+    "version": "0.0.2",
     "description": "Aurelia outerclick plugin",
     "main": "./dist/index.js",
     "types": "./dist/types/index.d.ts",
@@ -19,7 +19,10 @@
         "test:watch": "cross-env DEV=true npm run test",
         "test": "jest"
     },
-    "dependencies": {
-        "aurelia": "latest"
+    "devDependencies": {
+        "aurelia": ">=2.0.0-beta.6"
+    },
+    "peerDependencies": {
+        "aurelia": ">=2.0.0-beta.6"
     }
 }

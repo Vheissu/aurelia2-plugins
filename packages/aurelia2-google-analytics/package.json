@@ -1,6 +1,6 @@
 {
     "name": "aurelia2-google-analytics",
-    "version": "1.0.1",
+    "version": "1.0.3",
     "description": "A port of the Aurelia Google Analytics plugin",
     "main": "./dist/index.js",
     "types": "./dist/types/index.d.ts",
@@ -19,8 +19,11 @@
         "test:watch": "cross-env DEV=true npm run test",
         "test": "jest"
     },
-    "dependencies": {
-        "aurelia": "latest",
-        "@types/google.analytics": "^0.0.42"
+    "devDependencies": {
+        "@types/google.analytics": "^0.0.42",
+        "aurelia": "^2.0.0-beta.9"
+    },
+    "peerDependencies": {
+        "aurelia": ">=2.0.0-beta.6"
     }
 }

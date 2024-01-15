@@ -1,6 +1,6 @@
 {
     "name": "aurelia2-notification",
-    "version": "0.0.16",
+    "version": "0.0.19",
     "description": "Aurelia notification library",
     "main": "./dist/index.js",
     "types": "./dist/types/index.d.ts",
@@ -20,9 +20,14 @@
         "test": "jest"
     },
     "dependencies": {
-        "@aurelia/i18n": "latest",
-        "aurelia": "latest",
         "extend": "^3.0.2",
         "humane-js": "^3.2.2"
-    }
+    },
+    "devDependencies": {
+        "aurelia": ">=2.0.0-beta.6"
+    },
+    "peerDependencies": {
+        "@aurelia/i18n": ">=2.0.0-beta.6",
+        "aurelia": ">=2.0.0-beta.6"
+      }          
 }

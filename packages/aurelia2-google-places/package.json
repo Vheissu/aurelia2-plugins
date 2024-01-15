@@ -1,6 +1,6 @@
 {
     "name": "aurelia2-google-places",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "description": "A port of the Aurelia Google Places plugin",
     "main": "./dist/index.js",
     "types": "./dist/types/index.d.ts",
@@ -19,8 +19,11 @@
         "test:watch": "cross-env DEV=true npm run test",
         "test": "jest"
     },
-    "dependencies": {
+    "devDependencies": {
         "aurelia": "latest",
         "@types/google.analytics": "^0.0.42"
+    },
+    "peerDependencies": {
+        "aurelia": ">=2.0.0-beta.6"
     }
 }

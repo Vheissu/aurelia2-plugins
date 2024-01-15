@@ -18,7 +18,7 @@
 
             <li repeat.for="item of displayData" show.bind="!loading" class.bind="focusedItem === item ? 'active' : ''">
                 <template part="item-template" replaceable>
-                    <a class="dropdown-item" href="javascript:void(0)" click.delegate="itemSelected(item)"
+                    <a class="dropdown-item" href="javascript:void(0)" click.trigger="itemSelected(item)"
                      innerhtml.bind="getName(item) | typeaheadHighlight:filter">
 
                     </a>
@@ -33,7 +33,7 @@
             <template repeat.for="item of displayData">
                 <template part="item-template" replaceable>
                     <a class="dropdown-item ${focusedItem === item  ? 'active' : ''}" href="javascript:void(0)"
-                     show.bind="!loading" click.delegate="itemSelected(item)"
+                     show.bind="!loading" click.trigger="itemSelected(item)"
                      innerhtml.bind="getName(item) | typeaheadHighlight:filter"></a>
                 </template>
             </template>            

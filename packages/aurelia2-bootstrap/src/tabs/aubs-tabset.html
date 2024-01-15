@@ -2,7 +2,7 @@
     <ul class="nav ${tabsClass} ${vertical ? 'nav-stacked' : ''}">
         <li repeat.for="tab of tabs" class="nav-item ${tab.active ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}">
             <a class="nav-link ${tab.active ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}"
-               href="javascript:void(0)" click.delegate="selectTab(tab)" innerhtml.bind="tab.header"></a>
+               href="javascript:void(0)" click.trigger="selectTab(tab)" innerhtml.bind="tab.header"></a>
         </li>
     </ul>
 

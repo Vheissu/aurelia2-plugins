@@ -1,6 +1,6 @@
 {
     "name": "aurelia2-hooks",
-    "version": "0.0.1",
+    "version": "0.0.3",
     "description": "Aurelia hooks plugin",
     "main": "./dist/index.js",
     "types": "./dist/types/index.d.ts",
@@ -19,7 +19,10 @@
         "test:watch": "cross-env DEV=true npm run test",
         "test": "jest"
     },
-    "dependencies": {
-        "aurelia": "latest"
+    "devDependencies": {
+        "aurelia": "^2.0.0-beta.9"
+    },
+    "peerDependencies": {
+        "aurelia": ">=2.0.0-beta.6"
     }
 }

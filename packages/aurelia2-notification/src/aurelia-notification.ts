@@ -5,7 +5,7 @@ import { DI, IPlatform } from "@aurelia/kernel";
 import { I18N } from '@aurelia/i18n';
 
 export const INotification = DI.createInterface<INotification>('INotification', x => x.singleton(Notification));
-export interface INotification extends Notification {}
+export interface INotification extends Notification { }
 
 export class Notification {
   readonly humane = Humane;
@@ -77,7 +77,7 @@ export class Notification {
    * @param {{}}               [defaults] for this type of notification.
    *
    */
-  note(message, options = {}, defaults = this.config.defaults) {} // eslint-disable-line  no-empty-function
+  note(message, options = {}, defaults = this.config.defaults) { } // eslint-disable-line  no-empty-function
 
   /**
    * Notify 'success' (translated if applicable) using humane.log.
@@ -87,7 +87,7 @@ export class Notification {
    * @param {{}}               [defaults] for this type of notification.
    *
    */
-  success(message, options = {}, defaults = this.config.defaults) {} // eslint-disable-line  no-empty-function
+  success(message, options = {}, defaults = this.config.defaults) { } // eslint-disable-line  no-empty-function
 
   /**
    * Notify 'error' (translated if applicable) using humane.log.
@@ -97,7 +97,7 @@ export class Notification {
    * @param {{}}               [defaults] for this type of notification.
    *
    */
-  error(message, options = {}, defaults = this.config.defaults) {} // eslint-disable-line  no-empty-function
+  error(message, options = {}, defaults = this.config.defaults) { } // eslint-disable-line  no-empty-function
 
   /**
    * Notify 'info' (translated if applicable) using humane.log.
@@ -107,5 +107,5 @@ export class Notification {
    * @param {{}}               [defaults] for this type of notification.
    *
    */
-  info(message, options = {}, defaults = this.config.defaults) {} // eslint-disable-line  no-empty-function
+  info(message, options = {}, defaults = this.config.defaults) { } // eslint-disable-line  no-empty-function
 }
