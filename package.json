@@ -13,10 +13,10 @@
         "packages/*"
     ],
     "devDependencies": {
-        "@aurelia/testing": "^2.0.0-beta.9",
+        "@aurelia/testing": "^2.0.0-beta.20",
         "@typescript-eslint/eslint-plugin": "^5.38.1",
         "@typescript-eslint/parser": "^5.38.1",
-        "aurelia": "^2.0.0-beta.9",
+        "aurelia": "^2.0.0-beta.20",
         "cpx2": "^4.1.1",
         "cross-env": "^7.0.3",
         "eslint": "^8.24.0",
