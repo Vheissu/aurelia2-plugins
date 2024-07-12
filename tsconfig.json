@@ -1,10 +1,8 @@
 {
     "compilerOptions": {
       "incremental": true,
-      "target": "es2020",
+      "target": "es2022",
       "module": "esnext",
-      "experimentalDecorators": true,
-      "emitDecoratorMetadata": true,
       "noImplicitAny": false,
       "lib": ["esnext", "DOM"],
       "moduleResolution": "node",
