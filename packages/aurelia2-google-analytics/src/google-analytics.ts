@@ -1,4 +1,4 @@
-import { DI, IEventAggregator, ILogger } from 'aurelia';
+import { DI, IEventAggregator, ILogger, inject } from 'aurelia';
 
 const deepMerge = function (target, ...sources) {
 	if (!sources.length) {
@@ -113,11 +113,12 @@ const delegate = function (criteria, listener) {
 export const IGoogleAnalytics = DI.createInterface<IGoogleAnalytics>('IGoogleAnalytics', x => x.singleton(Analytics));
 export interface IGoogleAnalytics extends Analytics {};
 
+@inject(IEventAggregator, ILogger)
 export class Analytics {
 	_initialized = false;
 	_options = defaultOptions;
 
-	constructor(@IEventAggregator readonly eventAggregator: IEventAggregator, @ILogger readonly logger: ILogger) {
+	constructor(readonly eventAggregator: IEventAggregator, readonly logger: ILogger) {
 		this.logger.scopeTo('aurelia2-google-analytics');
 		
 		this._trackClick = this._trackClick.bind(this);

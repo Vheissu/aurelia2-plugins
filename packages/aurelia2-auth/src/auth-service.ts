@@ -3,7 +3,7 @@ import { IAuthentication } from "./authentication";
 import { IOAuth1 } from "./oAuth1";
 import { IOAuth2 } from "./oAuth2";
 import { status, joinUrl } from "./auth-utilities";
-import { DI, IEventAggregator } from "@aurelia/kernel";
+import { DI, IEventAggregator, inject } from "@aurelia/kernel";
 import { IAuthOptions } from ".";
 import { IAuthConfigOptions } from "./configuration";
 
@@ -11,16 +11,17 @@ export const IAuthService = DI.createInterface<IAuthService>("IAuthService", x =
 
 export type IAuthService = AuthService;
 
+@inject(IHttpClient, IAuthentication, IOAuth1, IOAuth2, IAuthOptions, IEventAggregator)
 export class AuthService {
   protected tokenInterceptor;
 
   constructor(
-    @IHttpClient readonly http: IHttpClient,
-    @IAuthentication readonly auth: IAuthentication,
-    @IOAuth1 readonly oAuth1: IOAuth1,
-    @IOAuth2 readonly oAuth2: IOAuth2,
-    @IAuthOptions readonly config: IAuthConfigOptions,
-    @IEventAggregator readonly eventAggregator: IEventAggregator
+    readonly http: IHttpClient,
+    readonly auth: IAuthentication,
+    readonly oAuth1: IOAuth1,
+    readonly oAuth2: IOAuth2,
+    readonly config: IAuthConfigOptions,
+    readonly eventAggregator: IEventAggregator
   ) {
     this.tokenInterceptor = auth.tokenInterceptor;
   }

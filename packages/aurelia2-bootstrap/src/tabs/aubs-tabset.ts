@@ -1,11 +1,11 @@
-import {children, bindable, BindingMode} from "aurelia";
+import { children, bindable, BindingMode } from "aurelia";
 import {bootstrapOptions} from "../utils/bootstrap-options";
 
-@children({ name: "tabs", selector: "aubs-tab" })
 export class AubsTabsetCustomElement {
     @bindable type = bootstrapOptions.tabsetType;
     @bindable vertical = bootstrapOptions.tabsetVertical;
-    @bindable({defaultBindingMode: bindingMode.twoWay}) active = 0;
+    @bindable({ mode: BindingMode.twoWay }) active = 0;
+    @children({ query: "aubs-tab", callback: "tabsChanged" }) tabs = [];
 
     tabsClass = 'nav-tabs';
 

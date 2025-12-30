@@ -1,6 +1,7 @@
-import { bindable, INode } from "aurelia";
+import { bindable, INode, inject } from "aurelia";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 
+@inject(INode)
 export class AubsBtnLoadingCustomAttribute {
   @bindable loading;
   @bindable text = bootstrapOptions.btnLoadingText;
@@ -9,7 +10,7 @@ export class AubsBtnLoadingCustomAttribute {
   isAttached = false;
   innerHTML;
 
-  constructor(@INode private element: HTMLButtonElement) {
+  constructor(private element: HTMLButtonElement) {
     if (this.element.tagName !== "BUTTON" && this.element.tagName !== "A") {
       throw new Error(
         "The aubs-btn-loading attribute can only be used in button and anchor elements"

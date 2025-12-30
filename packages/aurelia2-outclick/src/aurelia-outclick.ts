@@ -1,10 +1,12 @@
-import { bindable, BindingMode, customAttribute, ICustomAttributeViewModel, INode } from '@aurelia/runtime-html';
+import { bindable, customAttribute, ICustomAttributeViewModel, INode } from '@aurelia/runtime-html';
+import { inject } from '@aurelia/kernel';
 
 @customAttribute('outclick')
+@inject(INode)
 export class Outclick implements ICustomAttributeViewModel {
     @bindable({ primary: true }) readonly fn = (event?) => ``;
 
-    constructor(@INode readonly element: HTMLElement) {
+    constructor(readonly element: HTMLElement) {
 
     }
 

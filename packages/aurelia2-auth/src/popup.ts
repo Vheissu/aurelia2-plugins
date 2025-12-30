@@ -1,16 +1,17 @@
-import { DI } from '@aurelia/kernel';
+import { DI, inject } from '@aurelia/kernel';
 import { IAuthConfigOptions, IAuthOptions } from './configuration';
 import { parseQueryString, extend, forEach } from './auth-utilities';
 
 export const IPopup = DI.createInterface<IPopup>("IPopup", x => x.singleton(Popup));
 export type IPopup = Popup;
 
+@inject(IAuthOptions)
 export class Popup {
   protected popupWindow = null;
   protected polling;
   protected url;
 
-  constructor(@IAuthOptions readonly config: IAuthConfigOptions) {
+  constructor(readonly config: IAuthConfigOptions) {
     this.popupWindow = null;
     this.polling = null;
     this.url = '';

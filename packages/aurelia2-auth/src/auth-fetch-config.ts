@@ -1,4 +1,4 @@
-import { DI } from "@aurelia/kernel";
+import { DI, inject } from "@aurelia/kernel";
 import { IHttpClient } from "@aurelia/fetch-client";
 import { IAuthentication } from "./authentication";
 
@@ -8,10 +8,11 @@ export const IFetchConfig = DI.createInterface<IFetchConfig>(
 );
 
 export type IFetchConfig = FetchConfig;
+@inject(IHttpClient, IAuthentication)
 export class FetchConfig {
   constructor(
-    @IHttpClient readonly httpClient: IHttpClient,
-    @IAuthentication readonly auth: IAuthentication
+    readonly httpClient: IHttpClient,
+    readonly auth: IAuthentication
   ) {}
 
   configure() {

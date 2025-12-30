@@ -1,20 +1,20 @@
 import { INotificationConfig } from "./config";
 import Humane from "humane-js";
 import extend from "extend";
-import { DI, IPlatform } from "@aurelia/kernel";
+import { DI, inject } from "@aurelia/kernel";
 import { I18N } from '@aurelia/i18n';
 
 export const INotification = DI.createInterface<INotification>('INotification', x => x.singleton(Notification));
 export interface INotification extends Notification { }
 
+@inject(INotificationConfig, I18N)
 export class Notification {
   readonly humane = Humane;
   protected notify;
 
   constructor(
-    @INotificationConfig readonly config: INotificationConfig,
-    @IPlatform readonly platform: IPlatform,
-    @I18N readonly i18n: I18N
+    readonly config: INotificationConfig,
+    readonly i18n: I18N
   ) {
     this.setBaseCls();
 

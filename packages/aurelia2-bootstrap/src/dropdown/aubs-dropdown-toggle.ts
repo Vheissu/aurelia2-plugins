@@ -1,12 +1,13 @@
-import { INode } from "aurelia";
+import { INode, inject } from "aurelia";
 import { AubsDropdownCustomAttribute } from "./aubs-dropdown";
 
+@inject(AubsDropdownCustomAttribute, INode)
 export class AubsDropdownToggleCustomAttribute {
   clickedListener;
 
   constructor(
     private dropdown: AubsDropdownCustomAttribute,
-    @INode private element: HTMLElement
+    private element: HTMLElement
   ) {
     this.clickedListener = () => this.dropdown.toggle();
   }

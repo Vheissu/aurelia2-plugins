@@ -1,13 +1,13 @@
 import { inject, bindable, BindingMode, INode } from "aurelia";
 
-@inject(Element)
+@inject(INode)
 export class AubsBtnRadioCustomAttribute {
   @bindable({ mode: BindingMode.twoWay }) model;
   @bindable value;
 
   clickedListener;
 
-  constructor(@INode private element: HTMLButtonElement) {
+  constructor(private element: HTMLButtonElement) {
     if (this.element.tagName !== "BUTTON" && this.element.tagName !== "A") {
       throw new Error(
         "The aubs-btn-radio attribute can only be used in button and anchor elements"

@@ -2,15 +2,16 @@ import {
   bindable,
   customElement,
   ICustomElementViewModel,
-  IPlatform,
+  INode,
 } from "@aurelia/runtime-html";
 
+import { queueTask } from "@aurelia/runtime";
 import { IGoogleMapsConfiguration } from "./configure";
 import { IGoogleMapsAPI } from "./google-maps-api";
 import { IMarkerClustering } from "./marker-clustering";
 
 import { Events } from "./events";
-import { ILogger } from "@aurelia/kernel";
+import { ILogger, inject } from "@aurelia/kernel";
 
 declare let google: any;
 export interface Marker {
@@ -35,6 +36,7 @@ export interface IGoogleMaps extends GoogleMaps {}
   name: "google-map",
   template: "",
 })
+@inject(INode, IGoogleMapsConfiguration, IGoogleMapsAPI, IMarkerClustering, ILogger)
 export class GoogleMaps implements ICustomElementViewModel {
   private _currentInfoWindow: any = null;
 
@@ -65,12 +67,11 @@ export class GoogleMaps implements ICustomElementViewModel {
   public _polygonsSubscription: any = null;
 
   constructor(
-    readonly element: Element,
-    @IGoogleMapsConfiguration readonly config: IGoogleMapsConfiguration,
-    @IGoogleMapsAPI readonly googleMapsApi: IGoogleMapsAPI,
-    @IMarkerClustering readonly markerClustering: IMarkerClustering,
-    @ILogger readonly logger: ILogger,
-    @IPlatform readonly platform: IPlatform
+    readonly element: HTMLElement,
+    readonly config: IGoogleMapsConfiguration,
+    readonly googleMapsApi: IGoogleMapsAPI,
+    readonly markerClustering: IMarkerClustering,
+    readonly logger: ILogger
   ) {
     this.logger.scopeTo("aurelia2-google-maps");
 
@@ -404,7 +405,7 @@ export class GoogleMaps implements ICustomElementViewModel {
 
   latitudeChanged() {
     this._mapPromise.then(() => {
-      this.platform.taskQueue.queueTask(() => {
+      queueTask(() => {
         this.updateCenter();
       });
     });
@@ -412,7 +413,7 @@ export class GoogleMaps implements ICustomElementViewModel {
 
   longitudeChanged() {
     this._mapPromise.then(() => {
-      this.platform.taskQueue.queueTask(() => {
+      queueTask(() => {
         this.updateCenter();
       });
     });
@@ -420,7 +421,7 @@ export class GoogleMaps implements ICustomElementViewModel {
 
   zoomChanged(newValue: any) {
     this._mapPromise.then(() => {
-      this.platform.taskQueue.queueTask(() => {
+      queueTask(() => {
         let zoomValue = parseInt(newValue, 10);
         this.map.setZoom(zoomValue);
       });
@@ -467,7 +468,7 @@ export class GoogleMaps implements ICustomElementViewModel {
            * We queue up a task to update the bounds, because in the case of multiple bound properties changing all at once,
            * we need to let Aurelia handle updating the other properties before we actually trigger a re-render of the map
            */
-          this.platform.taskQueue.queueTask(() => {
+          queueTask(() => {
             this.markerClustering.renderClusters(
               this.map,
               this._renderedMarkers
@@ -502,7 +503,7 @@ export class GoogleMaps implements ICustomElementViewModel {
        * We queue up a task to update the bounds, because in the case of multiple bound properties changing all at once,
        * we need to let Aurelia handle updating the other properties before we actually trigger a re-render of the map
        */
-      this.platform.taskQueue.queueTask(() => {
+      queueTask(() => {
         this.zoomToMarkerBounds();
       });
     });
@@ -786,7 +787,7 @@ export class GoogleMaps implements ICustomElementViewModel {
            * We queue up a task to update the bounds, because in the case of multiple bound properties changing all at once,
            * we need to let Aurelia handle updating the other properties before we actually trigger a re-render of the map
            */
-          this.platform.taskQueue.queueTask(() => {
+          queueTask(() => {
             this.zoomToMarkerBounds();
           });
         });
@@ -815,7 +816,7 @@ export class GoogleMaps implements ICustomElementViewModel {
          * We queue up a task to update the bounds, because in the case of multiple bound properties changing all at once,
          * we need to let Aurelia handle updating the other properties before we actually trigger a re-render of the map
          */
-        this.platform.taskQueue.queueTask(() => {
+        queueTask(() => {
           this.zoomToMarkerBounds();
         });
       });

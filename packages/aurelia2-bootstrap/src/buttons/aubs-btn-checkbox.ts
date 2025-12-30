@@ -1,6 +1,6 @@
-import { INode } from "aurelia";
-import { bindable, BindingMode } from "aurelia";
+import { INode, bindable, BindingMode, inject } from "aurelia";
 
+@inject(INode)
 export class AubsBtnCheckboxCustomAttribute {
   @bindable({ mode: BindingMode.twoWay }) state;
   @bindable checkedValue;
@@ -8,7 +8,7 @@ export class AubsBtnCheckboxCustomAttribute {
 
   clickedListener;
 
-  constructor(@INode private element: HTMLButtonElement) {
+  constructor(private element: HTMLButtonElement) {
     if (this.element.tagName !== "BUTTON" && this.element.tagName !== "A") {
       throw new Error(
         "The aubs-btn-checkbox attribute can only be used in button and anchor elements"

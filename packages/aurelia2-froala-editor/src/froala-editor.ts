@@ -1,11 +1,12 @@
 import { IHydratedController, watch } from '@aurelia/runtime-html';
-import { customElement, bindable, INode, ICustomElementViewModel } from 'aurelia';
+import { customElement, bindable, INode, ICustomElementViewModel, inject } from 'aurelia';
 import { IFroalaConfig } from './froala-editor-config';
 
 // Import Froala Editor
 import FroalaEditor from 'froala-editor';
 
 @customElement('froala-editor')
+@inject(INode, IFroalaConfig)
 export class FroalaEditor implements ICustomElementViewModel {
 	@bindable value;
 	@bindable config: any = {};
@@ -14,7 +15,7 @@ export class FroalaEditor implements ICustomElementViewModel {
 
 	parent;
 
-	constructor (@INode readonly element: HTMLElement, @IFroalaConfig config: IFroalaConfig) {
+	constructor (readonly element: HTMLElement, config: IFroalaConfig) {
 		this.element = element;
 		this.config = config.options();
 	}

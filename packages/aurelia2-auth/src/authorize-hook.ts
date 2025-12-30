@@ -1,10 +1,12 @@
 import { lifecycleHooks, ILifecycleHooks } from '@aurelia/runtime-html';
+import { inject } from '@aurelia/kernel';
 import { IRouter } from '@aurelia/router';
 import { IAuthentication } from './authentication';
 
 @lifecycleHooks()
+@inject(IAuthentication, IRouter)
 export class AuthorizeHook implements ILifecycleHooks {
-  constructor(@IAuthentication readonly auth: IAuthentication, @IRouter private router: IRouter) {
+  constructor(readonly auth: IAuthentication, private router: IRouter) {
 
   }
 

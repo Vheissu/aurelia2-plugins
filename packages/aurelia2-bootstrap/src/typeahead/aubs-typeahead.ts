@@ -1,11 +1,11 @@
-import {inject, bindable, bindingMode, observable, BindingEngine, containerless} from 'aurelia-framework';
-import {bootstrapOptions} from "../utils/bootstrap-options";
+import { inject, bindable, BindingMode, observable, containerless, IObserverLocator } from 'aurelia';
+import { bootstrapOptions } from "../utils/bootstrap-options";
 
-@inject(BindingEngine)
+@inject(IObserverLocator)
 @containerless
 export class AubsTypeaheadCustomElement {
     @bindable data;
-    @bindable({defaultBindingMode: bindingMode.twoWay}) value;
+    @bindable({ mode: BindingMode.twoWay }) value;
     @bindable key = 'name';
     @bindable id = '';
     @bindable customEntry = false;
@@ -33,9 +33,12 @@ export class AubsTypeaheadCustomElement {
     focusedItem = null;
     loading = false;
     showClass;
+    observerLocator;
+    dataObserver;
+    dataSubscriber;
 
-    constructor(bindingEngine) {
-        this.bindingEngine = bindingEngine;
+    constructor(observerLocator: IObserverLocator) {
+        this.observerLocator = observerLocator;
 
         this.openListener = () => this.openDropdown();
         this.outsideClickListener = evt => this.handleBlur(evt);
@@ -47,12 +50,7 @@ export class AubsTypeaheadCustomElement {
             this.v4 = true;
         }
 
-        if (Array.isArray(this.data)) {
-            this.dataObserver = this.bindingEngine.collectionObserver(this.data).subscribe(() => {
-                this.checkCustomEntry();
-                this.applyPlugins();
-            });
-        }
+        this.subscribeToData();
 
         this.checkCustomEntry();
 
@@ -70,9 +68,7 @@ export class AubsTypeaheadCustomElement {
     }
 
     detached() {
-        if (this.dataObserver) {
-            this.dataObserver.dispose();
-        }
+        this.unsubscribeDataObserver();
 
         document.removeEventListener('click', this.outsideClickListener);
         this.input.removeEventListener('keydown', this.keyDownListener);
@@ -84,16 +80,31 @@ export class AubsTypeaheadCustomElement {
     }
 
     dataChanged() {
-        if (this.dataObserver) {
-            this.dataObserver.dispose();
+        this.unsubscribeDataObserver();
+        this.subscribeToData();
+    }
+
+    subscribeToData() {
+        if (!Array.isArray(this.data)) {
+            return;
         }
 
-        if (Array.isArray(this.data)) {
-            this.dataObserver = this.bindingEngine.collectionObserver(this.data).subscribe(() => {
+        this.dataObserver = this.observerLocator.getArrayObserver(this.data);
+        this.dataSubscriber = {
+            handleCollectionChange: () => {
                 this.checkCustomEntry();
                 this.applyPlugins();
-            });
+            }
+        };
+        this.dataObserver.subscribe(this.dataSubscriber);
+    }
+
+    unsubscribeDataObserver() {
+        if (this.dataObserver && this.dataSubscriber) {
+            this.dataObserver.unsubscribe(this.dataSubscriber);
         }
+        this.dataObserver = null;
+        this.dataSubscriber = null;
     }
 
     valueChanged() {

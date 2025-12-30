@@ -1,14 +1,14 @@
-import {bindable, inject, bindingMode} from 'aurelia-framework';
+import { bindable, inject, BindingMode, INode } from 'aurelia';
 import {TooltipService} from '../utils/tooltip-service';
 import {bootstrapOptions} from '../utils/bootstrap-options';
 import velocity from 'velocity-animate';
 
-@inject(Element, TooltipService)
+@inject(INode, TooltipService)
 export class AubsTooltipCustomAttribute {
     @bindable text;
     @bindable position = bootstrapOptions.tooltipPosition;
     @bindable disabled = false;
-    @bindable({defaultBindingMode: bindingMode.twoWay}) open = false;
+    @bindable({ mode: BindingMode.twoWay }) open = false;
     @bindable trigger = bootstrapOptions.tooltipTrigger;
     @bindable class = bootstrapOptions.tooltipClass;
 
@@ -18,7 +18,7 @@ export class AubsTooltipCustomAttribute {
     valuesChanged = false;
     visible = false;
 
-    constructor(element, tooltipService) {
+    constructor(element: HTMLElement, tooltipService: TooltipService) {
         this.element = element;
         this.tooltipService = tooltipService;
 

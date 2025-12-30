@@ -1,13 +1,14 @@
-import { DI } from '@aurelia/kernel';
+import { DI, inject } from '@aurelia/kernel';
 import { IAuthConfigOptions, IAuthOptions } from './configuration';
 
 export const IStorage = DI.createInterface<IStorage>("IStorage", x => x.singleton(Storage));
 export type IStorage = Storage;
 
+@inject(IAuthOptions)
 export class Storage {
   private storage;
 
-  constructor(@IAuthOptions readonly config: IAuthConfigOptions) {
+  constructor(readonly config: IAuthConfigOptions) {
     this.storage = this._getStorage(this.config.storage);
   }
 

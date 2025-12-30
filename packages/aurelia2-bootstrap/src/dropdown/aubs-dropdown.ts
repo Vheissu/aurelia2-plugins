@@ -1,6 +1,7 @@
-import { INode, bindable, BindingMode } from "aurelia";
+import { INode, bindable, BindingMode, inject } from "aurelia";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 
+@inject(INode)
 export class AubsDropdownCustomAttribute {
   @bindable({ mode: BindingMode.twoWay }) isOpen;
   @bindable autoClose = bootstrapOptions.dropdownAutoClose;
@@ -11,7 +12,7 @@ export class AubsDropdownCustomAttribute {
   outsideClickListener;
   isAttached = false;
 
-  constructor(@INode private element: HTMLElement) {
+  constructor(private element: HTMLElement) {
     this.outsideClickListener = (evt) => this.handleBlur(evt);
   }
 

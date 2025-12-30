@@ -1,13 +1,14 @@
-import { DI } from '@aurelia/kernel';
+import { DI, inject } from '@aurelia/kernel';
 import { IGoogleMapsConfiguration } from './configure';
 
 export const IMarkerClustering = DI.createInterface<IMarkerClustering>('IMarkerClustering', x => x.singleton(MarkerClustering));
 
 export interface IMarkerClustering extends MarkerClustering {}
+@inject(IGoogleMapsConfiguration)
 export class MarkerClustering {
     private markerClusterer: any;
 
-    constructor(@IGoogleMapsConfiguration readonly config: IGoogleMapsConfiguration) {
+    constructor(readonly config: IGoogleMapsConfiguration) {
  
     }
 

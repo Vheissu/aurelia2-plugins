@@ -1,8 +1,8 @@
-import { bindable, inject } from "aurelia";
+import { bindable, inject, INode } from "aurelia";
 import { AubsTabsetCustomElement } from "./aubs-tabset";
 import velocity from "velocity-animate";
 
-@inject(AubsTabsetCustomElement, Element)
+@inject(AubsTabsetCustomElement, INode)
 export class AubsTabCustomElement {
   @bindable header;
   @bindable disabled = false;
@@ -17,7 +17,7 @@ export class AubsTabCustomElement {
 
   $tabPane;
 
-  constructor(tabset, element) {
+  constructor(tabset: AubsTabsetCustomElement, element: HTMLElement) {
     this.tabset = tabset;
     this.element = element;
   }

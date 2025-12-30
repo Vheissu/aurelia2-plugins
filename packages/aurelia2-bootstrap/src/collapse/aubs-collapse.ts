@@ -1,13 +1,14 @@
-import { INode, bindable } from "aurelia";
+import { INode, bindable, inject } from "aurelia";
 import velocity from "velocity-animate";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 
+@inject(INode)
 export class AubsCollapseCustomAttribute {
   @bindable collapsed = false;
   showClass;
   isAttached = false;
 
-  constructor(@INode private element: HTMLElement) {
+  constructor(private element: HTMLElement) {
   }
 
   bound() {

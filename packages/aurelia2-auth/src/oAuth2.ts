@@ -1,4 +1,4 @@
-import { DI } from '@aurelia/kernel';
+import { DI, inject } from '@aurelia/kernel';
 import { IHttpClient, json } from '@aurelia/fetch-client';
 import {
   extend,
@@ -17,15 +17,16 @@ import { IAuthentication } from './authentication';
 export const IOAuth2 = DI.createInterface<IOAuth2>("IOAuth2", x => x.singleton(OAuth2));
 export type IOAuth2 = OAuth2;
 
+@inject(IStorage, IPopup, IAuthentication, IHttpClient, IAuthOptions)
 export class OAuth2 {
   protected defaults;
 
   constructor(
-    @IStorage readonly storage: IStorage,
-    @IPopup readonly popup: IPopup,
-    @IAuthentication readonly auth: IAuthentication,
-    @IHttpClient readonly http: IHttpClient,
-    @IAuthOptions readonly config: IAuthConfigOptions
+    readonly storage: IStorage,
+    readonly popup: IPopup,
+    readonly auth: IAuthentication,
+    readonly http: IHttpClient,
+    readonly config: IAuthConfigOptions
   ) {
     this.defaults = {
       url: null,

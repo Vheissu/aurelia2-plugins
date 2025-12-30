@@ -1,4 +1,4 @@
-import { DI } from '@aurelia/kernel';
+import { DI, inject } from '@aurelia/kernel';
 import { IStorage } from './storage';
 import { joinUrl, isObject, isString } from './auth-utilities';
 import { IAuthOptions, IAuthConfigOptions } from './configuration';
@@ -7,14 +7,15 @@ export const IAuthentication = DI.createInterface<IAuthentication>("IAuthenticat
 
 export interface IAuthentication extends Authentication {  }
 
+@inject(IStorage, IAuthOptions)
 export class Authentication {
   private tokenName;
   private idTokenName;
   private initialUrl;
 
   constructor(
-    @IStorage readonly storage: IStorage,
-    @IAuthOptions readonly config: IAuthConfigOptions
+    readonly storage: IStorage,
+    readonly config: IAuthConfigOptions
   ) {
     this.storage = storage;
     this.tokenName = this.config.tokenPrefix

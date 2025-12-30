@@ -1,8 +1,9 @@
-import { bindable, BindingMode, INode } from "aurelia";
+import { bindable, BindingMode, INode, inject } from "aurelia";
 import { ITooltipService } from "../utils/tooltip-service";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 import velocity from "velocity-animate";
 
+@inject(INode, ITooltipService)
 export class AubsPopoverCustomAttribute {
   @bindable title;
   @bindable body;
@@ -30,8 +31,8 @@ export class AubsPopoverCustomAttribute {
   showClass;
 
   constructor(
-    @INode private element: HTMLElement,
-    @ITooltipService private tooltipService: ITooltipService
+    private element: HTMLElement,
+    private tooltipService: ITooltipService
   ) {
     this.element = element;
 

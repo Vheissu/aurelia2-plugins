@@ -3,10 +3,10 @@ import { Buttons } from './buttons';
 import { Headings } from './headings';
 import { CardiganCode } from './cardigan-code';
 
-import { IRoute } from '@aurelia/router';
+import { IRouteConfig } from '@aurelia/router';
 
 export class MyApp {
-  static routes: IRoute[] = [
+  static routes: IRouteConfig[] = [
     {
       component: Home,
       path: '',
