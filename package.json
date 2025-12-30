@@ -6,7 +6,9 @@
     "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
     "license": "MIT",
     "scripts": {
-        "build": "npm run build --workspaces"
+        "build": "npm run build --workspaces",
+        "release": "node scripts/release.mjs",
+        "release:dry-run": "node scripts/release.mjs --dry-run"
     },
     "workspaces": [
         "examples/*",
