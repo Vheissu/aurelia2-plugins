@@ -20,10 +20,10 @@
         "test": "jest"
     },
     "devDependencies": {
-        "aurelia": "^2.0.0-beta.9",
-        "@aurelia/router": "^2.0.0-beta.9"
+        "aurelia": "^2.0.0-beta.27",
+        "@aurelia/router": "^2.0.0-beta.27"
     },
     "peerDependencies": {
-        "aurelia": ">=2.0.0-beta.6"
+        "aurelia": ">=2.0.0-beta.27"
     }
 }

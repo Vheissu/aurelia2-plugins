@@ -9,12 +9,12 @@
   "license": "UNLICENSED",
   "dependencies": {
     "au-cardigan": "0.0.26",
-    "aurelia": "latest",
+    "aurelia": "^2.0.0-beta.27",
     "bootstrap": "^4.5.3"
   },
   "devDependencies": {
     "eslint": "^8.17.0",
-    "@aurelia/testing": "latest",
+    "@aurelia/testing": "^2.0.0-beta.27",
     "htmlhint": "^1.1.4",
     "rimraf": "^3.0.2",
     "webpack": "^5.73.0",
@@ -25,7 +25,7 @@
     "style-loader": "^3.3.1",
     "css-loader": "^6.7.1",
     "dotenv-webpack": "^7.1.0",
-    "@aurelia/webpack-loader": "latest",
+    "@aurelia/webpack-loader": "^2.0.0-beta.27",
     "ts-loader": "^9.3.0",
     "postcss-loader": "^7.0.0",
     "postcss": "^8.4.14",
@@ -39,7 +39,7 @@
     "jest-environment-jsdom": "^28.1.1",
     "jest-transform-stub": "^2.0.0",
     "@types/jest": "^28.1.1",
-    "@aurelia/ts-jest": "latest"
+    "@aurelia/ts-jest": "^2.0.0-beta.27"
   },
   "scripts": {
     "lint:js": "eslint src test --ext .js,.ts",

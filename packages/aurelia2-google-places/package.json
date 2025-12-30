@@ -20,10 +20,10 @@
         "test": "jest"
     },
     "devDependencies": {
-        "aurelia": "latest",
+        "aurelia": "^2.0.0-beta.27",
         "@types/google.analytics": "^0.0.42"
     },
     "peerDependencies": {
-        "aurelia": ">=2.0.0-beta.6"
+        "aurelia": ">=2.0.0-beta.27"
     }
 }
