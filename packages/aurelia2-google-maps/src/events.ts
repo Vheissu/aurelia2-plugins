@@ -1,25 +1,26 @@
-export class Events {
+export const Events = {
     // Dispatches
-    static BOUNDSCHANGED = `bounds-change`;
+    BOUNDSCHANGED: "bounds-change",
 
-    static MAPCLICK = 'map-click';
-    static MAPOVERLAYCOMPLETE = 'map-overlay-complete';
+    MAPCLICK: "map-click",
+    MAPOVERLAYCOMPLETE: "map-overlay-complete",
 
-    static MARKERRENDERED = 'marker-render';
-    static MARKERCLICK = 'marker-click';
-    static MARKERMOUSEOVER = 'marker-mouse-over';
-    static MARKERMOUSEOUT = 'marker-mouse-out';
+    MARKERRENDERED: "marker-render",
+    MARKERCLICK: "marker-click",
+    MARKERMOUSEOVER: "marker-mouse-over",
+    MARKERMOUSEOUT: "marker-mouse-out",
 
-    static POLYGONCLICK = 'polygon-click';
-    static POLYGONRENDERED = 'polygon-render';
+    POLYGONCLICK: "polygon-click",
+    POLYGONRENDERED: "polygon-render",
 
-    static INFOWINDOWSHOW = 'info-window-show';
-    static INFOWINDOWCLOSE = 'info-window-close';
+    INFOWINDOWSHOW: "info-window-show",
+    INFOWINDOWCLOSE: "info-window-close",
 
     // Listens
+    START_MARKER_HIGHLIGHT: "start-marker-highlight",
+    STOP_MARKER_HIGHLIGHT: "stop-marker-highlight",
+    PAN_TO_MARKER: "pan-to-marker",
+    CLEAR_MARKERS: "clear-markers",
+} as const;
 
-    static START_MARKER_HIGHLIGHT = 'start-marker-highlight';
-    static STOP_MARKER_HIGHLIGHT = 'stop-marker-highlight';
-    static PAN_TO_MARKER = 'pan-to-marker';
-    static CLEAR_MARKERS = 'clear-markers';
-}
+export type GoogleMapsEventType = typeof Events[keyof typeof Events];

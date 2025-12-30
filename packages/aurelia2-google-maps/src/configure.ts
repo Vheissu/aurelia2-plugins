@@ -1,12 +1,25 @@
 import { DI } from "@aurelia/kernel";
+import type { LoaderOptions } from "@googlemaps/js-api-loader";
+import type { MarkerClustererOptions } from "@googlemaps/markerclusterer";
 
 export interface ConfigInterface {
     apiScript?: string;
     apiKey?: string;
-    client?: string,
-    apiLibraries?: string;
-    options?: any;
-    markerCluster?: {enable: boolean, src?: string, imagePath?: string, imageExtension?: string};
+    key?: string;
+    client?: string;
+    apiLibraries?: string | string[];
+    libraries?: string[];
+    version?: string;
+    mapIds?: string[];
+    authReferrerPolicy?: string;
+    channel?: string;
+    solutionChannel?: string;
+    loaderOptions?: Partial<LoaderOptions>;
+    options?: google.maps.MapOptions;
+    markerCluster?: {
+        enable: boolean;
+        options?: Omit<MarkerClustererOptions, "map" | "markers">;
+    };
     region?: string;
     language?: string;
 }
@@ -19,19 +32,25 @@ export class Configure {
 
     constructor() {
         this._config = {
-            apiScript: 'https://maps.googleapis.com/maps/api/js',
-            apiKey: '',
-            client: '',
-            apiLibraries: '',
-            region: '',
-            language: '',
+            apiScript: "https://maps.googleapis.com/maps/api/js",
+            apiKey: "",
+            key: "",
+            client: "",
+            apiLibraries: "",
+            libraries: [],
+            version: "",
+            mapIds: [],
+            authReferrerPolicy: "",
+            channel: "",
+            solutionChannel: "",
+            loaderOptions: {},
+            region: "",
+            language: "",
             options: {},
             markerCluster: {
                 enable: false,
-                src: 'https://cdn.rawgit.com/googlemaps/v3-utility-library/99a385c1/markerclusterer/src/markerclusterer.js',
-                imagePath: 'https://raw.githubusercontent.com/googlemaps/v3-utility-library/99a385c1/markerclusterer/images/m',
-                imageExtension: 'png',
-            }
+                options: {},
+            },
         };
     }
 
@@ -39,9 +58,10 @@ export class Configure {
         return this._config;
     }
 
-    options(obj: ConfigInterface) {
+    options(obj: ConfigInterface = {}) {
         Object.assign(this._config, obj, {
-            markerCluster: Object.assign({}, this._config.markerCluster, obj.markerCluster)
+            markerCluster: Object.assign({}, this._config.markerCluster, obj.markerCluster),
+            loaderOptions: Object.assign({}, this._config.loaderOptions, obj.loaderOptions),
         });
     }
 
@@ -52,5 +72,50 @@ export class Configure {
     set(key: string, val: any) {
         this._config[key] = val;
         return this._config[key];
+    }
+
+    getLibraries(): string[] {
+        const libs = new Set<string>();
+        const add = (value?: string | string[]) => {
+            if (!value) return;
+            if (Array.isArray(value)) {
+                value.forEach((lib) => lib && libs.add(lib.trim()));
+                return;
+            }
+            value
+                .split(",")
+                .map((lib) => lib.trim())
+                .filter(Boolean)
+                .forEach((lib) => libs.add(lib));
+        };
+
+        add(this._config.apiLibraries);
+        add(this._config.libraries);
+        add(this._config.loaderOptions?.libraries);
+
+        return Array.from(libs);
+    }
+
+    getLoaderOptions(): LoaderOptions {
+        const libraries = this.getLibraries();
+        const loaderOptions: LoaderOptions = {
+            key: this._config.key || this._config.apiKey || undefined,
+            v: this._config.version || undefined,
+            language: this._config.language || undefined,
+            region: this._config.region || undefined,
+            libraries: libraries.length ? libraries : undefined,
+            mapIds: this._config.mapIds && this._config.mapIds.length ? this._config.mapIds : undefined,
+            authReferrerPolicy: this._config.authReferrerPolicy || undefined,
+            channel: this._config.channel || undefined,
+            solutionChannel: this._config.solutionChannel || undefined,
+        };
+
+        const merged = Object.assign({}, loaderOptions, this._config.loaderOptions);
+
+        if (this._config.client && !(merged as any).client) {
+            (merged as any).client = this._config.client;
+        }
+
+        return merged;
     }
 }

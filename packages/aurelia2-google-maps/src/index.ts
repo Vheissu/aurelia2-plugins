@@ -1,28 +1,50 @@
-import { IContainer, IRegistry, noop } from '@aurelia/kernel';
-import { ConfigInterface, IGoogleMapsConfiguration } from './configure';
-import { GoogleMaps } from './google-maps';
+import { IContainer, IRegistry } from "@aurelia/kernel";
+import { ConfigInterface, IGoogleMapsConfiguration } from "./configure";
+import { GoogleMaps } from "./google-maps";
 
-export { GoogleMaps } from './google-maps';
-export { IGoogleMapsConfiguration } from './configure';
-export { IMarkerClustering } from './marker-clustering';
+export { GoogleMaps } from "./google-maps";
+export { IGoogleMapsConfiguration } from "./configure";
+export { IMarkerClustering } from "./marker-clustering";
+export type {
+  GoogleMapsEvent,
+  MarkerInput,
+  PolygonInput,
+} from "./types";
 
 const DefaultComponents: IRegistry[] = [
     GoogleMaps as unknown as IRegistry,
 ];
 
 function createGoogleMapsConfiguration(options: Partial<ConfigInterface>) {
-    return {
+  return {
+    register(container: IContainer) {
+      const configClass = container.get(IGoogleMapsConfiguration);
+
+      configClass.options(options);
+
+      return container.register(...DefaultComponents);
+    },
+    configure(options: ConfigInterface) {
+      return createGoogleMapsConfiguration(options);
+    },
+    customize(callback?: (config: IGoogleMapsConfiguration) => void) {
+      return {
         register(container: IContainer) {
-            const configClass = container.get(IGoogleMapsConfiguration);
+          const configClass = container.get(IGoogleMapsConfiguration);
+          configClass.options(options);
 
-            configClass.options(options);
+          if (callback) {
+            callback(configClass);
+          }
 
-            return container.register(...DefaultComponents)
+          return container.register(...DefaultComponents);
         },
         configure(options: ConfigInterface) {
-            return createGoogleMapsConfiguration(options);
-        }
-    };
+          return createGoogleMapsConfiguration(options);
+        },
+      };
+    },
+  };
 }
 
 export const GoogleMapsConfiguration = createGoogleMapsConfiguration({});

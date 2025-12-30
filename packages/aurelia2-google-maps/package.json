@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-google-maps",
-  "version": "0.0.19",
+  "version": "1.0.0",
   "description": "A port of the Aurelia Maps plugin to v2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -19,10 +19,21 @@
     "test:watch": "cross-env DEV=true npm run test",
     "test": "jest"
   },
+  "dependencies": {
+    "@googlemaps/js-api-loader": "^2.0.2",
+    "@googlemaps/markerclusterer": "^2.6.2"
+  },
   "devDependencies": {
+    "@types/google.maps": "^3.58.1",
     "aurelia": "^2.0.0-beta.27"
   },
   "peerDependencies": {
+    "@types/google.maps": ">=3.58.1",
     "aurelia": ">=2.0.0-beta.27"
+  },
+  "peerDependenciesMeta": {
+    "@types/google.maps": {
+      "optional": true
+    }
   }
 }
