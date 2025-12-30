@@ -9,3 +9,4 @@ declare module '*.html' {
 }
 
 declare module 'velocity-animate';
+declare module 'tether';

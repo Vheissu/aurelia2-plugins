@@ -36,6 +36,10 @@ export class AubsTypeaheadCustomElement {
     observerLocator;
     dataObserver;
     dataSubscriber;
+    openListener;
+    outsideClickListener;
+    keyDownListener;
+    ignoreChange = false;
 
     constructor(observerLocator: IObserverLocator) {
         this.observerLocator = observerLocator;

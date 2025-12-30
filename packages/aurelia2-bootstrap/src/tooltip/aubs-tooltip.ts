@@ -17,11 +17,13 @@ export class AubsTooltipCustomAttribute {
     validPositions = ['top', 'bottom', 'left', 'right'];
     valuesChanged = false;
     visible = false;
+    listeners;
+    isAttached = false;
+    tooltip;
+    tether;
+    body;
 
-    constructor(element: HTMLElement, tooltipService: TooltipService) {
-        this.element = element;
-        this.tooltipService = tooltipService;
-
+    constructor(private element: HTMLElement, private tooltipService: TooltipService) {
         this.listeners = {
             in: () => this.handleShow(),
             out: () => this.handleHide(),

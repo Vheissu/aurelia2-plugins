@@ -1,10 +1,10 @@
 import { IContainer, IRegistry, noop } from '@aurelia/kernel';
 import { IFroalaConfig } from './froala-editor-config';
-import { FroalaEditor1 } from './froala-editor';
+import { FroalaEditor } from './froala-editor';
 
 const DefaultComponents: IRegistry[] = [
     IFroalaConfig as unknown as IRegistry,
-    FroalaEditor1 as unknown as IRegistry,
+    FroalaEditor as unknown as IRegistry,
 ];
 
 function createConfiguration(options) {

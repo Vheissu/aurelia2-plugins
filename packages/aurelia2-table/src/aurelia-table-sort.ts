@@ -1,8 +1,10 @@
-import { bindable, customAttribute } from '@aurelia/runtime-html';
+import { bindable, customAttribute, INode } from '@aurelia/runtime-html';
+import { inject } from '@aurelia/kernel';
 
 import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
 
 @customAttribute('aut-sort')
+@inject(AureliaTableCustomAttribute, INode)
 export class AutSortCustomAttribute {
     @bindable key;
     @bindable custom;
@@ -16,7 +18,7 @@ export class AutSortCustomAttribute {
 
     ignoreEvent = false;
 
-    constructor(private auTable: AureliaTableCustomAttribute, private element: Element) {
+    constructor(private auTable: AureliaTableCustomAttribute, private readonly element: HTMLElement) {
         this.rowSelectedListener = () => {
             this.handleHeaderClicked();
         };
@@ -36,8 +38,8 @@ export class AutSortCustomAttribute {
     }
 
     attached() {
-        if (this.key || this.custom) {
-            (this.element as HTMLElement).style.cursor = 'pointer';
+        if ((this.key || this.custom) && this.element && this.auTable) {
+            this.element.style.cursor = 'pointer';
             this.element.classList.add('aut-sort');
 
             this.element.addEventListener('click', this.rowSelectedListener);
@@ -49,8 +51,10 @@ export class AutSortCustomAttribute {
     }
 
     detached() {
-        this.element.removeEventListener('click', this.rowSelectedListener);
-        this.auTable.removeSortChangedListener(this.sortChangedListener);
+        if (this.key || this.custom) {
+            this.element?.removeEventListener('click', this.rowSelectedListener);
+            this.auTable?.removeSortChangedListener(this.sortChangedListener);
+        }
     }
 
     handleDefault() {
