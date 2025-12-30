@@ -1,10 +1,9 @@
-import { bindable, customAttribute, INode } from '@aurelia/runtime-html';
-import { inject } from '@aurelia/kernel';
+import { bindable, customAttribute, INode, inject, optional } from 'aurelia';
 
 import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
 
 @customAttribute('aut-sort')
-@inject(AureliaTableCustomAttribute, INode)
+@inject(optional(AureliaTableCustomAttribute), INode)
 export class AutSortCustomAttribute {
     @bindable key;
     @bindable custom;
@@ -18,7 +17,10 @@ export class AutSortCustomAttribute {
 
     ignoreEvent = false;
 
-    constructor(private auTable: AureliaTableCustomAttribute, private readonly element: HTMLElement) {
+    constructor(
+        private readonly auTable: AureliaTableCustomAttribute,
+        private readonly element: HTMLElement
+    ) {
         this.rowSelectedListener = () => {
             this.handleHeaderClicked();
         };

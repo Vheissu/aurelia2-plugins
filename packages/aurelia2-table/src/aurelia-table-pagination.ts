@@ -1,5 +1,4 @@
-import { bindable, BindingMode, ICustomElementViewModel, INode, customElement } from '@aurelia/runtime-html';
-import { inject } from '@aurelia/kernel';
+import { bindable, BindingMode, ICustomElementViewModel, INode, customElement, inject } from 'aurelia';
 
 import template from './aurelia-table-pagination.html';
 
@@ -24,9 +23,7 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
     totalPages = 1;
     displayPages: { title: string; value: number; }[] = [];
 
-    constructor(private readonly element: HTMLElement) {
-
-    }
+    constructor(private readonly element: HTMLElement) {}
 
     bind() {
         if (this.currentPage === undefined || this.currentPage === null || this.currentPage < 1) {
@@ -56,16 +53,10 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
     }
 
     dispatchPageChangedEvent() {
-        let event = new CustomEvent('page-changed', {
+        this.element?.dispatchEvent(new CustomEvent('page-changed', {
             bubbles: true,
-            detail: {
-                currentPage: this.currentPage
-            }
-        });
-
-        this
-            .element
-            .dispatchEvent(event);
+            detail: { currentPage: this.currentPage }
+        }));
     }
 
     calculatePages() {

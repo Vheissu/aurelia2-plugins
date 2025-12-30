@@ -1,4 +1,4 @@
-import { bindable, BindingMode, customAttribute, watch } from '@aurelia/runtime-html';
+import { bindable, BindingMode, customAttribute, watch } from 'aurelia';
 
 @customAttribute('aurelia-table')
 export class AureliaTableCustomAttribute {
@@ -35,7 +35,11 @@ export class AureliaTableCustomAttribute {
         this.applyPlugins();
     }
 
-    @watch((x: AureliaTableCustomAttribute) => x.filters.map((f:any) => f.value).join(''))
+    dataChanged() {
+        this.applyPlugins();
+    }
+
+    @watch((x: AureliaTableCustomAttribute) => x.filters?.map((f:any) => f.value).join(''))
     filterChanged() {
         if (this.dataSource === 'server') {
             return;
@@ -75,7 +79,7 @@ export class AureliaTableCustomAttribute {
     /**
      * Applies all the plugins to the display data
      */
-    @watch((x: AureliaTableCustomAttribute) => x.data.length)
+    @watch((x: AureliaTableCustomAttribute) => x.data?.length)
     applyPlugins() {
         if (!this.isAttached || !this.data || this.dataSource === 'server') {
             return;
@@ -214,10 +218,6 @@ export class AureliaTableCustomAttribute {
 
     hasPagination() {
         return this.currentPage > 0 && this.pageSize > 0;
-    }
-
-    dataChanged() {
-        this.applyPlugins();
     }
 
     sortChanged(key, custom, order) {

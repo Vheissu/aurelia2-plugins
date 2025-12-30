@@ -1,9 +1,8 @@
-import { bindable, BindingMode, customAttribute, INode, watch } from '@aurelia/runtime-html';
-import { inject } from '@aurelia/kernel';
+import { bindable, BindingMode, customAttribute, INode, inject, optional, watch } from 'aurelia';
 import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
 
 @customAttribute('aut-select')
-@inject(AureliaTableCustomAttribute, INode)
+@inject(optional(AureliaTableCustomAttribute), INode)
 export class AutSelectCustomAttribute {
   @bindable({mode: BindingMode.twoWay}) row;
   @bindable mode = 'single';
@@ -12,7 +11,10 @@ export class AutSelectCustomAttribute {
 
   private rowSelectedListener;
 
-  constructor(private auTable: AureliaTableCustomAttribute, private readonly element: HTMLElement) {
+  constructor(
+    private readonly auTable: AureliaTableCustomAttribute,
+    private readonly element: HTMLElement
+  ) {
     this.rowSelectedListener = event => {
       this.handleRowSelected(event);
     };
@@ -51,19 +53,10 @@ export class AutSelectCustomAttribute {
   }
 
   dispatchSelectedEvent() {
-    let selectedEvent;
-    if (window.CustomEvent) {
-      selectedEvent = new CustomEvent('select', {
-        detail: {row: this.row},
-        bubbles: true
-      });
-    } else {
-      selectedEvent = document.createEvent('CustomEvent');
-      selectedEvent.initCustomEvent('select', true, true, {
-        detail: {row: this.row}
-      });
-    }
-    this.element.dispatchEvent(selectedEvent);
+    this.element?.dispatchEvent(new CustomEvent('select', {
+      detail: { row: this.row },
+      bubbles: true
+    }));
   }
 
   @watch((x: AutSelectCustomAttribute) => x.row.$isSelected)
