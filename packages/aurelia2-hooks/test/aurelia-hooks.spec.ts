@@ -1,4 +1,5 @@
-import { AureliaHooks } from "./../src/aurelia-hooks";
+import { DI } from "@aurelia/kernel";
+import { AureliaHooks, AureliaHooksConfiguration, IAureliaHooks } from "./../src";
 
 describe("Aurelia Hooks", () => {
   let sut: AureliaHooks;
@@ -9,6 +10,19 @@ describe("Aurelia Hooks", () => {
 
   afterEach(() => {
     jest.restoreAllMocks();
+  });
+
+  describe("Configuration", () => {
+    test("registers AureliaHooks under the interface alias", () => {
+      const container = DI.createContainer();
+
+      AureliaHooksConfiguration.register(container);
+
+      const hooksByInterface = container.get(IAureliaHooks);
+      const hooksByClass = container.get(AureliaHooks);
+
+      expect(hooksByInterface).toBe(hooksByClass);
+    });
   });
 
   describe("Actions", () => {
@@ -72,6 +86,19 @@ describe("Aurelia Hooks", () => {
       expect(callOrder).toEqual([2, 1]);
     });
 
+    test("register multiple actions with same priority preserves registration order", () => {
+      const callOrder: number[] = [];
+      const callback = jest.fn().mockImplementation(() => callOrder.push(1));
+      const callback2 = jest.fn().mockImplementation(() => callOrder.push(2));
+
+      sut.addAction("testme", callback, 5);
+      sut.addAction("testme", callback2, 5);
+
+      sut.doAction("testme");
+
+      expect(callOrder).toEqual([1, 2]);
+    });
+
     test("removeAction should remove action", () => {
       const callback = jest.fn();
 
@@ -82,6 +109,20 @@ describe("Aurelia Hooks", () => {
 
       expect(callback).not.toHaveBeenCalled();
       expect(sut.hasAction("testme")).toBeFalsy();
+    });
+
+    test("removeAction should only remove the matching callback", () => {
+      const callback = jest.fn();
+      const callback2 = jest.fn();
+
+      sut.addAction("testme", callback);
+      sut.addAction("testme", callback2);
+      sut.removeAction("testme", callback);
+
+      sut.doAction("testme");
+
+      expect(callback).not.toHaveBeenCalled();
+      expect(callback2).toHaveBeenCalledTimes(1);
     });
 
     test("removeAction called on non-existent action should set empty array", () => {
@@ -150,6 +191,19 @@ describe("Aurelia Hooks", () => {
       expect(callOrder).toEqual([2, 1]);
     });
 
+    test("register multiple filters with same priority preserves registration order", () => {
+      const callOrder: number[] = [];
+      const callback = jest.fn().mockImplementation(() => callOrder.push(1));
+      const callback2 = jest.fn().mockImplementation(() => callOrder.push(2));
+
+      sut.addFilter("testme", callback, 5);
+      sut.addFilter("testme", callback2, 5);
+
+      sut.applyFilter("testme", "testahhh");
+
+      expect(callOrder).toEqual([1, 2]);
+    });
+
     test("applyfilter should transform value from 1 to 2", () => {
       const callback = jest.fn().mockImplementation((val: number) => {
         return val + 1;
@@ -205,6 +259,25 @@ describe("Aurelia Hooks", () => {
       expect(value).toEqual("this is a resolved value");
     });
 
+    test("applyFilterAsync should run filters in priority order and pass along values", async () => {
+      const callOrder: number[] = [];
+
+      sut.addFilter("changed", async (value: number) => {
+        callOrder.push(value);
+        return value * 2;
+      }, 5);
+
+      sut.addFilter("changed", async (value: number) => {
+        callOrder.push(value);
+        return value + 1;
+      }, 10);
+
+      const value = await sut.applyFilterAsync("changed", 2);
+
+      expect(callOrder).toEqual([2, 4]);
+      expect(value).toEqual(5);
+    });
+
     test("applyFilterAsync should reject if the callback supplied errors", async () => {
       sut.addFilter("changed", () => Promise.reject("there was an error"));
 
@@ -220,6 +293,20 @@ describe("Aurelia Hooks", () => {
       sut.applyFilter("testme", "nothing");
 
       expect(callback).not.toHaveBeenCalled();
+    });
+
+    test("removeFilter should only remove the matching callback", () => {
+      const callback = jest.fn();
+      const callback2 = jest.fn();
+
+      sut.addFilter("testme", callback);
+      sut.addFilter("testme", callback2);
+      sut.removeFilter("testme", callback);
+
+      sut.applyFilter("testme", "nothing");
+
+      expect(callback).not.toHaveBeenCalled();
+      expect(callback2).toHaveBeenCalledTimes(1);
     });
 
     test("removeFilter called on non-existent filter should set empty array", () => {
