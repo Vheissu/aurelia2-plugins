@@ -17,7 +17,7 @@
     "watch:other": "cpx \"./src/**/*.{html,css}\" ./dist --watch",
     "test:debug": "cross-env DEBUG=true npm run test",
     "test:watch": "cross-env DEV=true npm run test",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "devDependencies": {
     "aurelia": "^2.0.0-beta.27"

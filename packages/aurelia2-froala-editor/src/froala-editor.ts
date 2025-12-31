@@ -3,7 +3,7 @@ import { customElement, bindable, INode, ICustomElementViewModel, inject } from 
 import { IFroalaConfig } from './froala-editor-config';
 
 // Import Froala Editor
-import FroalaEditor from 'froala-editor';
+import FroalaEditorLib from 'froala-editor';
 
 @customElement('froala-editor')
 @inject(INode, IFroalaConfig)
@@ -52,7 +52,7 @@ export class FroalaEditor implements ICustomElementViewModel {
 		};
 
 		// Initialize editor.
-		this.editor = new FroalaEditor(this.element, Object.assign({}, this.config));
+		this.editor = new FroalaEditorLib(this.element, Object.assign({}, this.config));
 
 		// Set initial HTML value.
 		this.editor.html.set(this.value);

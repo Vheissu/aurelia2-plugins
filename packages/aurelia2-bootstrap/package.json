@@ -17,10 +17,10 @@
     "watch:other": "cpx \"./src/**/*.{html,css}\" ./dist --watch",
     "test:debug": "cross-env DEBUG=true npm run test",
     "test:watch": "cross-env DEV=true npm run test",
-    "test": "jest"
+    "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "tether": "^1.4.7",
+    "tether": "^3.0.2",
     "velocity-animate": "^2.0.6"
   },
   "devDependencies": {

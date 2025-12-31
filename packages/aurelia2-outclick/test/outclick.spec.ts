@@ -90,7 +90,7 @@ describe('Outclick', () => {
 
         appHost.querySelector('#inner')?.dispatchEvent(clickEvent);
 
-        expect(callbackFn).not.toBeCalled();
+        expect(callbackFn).not.toHaveBeenCalled();
 
         await tearDown();
     });
@@ -113,7 +113,7 @@ describe('Outclick', () => {
 
         appHost.querySelector('#inner')?.dispatchEvent(clickEvent);
 
-        expect(callbackFn).not.toBeCalled();
+        expect(callbackFn).not.toHaveBeenCalled();
 
         await tearDown();
     });

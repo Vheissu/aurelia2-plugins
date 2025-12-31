@@ -35,12 +35,5 @@ function createConfiguration(options?: Partial<IAuthConfigOptions>) {
 
 export const AureliaAuthConfiguration = createConfiguration({});
 
-export {
-  AuthorizeHook,
-  IAuthOptions,
-  IAuthConfigOptions,
-  IFetchConfig,
-  IAuthService,
-  IAuthentication,
-  Auth,
-};
+export { AuthorizeHook, IAuthOptions, IFetchConfig, IAuthService, IAuthentication, Auth };
+export type { IAuthConfigOptions };

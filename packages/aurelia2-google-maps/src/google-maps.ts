@@ -320,8 +320,9 @@ export class GoogleMaps implements ICustomElementViewModel {
 
     createdMarker.addListener("dblclick", () => {
       this.map?.setZoom(15);
-      if (createdMarker.position) {
-        this.map?.panTo(createdMarker.position);
+      const position = createdMarker.getPosition();
+      if (position) {
+        this.map?.panTo(position);
       }
     });
 
@@ -599,8 +600,8 @@ export class GoogleMaps implements ICustomElementViewModel {
           continue;
         }
 
-        let lat = parseFloat(<string>position.lat());
-        let lng = parseFloat(<string>position.lng());
+        let lat = position.lat();
+        let lng = position.lng();
 
         if (isNaN(lat) || isNaN(lng)) {
           console.warn(`Marker returned NaN for lat/lng`, { marker, lat, lng });
@@ -608,10 +609,7 @@ export class GoogleMaps implements ICustomElementViewModel {
           return;
         }
 
-        let markerLatLng = new google.maps.LatLng(
-          parseFloat(<string>position.lat()),
-          parseFloat(<string>position.lng())
-        );
+        let markerLatLng = new google.maps.LatLng(position.lat(), position.lng());
         bounds.extend(markerLatLng);
       }
 
@@ -675,14 +673,12 @@ export class GoogleMaps implements ICustomElementViewModel {
         overlayEvent.type.toUpperCase() == "POLYGON" ||
         overlayEvent.type.toUpperCase() == "POLYLINE"
       ) {
+        const path = (overlayEvent.overlay as google.maps.Polygon | google.maps.Polyline).getPath();
         Object.assign(overlayEvent, {
-          path: overlayEvent.overlay
-            .getPath()
-            .getArray()
-            .map((x) => {
-              return { latitude: x.lat(), longitude: x.lng() };
-            }),
-          encode: this.encodePath(overlayEvent.overlay.getPath()),
+          path: path.getArray().map((x) => {
+            return { latitude: x.lat(), longitude: x.lng() };
+          }),
+          encode: this.encodePath(path),
         });
       }
 

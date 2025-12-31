@@ -1,10 +1,12 @@
 import { DI } from '@aurelia/kernel';
-import type { LoaderOptions } from '@googlemaps/js-api-loader';
+import type { APIOptions } from '@googlemaps/js-api-loader';
+
+type LoaderOptions = APIOptions & { client?: string };
 
 export interface ConfigInterface {
-  apiKey?: string;
+  apiKey?: string | false;
   key?: string;
-  client?: string;
+  client?: string | false;
   apiLibraries?: string | string[];
   libraries?: string[];
   version?: string;

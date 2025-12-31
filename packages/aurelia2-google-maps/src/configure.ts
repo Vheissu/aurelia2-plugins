@@ -1,12 +1,14 @@
 import { DI } from "@aurelia/kernel";
-import type { LoaderOptions } from "@googlemaps/js-api-loader";
+import type { APIOptions } from "@googlemaps/js-api-loader";
 import type { MarkerClustererOptions } from "@googlemaps/markerclusterer";
+
+type LoaderOptions = APIOptions & { client?: string };
 
 export interface ConfigInterface {
     apiScript?: string;
-    apiKey?: string;
+    apiKey?: string | false;
     key?: string;
-    client?: string;
+    client?: string | false;
     apiLibraries?: string | string[];
     libraries?: string[];
     version?: string;
