@@ -1,0 +1,13 @@
+<template>
+  <nav class="au-breadcrumbs" aria-label="Breadcrumb">
+    <ol>
+      <li repeat.for="crumb of items">
+        <a
+          load="route.bind: crumb.path; params.bind: crumb.params; active.bind: crumb.active"
+          active.class="crumb.active"
+          aria-current.bind="crumb.active ? 'page' : null"
+        >${crumb.title}</a>
+      </li>
+    </ol>
+  </nav>
+</template>
