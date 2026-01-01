@@ -1,5 +1,5 @@
 export default `<template>
-<template replaceable part="pagination">
+<au-slot name="pagination">
     <nav hide.bind="hideSinglePage && totalPages === 1">
         <ul class="pagination">
 
@@ -32,5 +32,5 @@ export default `<template>
             </li>
         </ul>
     </nav>
-</template>
+</au-slot>
 </template>`;
