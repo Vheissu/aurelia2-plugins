@@ -1,17 +1,21 @@
-import { DI, inject } from '@aurelia/kernel';
+import { DI, inject, optional } from '@aurelia/kernel';
 import { IAuthConfigOptions, IAuthOptions } from './configuration';
 import { parseQueryString, extend, forEach } from './auth-utilities';
+import { IWindow } from '@aurelia/runtime-html';
 
-export const IPopup = DI.createInterface<IPopup>("IPopup", x => x.singleton(Popup));
+export const IPopup = DI.createInterface<IPopup>(
+  "IPopup",
+  (x) => x.singleton(Popup)
+);
 export type IPopup = Popup;
 
-@inject(IAuthOptions)
+@inject(IAuthOptions, optional(IWindow))
 export class Popup {
   protected popupWindow = null;
   protected polling;
   protected url;
 
-  constructor(readonly config: IAuthConfigOptions) {
+  constructor(readonly config: IAuthConfigOptions, private window?: IWindow) {
     this.popupWindow = null;
     this.polling = null;
     this.url = '';
@@ -22,7 +26,10 @@ export class Popup {
     let optionsString = this.stringifyOptions(
       this.prepareOptions(options || {})
     );
-    this.popupWindow = window.open(url, windowName, optionsString);
+    if (!this.window) {
+      throw new Error('Popup requires a browser window instance.');
+    }
+    this.popupWindow = this.window.open(url, windowName, optionsString);
     if (this.popupWindow && this.popupWindow.focus) {
       this.popupWindow.focus();
     }
@@ -37,7 +44,14 @@ export class Popup {
           return;
         }
 
-        let parser = document.createElement('a');
+        if (!this.window) {
+          reject({
+            data: 'No window available',
+          });
+          return;
+        }
+
+        let parser = this.window.document.createElement('a');
         parser.href = event.url;
 
         if (parser.search || parser.hash) {
@@ -79,7 +93,15 @@ export class Popup {
     let promise = new Promise((resolve, reject) => {
       this.polling = setInterval(() => {
         try {
-          let documentOrigin = document.location.host;
+          if (!this.window) {
+            clearInterval(this.polling);
+            reject({
+              data: 'No window available',
+            });
+            return;
+          }
+
+          let documentOrigin = this.window.location.host;
           let popupWindowOrigin = this.popupWindow.location.host;
 
           if (
@@ -131,13 +153,16 @@ export class Popup {
   prepareOptions(options: any) {
     let width = options.width || 500;
     let height = options.height || 500;
+    if (!this.window) {
+      return extend({ width, height }, options);
+    }
 
     return extend(
       {
         width: width,
         height: height,
-        left: window.screenX + (window.outerWidth - width) / 2,
-        top: window.screenY + (window.outerHeight - height) / 2.5,
+        left: this.window.screenX + (this.window.outerWidth - width) / 2,
+        top: this.window.screenY + (this.window.outerHeight - height) / 2.5,
       },
       options
     );
@@ -145,7 +170,6 @@ export class Popup {
 
   stringifyOptions(options) {
     let parts = [];
-    // @ts-expect-error
     forEach(options, function (value: string, key: string) {
       parts.push(key + '=' + value);
     });

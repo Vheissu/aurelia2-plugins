@@ -1,29 +1,42 @@
-import { DI, inject } from '@aurelia/kernel';
+import { DI, inject, optional } from '@aurelia/kernel';
 import { IStorage } from './storage';
 import { joinUrl, isObject, isString } from './auth-utilities';
 import { IAuthOptions, IAuthConfigOptions } from './configuration';
+import { IWindow } from '@aurelia/runtime-html';
 
-export const IAuthentication = DI.createInterface<IAuthentication>("IAuthentication", x => x.singleton(Authentication));
+export const IAuthentication = DI.createInterface<IAuthentication>(
+  "IAuthentication",
+  (x) => x.singleton(Authentication)
+);
 
-export interface IAuthentication extends Authentication {  }
+export interface IAuthentication extends Authentication {}
 
-@inject(IStorage, IAuthOptions)
+@inject(IStorage, IAuthOptions, optional(IWindow))
 export class Authentication {
   private tokenName;
   private idTokenName;
+  private refreshTokenName;
   private initialUrl;
 
   constructor(
     readonly storage: IStorage,
-    readonly config: IAuthConfigOptions
+    readonly config: IAuthConfigOptions,
+    readonly window?: IWindow
   ) {
     this.storage = storage;
+    const tokenName = this.config.tokenName ?? 'token';
+    const idTokenName = this.config.idTokenName ?? 'id_token';
+    const refreshTokenName = this.config.refreshTokenName ?? 'refresh_token';
+
     this.tokenName = this.config.tokenPrefix
-      ? this.config.tokenPrefix + '_' + this.config.tokenName
-      : this.config.tokenName;
+      ? this.config.tokenPrefix + '_' + tokenName
+      : tokenName;
     this.idTokenName = this.config.tokenPrefix
-      ? this.config.tokenPrefix + '_' + this.config.idTokenName
-      : this.config.idTokenName;
+      ? this.config.tokenPrefix + '_' + idTokenName
+      : idTokenName;
+    this.refreshTokenName = this.config.tokenPrefix
+      ? this.config.tokenPrefix + '_' + refreshTokenName
+      : refreshTokenName;
   }
 
   getLoginRoute() {
@@ -52,8 +65,18 @@ export class Authentication {
       : this.config.profileUrl;
   }
 
+  getRefreshUrl() {
+    return this.config.baseUrl
+      ? joinUrl(this.config.baseUrl, this.config.refreshUrl)
+      : this.config.refreshUrl;
+  }
+
   getToken() {
     return this.storage.get(this.tokenName);
+  }
+
+  getRefreshToken() {
+    return this.storage.get(this.refreshTokenName);
   }
 
   getPayload() {
@@ -62,16 +85,40 @@ export class Authentication {
   }
 
   decomposeToken(token) {
-    if (token && token.split('.').length === 3) {
-      let base64Url = token.split('.')[1];
-      let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    if (!token || token.split('.').length !== 3) {
+      return null;
+    }
 
-      try {
-        return JSON.parse(decodeURIComponent(escape(window.atob(base64))));
-      } catch (error) {
+    let base64Url = token.split('.')[1];
+    let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+
+    try {
+      const decoded = this.decodeBase64(base64);
+      if (!decoded) {
         return null;
       }
+      return JSON.parse(decoded);
+    } catch (error) {
+      return null;
     }
+  }
+
+  private decodeBase64(value: string): string | null {
+    const atobFn =
+      this.window?.atob || (typeof globalThis !== 'undefined' ? globalThis.atob : undefined);
+    if (atobFn) {
+      return decodeURIComponent(escape(atobFn(value)));
+    }
+
+    // Node.js fallback
+    const bufferCtor = (globalThis as typeof globalThis & {
+      Buffer?: { from: (input: string, encoding?: string) => { toString: (encoding: string) => string } };
+    }).Buffer;
+    if (bufferCtor) {
+      return bufferCtor.from(value, 'base64').toString('utf8');
+    }
+
+    return null;
   }
 
   setInitialUrl(url) {
@@ -79,8 +126,16 @@ export class Authentication {
   }
 
   setToken(response, redirect?) {
+    const tokenName = this.config.tokenName ?? 'token';
+    const idTokenName = this.config.idTokenName ?? 'id_token';
+    const refreshTokenName = this.config.refreshTokenName ?? 'refresh_token';
+    const responseTokenProp = this.config.responseTokenProp ?? tokenName;
+    const responseIdTokenProp = this.config.responseIdTokenProp ?? idTokenName;
+    const responseRefreshTokenProp =
+      this.config.responseRefreshTokenProp ?? refreshTokenName;
+
     // access token handling
-    let accessToken = response && response[this.config.responseTokenProp];
+    let accessToken = response && response[responseTokenProp];
     let tokenToStore;
 
     if (accessToken) {
@@ -94,8 +149,8 @@ export class Authentication {
     if (!tokenToStore && response) {
       tokenToStore =
         this.config.tokenRoot && response[this.config.tokenRoot]
-          ? response[this.config.tokenRoot][this.config.tokenName]
-          : response[this.config.tokenName];
+          ? response[this.config.tokenRoot][tokenName]
+          : response[tokenName];
     }
 
     if (tokenToStore) {
@@ -103,21 +158,79 @@ export class Authentication {
     }
 
     // id token handling
-    let idToken = response && response[this.config.responseIdTokenProp];
+    let idToken = response && response[responseIdTokenProp];
 
     if (idToken) {
       this.storage.set(this.idTokenName, idToken);
     }
 
+    // refresh token handling
+    let refreshToken = response && response[responseRefreshTokenProp];
+
+    if (!refreshToken && response) {
+      refreshToken =
+        this.config.refreshTokenRoot && response[this.config.refreshTokenRoot]
+          ? response[this.config.refreshTokenRoot][refreshTokenName]
+          : response[refreshTokenName];
+    }
+
+    if (refreshToken) {
+      this.storage.set(this.refreshTokenName, refreshToken);
+    }
+
     if (this.config.loginRedirect && !redirect) {
-      window.location.href = this.getLoginRedirect();
+      this.window?.location && (this.window.location.href = this.getLoginRedirect());
     } else if (redirect && isString(redirect)) {
-      window.location.href = window.encodeURI(redirect);
+      if (this.window?.location && typeof encodeURI === 'function') {
+        this.window.location.href = encodeURI(redirect);
+      }
     }
   }
 
   removeToken() {
     this.storage.remove(this.tokenName);
+  }
+
+  removeIdToken() {
+    this.storage.remove(this.idTokenName);
+  }
+
+  removeRefreshToken() {
+    this.storage.remove(this.refreshTokenName);
+  }
+
+  clearTokens() {
+    this.removeToken();
+    this.removeIdToken();
+    this.removeRefreshToken();
+  }
+
+  isTokenExpired(leewaySeconds = this.config.tokenExpirationLeeway ?? 0) {
+    let token = this.storage.get(this.tokenName);
+
+    if (!token || token.split('.').length !== 3) {
+      return false;
+    }
+
+    let exp;
+    try {
+      let base64Url = token.split('.')[1];
+      let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = this.decodeBase64(base64);
+      if (!decoded) {
+        return false;
+      }
+      exp = JSON.parse(decoded).exp;
+    } catch (error) {
+      return false;
+    }
+
+    if (!exp) {
+      return false;
+    }
+
+    const now = Math.round(new Date().getTime() / 1000);
+    return now + leewaySeconds >= exp;
   }
 
   isAuthenticated() {
@@ -137,13 +250,18 @@ export class Authentication {
     try {
       let base64Url = token.split('.')[1];
       let base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      exp = JSON.parse(window.atob(base64)).exp;
+      const decoded = this.decodeBase64(base64);
+      if (!decoded) {
+        return false;
+      }
+      exp = JSON.parse(decoded).exp;
     } catch (error) {
       return false;
     }
 
     if (exp) {
-      return Math.round(new Date().getTime() / 1000) <= exp;
+      const leeway = this.config.tokenExpirationLeeway ?? 0;
+      return Math.round(new Date().getTime() / 1000) + leeway <= exp;
     }
 
     return true;
@@ -151,12 +269,13 @@ export class Authentication {
 
   logout(redirect): Promise<void> {
     return new Promise((resolve) => {
-      this.storage.remove(this.tokenName);
+      this.clearTokens();
 
       if (this.config.logoutRedirect && !redirect) {
-        window.location.href = this.config.logoutRedirect;
+        this.window?.location &&
+          (this.window.location.href = this.config.logoutRedirect);
       } else if (isString(redirect)) {
-        window.location.href = redirect;
+        this.window?.location && (this.window.location.href = redirect);
       }
 
       resolve();
@@ -169,7 +288,7 @@ export class Authentication {
     let auth = this;
     return {
       request(request) {
-        if (auth.isAuthenticated() && config.httpInterceptor) {
+        if (auth.isAuthenticated() && config.httpInterceptor && config.authHeader) {
           let tokenName = config.tokenPrefix
             ? `${config.tokenPrefix}_${config.tokenName}`
             : config.tokenName;
@@ -179,7 +298,9 @@ export class Authentication {
             token = `${config.authToken} ${token}`;
           }
 
-          request.headers.set(config.authHeader, token);
+          if (token) {
+            request.headers.set(config.authHeader, token);
+          }
         }
         return request;
       },

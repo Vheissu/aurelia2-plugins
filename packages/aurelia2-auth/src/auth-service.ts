@@ -3,17 +3,27 @@ import { IAuthentication } from "./authentication";
 import { IOAuth1 } from "./oAuth1";
 import { IOAuth2 } from "./oAuth2";
 import { status, joinUrl } from "./auth-utilities";
-import { DI, IEventAggregator, inject } from "@aurelia/kernel";
-import { IAuthOptions } from ".";
-import { IAuthConfigOptions } from "./configuration";
+import { DI, IEventAggregator, inject, optional } from "@aurelia/kernel";
+import { IAuthOptions, IAuthConfigOptions } from "./configuration";
+import { IWindow } from '@aurelia/runtime-html';
+import { markAuthSkip } from './auth-request';
 
 export const IAuthService = DI.createInterface<IAuthService>("IAuthService", x => x.singleton(AuthService));
 
 export type IAuthService = AuthService;
 
-@inject(IHttpClient, IAuthentication, IOAuth1, IOAuth2, IAuthOptions, IEventAggregator)
+@inject(
+  IHttpClient,
+  IAuthentication,
+  IOAuth1,
+  IOAuth2,
+  IAuthOptions,
+  IEventAggregator,
+  optional(IWindow)
+)
 export class AuthService {
   protected tokenInterceptor;
+  private refreshPromise: Promise<unknown> | null = null;
 
   constructor(
     readonly http: IHttpClient,
@@ -21,7 +31,8 @@ export class AuthService {
     readonly oAuth1: IOAuth1,
     readonly oAuth2: IOAuth2,
     readonly config: IAuthConfigOptions,
-    readonly eventAggregator: IEventAggregator
+    readonly eventAggregator: IEventAggregator,
+    readonly window?: IWindow
   ) {
     this.tokenInterceptor = auth.tokenInterceptor;
   }
@@ -72,7 +83,8 @@ export class AuthService {
         if (this.config.loginOnSignup) {
           this.auth.setToken(response);
         } else if (this.config.signupRedirect) {
-          window.location.href = this.config.signupRedirect;
+          this.window?.location &&
+            (this.window.location.href = this.config.signupRedirect);
         }
         this.eventAggregator.publish("auth:signup", response);
         return response;
@@ -115,19 +127,22 @@ export class AuthService {
   }
 
   authenticate(name, redirect, userData) {
+    const providerConfig = this.config.providers?.[name];
+    if (!providerConfig) {
+      return Promise.reject(new Error(`Unknown auth provider: ${name}`));
+    }
+
     let provider: IOAuth1 | IOAuth2 = this.oAuth2;
 
-    if (this.config.providers[name].type === "1.0") {
+    if (providerConfig.type === "1.0") {
       provider = this.oAuth1;
     }
 
-    return provider
-      .open(this.config.providers[name], userData || {})
-      .then((response) => {
-        this.auth.setToken(response, redirect);
-        this.eventAggregator.publish("auth:authenticate", response);
-        return response;
-      });
+    return provider.open(providerConfig, userData || {}).then((response) => {
+      this.auth.setToken(response, redirect);
+      this.eventAggregator.publish("auth:authenticate", response);
+      return response;
+    });
   }
 
   unlink(provider) {
@@ -159,5 +174,63 @@ export class AuthService {
           return response;
         });
     }
+  }
+
+  refreshToken() {
+    if (this.refreshPromise) {
+      return this.refreshPromise;
+    }
+
+    const refreshToken = this.auth.getRefreshToken();
+    if (!refreshToken) {
+      return Promise.reject(new Error("No refresh token available."));
+    }
+
+    const refreshUrl = this.auth.getRefreshUrl();
+    if (!refreshUrl) {
+      return Promise.reject(new Error("No refresh URL configured."));
+    }
+
+    const refreshTokenProp = this.config.refreshTokenName || 'refresh_token';
+    const payload =
+      typeof this.config.refreshTokenPayload === "function"
+        ? this.config.refreshTokenPayload(refreshToken)
+        : {
+            [refreshTokenProp]: refreshToken,
+            ...(this.config.refreshTokenPayload ?? {}),
+          };
+
+    const credentials: RequestCredentials = this.config.withCredentials
+      ? "include"
+      : "same-origin";
+
+    const requestInit: RequestInit = {
+      method: "post",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: json(payload),
+      credentials,
+    };
+
+    const requestInput =
+      typeof Request === "undefined"
+        ? refreshUrl
+        : markAuthSkip(new Request(refreshUrl, requestInit));
+
+    this.refreshPromise = this.http
+      .fetch(requestInput as Request | string, typeof Request === "undefined" ? requestInit : undefined)
+      .then(status)
+      .then((response) => {
+        this.auth.setToken(response);
+        this.eventAggregator.publish("auth:refresh", response);
+        return response;
+      })
+      .finally(() => {
+        this.refreshPromise = null;
+      });
+
+    return this.refreshPromise;
   }
 }

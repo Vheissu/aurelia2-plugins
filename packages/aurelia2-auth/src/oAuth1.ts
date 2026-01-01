@@ -29,7 +29,6 @@ export class OAuth1 {
   }
 
   open(options, userData) {
-    // @ts-expect-error
     let current = extend({}, this.defaults, options);
     let serverUrl = this.config.baseUrl
       ? joinUrl(this.config.baseUrl, current.url)
@@ -77,7 +76,6 @@ export class OAuth1 {
   }
 
   exchangeForToken(oauthData, userData, current) {
-    // @ts-expect-error
     let data = extend({}, userData, oauthData);
     let exchangeForTokenUrl = this.config.baseUrl
       ? joinUrl(this.config.baseUrl, current.url)
@@ -101,7 +99,6 @@ export class OAuth1 {
 
   buildQueryString(obj) {
     let str = [];
-    // @ts-expect-error
     forEach(
       obj,
       (value: string | number | boolean, key: string | number | boolean) =>

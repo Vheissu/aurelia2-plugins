@@ -58,7 +58,6 @@ export function parseQueryString(keyValue) {
   let value;
   let obj = {};
 
-  // @ts-expect-error
   forEach((keyValue || "").split("&"), function (kv) {
     if (kv) {
       value = kv.split("=");
@@ -109,21 +108,32 @@ export function isArrayLike(obj) {
   if (obj === null || isWindow(obj)) {
     return false;
   }
+
+  if (Array.isArray(obj)) {
+    return true;
+  }
+
+  const length = obj?.length;
+  if (typeof length !== 'number') {
+    return false;
+  }
+
+  return length >= 0 && Number.isFinite(length) && Math.floor(length) === length;
 }
 
 export function isWindow(obj) {
   return obj && obj.window === obj;
 }
 
-export function extend(dst, tgt) {
+export function extend(dst, ...tgt) {
   return baseExtend(dst, tgt, false);
 }
 
-export function merge(dst, tgt) {
+export function merge(dst, ...tgt) {
   return baseExtend(dst, tgt, true);
 }
 
-export function forEach(obj, iterator, context) {
+export function forEach(obj, iterator, context?) {
   let key;
   let length;
   if (obj) {
