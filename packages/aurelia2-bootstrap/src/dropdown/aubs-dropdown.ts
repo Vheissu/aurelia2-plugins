@@ -1,115 +1,200 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
+import { Dropdown } from "bootstrap";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 
 @inject(INode)
 export class AubsDropdownCustomAttribute {
+  @bindable options;
   @bindable({ mode: BindingMode.twoWay }) isOpen;
-  @bindable autoClose = bootstrapOptions.dropdownAutoClose;
+  @bindable autoClose: string | boolean = bootstrapOptions.dropdownAutoClose;
+  @bindable onShow;
+  @bindable onShown;
+  @bindable onHide;
+  @bindable onHidden;
   @bindable onToggle;
 
-  state;
-  showClass;
-  outsideClickListener;
+  instance;
+  toggleElement;
   isAttached = false;
+  suppressToggle = false;
+  listeners;
 
   constructor(private element: HTMLElement) {
-    this.outsideClickListener = (evt) => this.handleBlur(evt);
-  }
-
-  bound() {
-    if (this.hasIsOpen()) {
-      this.state = false;
-    } else {
-      this.state = this.isOpen;
-    }
-
-    this.showClass = bootstrapOptions.version === 4 ? "show" : "open";
+    this.listeners = {
+      show: (event) => this.handleShow(event),
+      shown: (event) => this.handleShown(event),
+      hide: (event) => this.handleHide(event),
+      hidden: (event) => this.handleHidden(event),
+    };
   }
 
   attached() {
+    this.toggleElement = this.getToggleElement();
+    this.createInstance();
+    this.addListeners();
     this.isAttached = true;
-    this.setClass();
 
-    this.setListener();
-  }
-
-  setListener() {
-    if (this.autoClose !== "disabled") {
-      document.addEventListener("click", this.outsideClickListener);
+    if (this.isOpen === true) {
+      this.instance?.show();
+    } else if (this.isOpen === false) {
+      this.instance?.hide();
     }
   }
 
   detached() {
-    if (this.autoClose !== "disabled") {
-      document.removeEventListener("click", this.outsideClickListener);
-    }
+    this.removeListeners();
+    this.disposeInstance();
   }
 
-  autoCloseChanged(newValue, oldValue) {
+  autoCloseChanged() {
     if (!this.isAttached) {
       return;
     }
 
-    if (oldValue !== "disabled") {
-      this.detached();
+    this.recreateInstance();
+  }
+
+  optionsChanged() {
+    if (!this.isAttached) {
+      return;
     }
 
-    this.setListener();
+    this.recreateInstance();
   }
 
   isOpenChanged() {
-    this.state = this.isOpen;
+    if (!this.isAttached || this.suppressToggle) {
+      this.suppressToggle = false;
+      return;
+    }
 
-    if (this.isAttached) {
-      this.setClass();
+    if (this.isOpen === true) {
+      this.instance?.show();
+    } else if (this.isOpen === false) {
+      this.instance?.hide();
     }
   }
 
   toggle() {
-    if (this.hasIsOpen()) {
-      this.isOpen = !this.state;
-    }
-    this.state = !this.state;
-
-    if (typeof this.onToggle === "function") {
-      this.onToggle({ open: this.state });
-    }
-
-    this.setClass();
+    this.instance?.toggle();
   }
 
-  handleBlur(evt) {
-    if (!this.state) {
-      return;
+  recreateInstance() {
+    const shouldBeOpen = this.isOpen;
+    this.removeListeners();
+    this.disposeInstance();
+    this.createInstance();
+    this.addListeners();
+
+    if (shouldBeOpen === true) {
+      this.instance?.show();
+    } else if (shouldBeOpen === false) {
+      this.instance?.hide();
+    }
+  }
+
+  addListeners() {
+    this.toggleElement?.addEventListener("show.bs.dropdown", this.listeners.show);
+    this.toggleElement?.addEventListener("shown.bs.dropdown", this.listeners.shown);
+    this.toggleElement?.addEventListener("hide.bs.dropdown", this.listeners.hide);
+    this.toggleElement?.addEventListener("hidden.bs.dropdown", this.listeners.hidden);
+  }
+
+  removeListeners() {
+    this.toggleElement?.removeEventListener("show.bs.dropdown", this.listeners.show);
+    this.toggleElement?.removeEventListener("shown.bs.dropdown", this.listeners.shown);
+    this.toggleElement?.removeEventListener("hide.bs.dropdown", this.listeners.hide);
+    this.toggleElement?.removeEventListener("hidden.bs.dropdown", this.listeners.hidden);
+  }
+
+  createInstance() {
+    const options = { ...(this.options ?? {}) };
+    if (options.autoClose === undefined) {
+      options.autoClose = this.getAutoCloseMode();
+    }
+    this.instance = new Dropdown(this.toggleElement, options);
+  }
+
+  disposeInstance() {
+    if (this.instance?.dispose) {
+      this.instance.dispose();
+    }
+    this.instance = null;
+  }
+
+  handleShow(event) {
+    if (typeof this.onShow === "function") {
+      this.onShow({ event });
+    }
+  }
+
+  handleShown(event) {
+    this.suppressToggle = true;
+    this.isOpen = true;
+
+    if (typeof this.onShown === "function") {
+      this.onShown({ event });
+    }
+    if (typeof this.onToggle === "function") {
+      this.onToggle({ open: true, event });
+    }
+  }
+
+  handleHide(event) {
+    if (typeof this.onHide === "function") {
+      this.onHide({ event });
+    }
+  }
+
+  handleHidden(event) {
+    this.suppressToggle = true;
+    this.isOpen = false;
+
+    if (typeof this.onHidden === "function") {
+      this.onHidden({ event });
+    }
+    if (typeof this.onToggle === "function") {
+      this.onToggle({ open: false, event });
+    }
+  }
+
+  getToggleElement() {
+    if (this.toggleElement) {
+      return this.toggleElement;
     }
 
     if (
-      !this.element.contains(evt.target) ||
-      (this.autoClose !== "outside" && this.isMenuItem(evt))
+      this.element.matches(".dropdown-toggle") ||
+      this.element.hasAttribute("data-bs-toggle")
     ) {
-      this.toggle();
+      return this.element;
     }
-  }
 
-  isMenuItem(evt) {
-    if (bootstrapOptions.version === 4) {
-      return evt.target.classList.contains("dropdown-item");
-    } else {
-      return evt.target.parentNode.parentNode.classList.contains(
-        "dropdown-menu"
+    const toggle = this.element.querySelector<HTMLElement>(
+      '[data-bs-toggle="dropdown"], .dropdown-toggle'
+    );
+    if (!toggle) {
+      throw new Error(
+        "The aubs-dropdown attribute requires a dropdown toggle element (with .dropdown-toggle or data-bs-toggle=\"dropdown\")."
       );
     }
+
+    return toggle;
   }
 
-  setClass() {
-    if (this.state) {
-      this.element.classList.add(this.showClass);
-    } else {
-      this.element.classList.remove(this.showClass);
+  getAutoCloseMode() {
+    if (this.autoClose === true || this.autoClose === "true" || this.autoClose === "always") {
+      return true;
     }
-  }
 
-  hasIsOpen() {
-    return this.isOpen !== undefined && this.isOpen !== null;
+    if (this.autoClose === false || this.autoClose === "false" || this.autoClose === "disabled") {
+      return false;
+    }
+
+    if (this.autoClose === "inside" || this.autoClose === "outside") {
+      return this.autoClose;
+    }
+
+    return true;
   }
 }

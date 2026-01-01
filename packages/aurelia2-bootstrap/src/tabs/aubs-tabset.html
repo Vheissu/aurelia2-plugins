@@ -1,7 +1,12 @@
-<ul class="nav ${tabsClass} ${vertical ? 'nav-stacked' : ''}">
-    <li repeat.for="tab of tabs" class="nav-item ${tab.active ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}">
-        <a class="nav-link ${tab.active ? 'active' : ''} ${tab.disabled ? 'disabled' : ''}"
-           href="javascript:void(0)" click.delegate="selectTab(tab)" innerhtml.bind="tab.header"></a>
+<ul class="nav ${tabsClass} ${vertical ? 'flex-column' : ''}" role="tablist">
+    <li repeat.for="tab of tabs" class="nav-item">
+        <button class="nav-link ${tab.active ? 'active' : ''}"
+                type="button"
+                role="tab"
+                aria-selected.bind="tab.active"
+                disabled.bind="tab.disabled"
+                click.trigger="selectTab(tab)"
+                innerhtml.bind="tab.header"></button>
     </li>
 </ul>
 

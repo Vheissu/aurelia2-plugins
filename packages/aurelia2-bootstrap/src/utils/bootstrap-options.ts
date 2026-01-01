@@ -1,7 +1,7 @@
 export let bootstrapOptions = {
-    version: 3,
+    version: 5,
     accordionCloseOthers: true,
-    accordionGroupPanelClass: 'panel-default',
+    accordionGroupPanelClass: '',
     btnLoadingText: 'Loading...',
     dropdownAutoClose: 'always',
     paginationBoundaryLinks: false,
@@ -12,10 +12,10 @@ export let bootstrapOptions = {
     paginationNextText: '>',
     paginationPreviousText: '<',
     popoverPosition: 'top',
-    popoverTrigger: 'mouseover',
+    popoverTrigger: 'click',
     tabsetType: 'tabs',
     tabsetVertical: false,
     tooltipClass: 'tooltip',
     tooltipPosition: 'top',
-    tooltipTrigger: 'mouseover'
+    tooltipTrigger: 'hover focus'
 };

@@ -1,17 +1,20 @@
 <template>
-    <div class.bind="isBootstrapVersion(3) ? 'panel ' + panelClass : 'card' ">
-        <div role="tab" class.bind="isBootstrapVersion(3) ? 'panel-heading' : 'card-header'">
-            <template replaceable part="header">
-                <h4 class.bind="isBootstrapVersion(3) ? 'panel-title' : 'mb-0'">
+    <div class="accordion-item ${panelClass}">
+        <h2 class="accordion-header">
+            <button class="accordion-button ${isOpen ? '' : 'collapsed'}"
+                    type="button"
+                    click.trigger="toggle()"
+                    disabled.bind="disabled"
+                    aria-expanded.bind="isOpen"
+                    ref="headerButton">
+                <au-slot name="header">
+                    <span innerHTML.bind="title"></span>
+                </au-slot>
+            </button>
+        </h2>
 
-                    <a href="javascript:void(0)" innerHTML.bind="title" click.trigger="toggle()" show.bind="!disabled"></a>
-                    <span class="text-muted" innerHTML.bind="title" show.bind="disabled"></span>
-                </h4>
-            </template>
-        </div>
-
-        <div class="collapse" role="tabpanel" ref="$collapse">
-            <div class.bind="isBootstrapVersion(3) ? 'panel-body' : 'card-block'">
+        <div class="accordion-collapse collapse" ref="$collapse">
+            <div class="accordion-body">
                 <au-slot></au-slot>
             </div>
         </div>

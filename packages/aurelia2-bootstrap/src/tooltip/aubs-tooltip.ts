@@ -14,14 +14,15 @@ export class AubsTooltipCustomAttribute {
 
     triggers = [];
 
-    validPositions = ['top', 'bottom', 'left', 'right'];
+    validPositions = ['top', 'bottom', 'left', 'right', 'start', 'end'];
     valuesChanged = false;
     visible = false;
     listeners;
     isAttached = false;
     tooltip;
-    tether;
+    popper;
     body;
+    showClass = 'show';
 
     constructor(private element: HTMLElement, private tooltipService: TooltipService) {
         this.listeners = {
@@ -58,8 +59,8 @@ export class AubsTooltipCustomAttribute {
             document.body.removeChild(this.tooltip);
         }
 
-        if (this.tether) {
-            this.tether.destroy();
+        if (this.popper) {
+            this.popper.destroy();
         }
     }
 
@@ -110,12 +111,12 @@ export class AubsTooltipCustomAttribute {
         }
 
         this.tooltip.style.display = 'block';
-        this.tether.position();
+        void this.popper?.update();
 
         velocity(this.tooltip, 'stop')
             .then(() => {
                 velocity(this.tooltip, 'fadeIn').then(() => {
-                    this.tooltip.classList.add('in');
+                    this.tooltip.classList.add(this.showClass);
                 });
             });
 
@@ -131,7 +132,7 @@ export class AubsTooltipCustomAttribute {
 
         velocity(this.tooltip, 'stop').then(() => {
             velocity(this.tooltip, 'fadeOut').then(() => {
-                this.tooltip.classList.remove('in');
+                this.tooltip.classList.remove(this.showClass);
             });
         });
 
@@ -153,7 +154,7 @@ export class AubsTooltipCustomAttribute {
         this.tooltip = document.createElement('div');
         this.parseClassList().forEach(next => this.tooltip.classList.add(next.trim()));
 
-        this.tooltip.classList.add((bootstrapOptions.version === 4 ? 'tooltip-' : '') + this.position);
+        this.tooltip.classList.add(this.getPlacementClass(this.position));
         this.tooltip.setAttribute('role', 'tooltip');
 
         let arrow = document.createElement('div');
@@ -167,19 +168,39 @@ export class AubsTooltipCustomAttribute {
 
         document.body.appendChild(this.tooltip);
 
-        if (this.tether) {
-            this.tether.destroy();
+        if (this.popper) {
+            this.popper.destroy();
         }
 
-        this.tether = this.tooltipService.createAttachment(this.element, this.tooltip, this.position);
+        this.popper = this.tooltipService.createAttachment(this.element, this.tooltip, this.position);
     }
 
     parseClassList() {
-        if (!this.class || this.class.length === 0) {
-            return ['tooltip'];
+        const classes = new Set<string>(['tooltip']);
+        if (this.class && this.class.length > 0) {
+            this.class.split(',').forEach(next => classes.add(next.trim()));
+        }
+        return Array.from(classes);
+    }
+
+    getPlacementClass(position: string) {
+        if (position === 'left') {
+            return 'bs-tooltip-start';
         }
 
-        return this.class.split(',');
+        if (position === 'right') {
+            return 'bs-tooltip-end';
+        }
+
+        if (position === 'start') {
+            return 'bs-tooltip-start';
+        }
+
+        if (position === 'end') {
+            return 'bs-tooltip-end';
+        }
+
+        return `bs-tooltip-${position}`;
     }
 
 }

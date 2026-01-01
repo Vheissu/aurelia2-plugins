@@ -19,10 +19,10 @@ export class AubsAccordionGroupCustomElement {
   showClass;
   accordion;
   $collapse;
+  headerButton;
 
   constructor(accordion) {
     this.accordion = accordion;
-    this.accordion.register(this);
   }
 
   bind() {
@@ -30,18 +30,20 @@ export class AubsAccordionGroupCustomElement {
       this.isOpen = false;
     }
 
-    this.showClass = this.isBootstrapVersion(4) ? "show" : "in";
+    this.showClass = "show";
   }
 
   attached() {
+    this.accordion.registerGroup(this);
     if (this.isOpen) {
-      this.$collapse.classList.add("in");
+      this.$collapse.classList.add(this.showClass);
+      this.headerButton?.classList.remove("collapsed");
       velocity(this.$collapse, "slideDown", { duration: 0 });
     }
   }
 
-  isBootstrapVersion(version) {
-    return bootstrapOptions.version === version;
+  detached() {
+    this.accordion.unregisterGroup(this);
   }
 
   isOpenChanged() {
@@ -53,16 +55,21 @@ export class AubsAccordionGroupCustomElement {
   }
 
   toggle() {
+    if (this.disabled) {
+      return;
+    }
     this.isOpen = !this.isOpen;
   }
 
   animate() {
     if (this.isOpen) {
       this.$collapse.classList.add(this.showClass);
+      this.headerButton?.classList.remove("collapsed");
       velocity(this.$collapse, "slideDown");
     } else {
       velocity(this.$collapse, "slideUp");
       this.$collapse.classList.remove(this.showClass);
+      this.headerButton?.classList.add("collapsed");
     }
   }
 }

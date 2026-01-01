@@ -1,10 +1,10 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
-import { Collapse } from "bootstrap";
+import { Modal } from "bootstrap";
 
 @inject(INode)
-export class AubsCollapseCustomAttribute {
+export class AubsModalCustomAttribute {
   @bindable options;
-  @bindable({ mode: BindingMode.twoWay }) collapsed;
+  @bindable({ mode: BindingMode.twoWay }) isOpen = false;
   @bindable onShow;
   @bindable onShown;
   @bindable onHide;
@@ -13,6 +13,7 @@ export class AubsCollapseCustomAttribute {
   instance;
   isAttached = false;
   suppressToggle = false;
+
   listeners;
 
   constructor(private element: HTMLElement) {
@@ -29,7 +30,9 @@ export class AubsCollapseCustomAttribute {
     this.addListeners();
     this.isAttached = true;
 
-    this.syncFromCollapsed();
+    if (this.isOpen) {
+      this.instance?.show();
+    }
   }
 
   detached() {
@@ -42,56 +45,46 @@ export class AubsCollapseCustomAttribute {
       return;
     }
 
-    const shouldBeCollapsed = this.collapsed;
+    const shouldBeOpen = this.isOpen;
     this.removeListeners();
     this.disposeInstance();
     this.createInstance();
     this.addListeners();
 
-    this.syncFromCollapsed(shouldBeCollapsed);
+    if (shouldBeOpen) {
+      this.instance?.show();
+    }
   }
 
-  collapsedChanged() {
+  isOpenChanged() {
     if (!this.isAttached || this.suppressToggle) {
       this.suppressToggle = false;
       return;
     }
 
-    if (this.collapsed === true) {
-      this.instance?.hide();
-    } else if (this.collapsed === false) {
+    if (this.isOpen) {
       this.instance?.show();
-    }
-  }
-
-  syncFromCollapsed(value = this.collapsed) {
-    if (value === true) {
+    } else {
       this.instance?.hide();
-    } else if (value === false) {
-      this.instance?.show();
     }
   }
 
   addListeners() {
-    this.element.addEventListener("show.bs.collapse", this.listeners.show);
-    this.element.addEventListener("shown.bs.collapse", this.listeners.shown);
-    this.element.addEventListener("hide.bs.collapse", this.listeners.hide);
-    this.element.addEventListener("hidden.bs.collapse", this.listeners.hidden);
+    this.element.addEventListener("show.bs.modal", this.listeners.show);
+    this.element.addEventListener("shown.bs.modal", this.listeners.shown);
+    this.element.addEventListener("hide.bs.modal", this.listeners.hide);
+    this.element.addEventListener("hidden.bs.modal", this.listeners.hidden);
   }
 
   removeListeners() {
-    this.element.removeEventListener("show.bs.collapse", this.listeners.show);
-    this.element.removeEventListener("shown.bs.collapse", this.listeners.shown);
-    this.element.removeEventListener("hide.bs.collapse", this.listeners.hide);
-    this.element.removeEventListener("hidden.bs.collapse", this.listeners.hidden);
+    this.element.removeEventListener("show.bs.modal", this.listeners.show);
+    this.element.removeEventListener("shown.bs.modal", this.listeners.shown);
+    this.element.removeEventListener("hide.bs.modal", this.listeners.hide);
+    this.element.removeEventListener("hidden.bs.modal", this.listeners.hidden);
   }
 
   createInstance() {
-    const options = { ...(this.options ?? {}) };
-    if (options.toggle == null) {
-      options.toggle = false;
-    }
-    this.instance = new Collapse(this.element, options);
+    this.instance = new Modal(this.element, this.options ?? undefined);
   }
 
   disposeInstance() {
@@ -109,7 +102,7 @@ export class AubsCollapseCustomAttribute {
 
   handleShown(event) {
     this.suppressToggle = true;
-    this.collapsed = false;
+    this.isOpen = true;
 
     if (typeof this.onShown === "function") {
       this.onShown({ event });
@@ -124,7 +117,7 @@ export class AubsCollapseCustomAttribute {
 
   handleHidden(event) {
     this.suppressToggle = true;
-    this.collapsed = true;
+    this.isOpen = false;
 
     if (typeof this.onHidden === "function") {
       this.onHidden({ event });

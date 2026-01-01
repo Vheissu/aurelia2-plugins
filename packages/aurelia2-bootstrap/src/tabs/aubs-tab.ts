@@ -30,7 +30,12 @@ export class AubsTabCustomElement {
 
   attached() {
     this.$tabPane = this.element.querySelector(".tab-pane");
-    this.$tabPane.style.display = this.active ? "block" : "none";
+    this.applyActiveState(false);
+    this.tabset.registerTab(this);
+  }
+
+  detached() {
+    this.tabset.unregisterTab(this);
   }
 
   handleTabChanged(index) {
@@ -41,21 +46,38 @@ export class AubsTabCustomElement {
     }
 
     this.active = isSelected;
+    this.applyActiveState(true);
 
     if (isSelected) {
-      if (this.$tabPane) {
-        velocity(this.$tabPane, "fadeIn");
-      }
-
       if (typeof this.onSelect === "function") {
         this.onSelect({ index: this.index });
       }
+    } else if (typeof this.onDeselect === "function") {
+      this.onDeselect({ index: this.index });
+    }
+  }
+
+  applyActiveState(animate: boolean) {
+    if (!this.$tabPane) {
+      return;
+    }
+
+    if (this.active) {
+      this.$tabPane.classList.add("active", "show");
+      this.$tabPane.style.display = "block";
+      if (animate) {
+        velocity(this.$tabPane, "fadeIn");
+      }
+      return;
+    }
+
+    this.$tabPane.classList.remove("active", "show");
+    if (animate) {
+      velocity(this.$tabPane, "fadeOut").then(() => {
+        this.$tabPane.style.display = "none";
+      });
     } else {
       this.$tabPane.style.display = "none";
-
-      if (typeof this.onDeselect === "function") {
-        this.onDeselect({ index: this.index });
-      }
     }
   }
 }

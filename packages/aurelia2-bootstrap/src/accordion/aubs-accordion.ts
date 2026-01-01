@@ -1,32 +1,11 @@
-import { children, bindable, IDisposable } from "aurelia";
+import { bindable } from "aurelia";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 
 export class AubsAccordionCustomElement {
   @bindable closeOthers = bootstrapOptions.accordionCloseOthers;
-  @children("aubs-accordion-group") groups = [];
+  groups = [];
 
-  toggledListeners: IDisposable[] = [];
-  bootstrapOptions;
-
-  constructor() {
-    this.bootstrapOptions = bootstrapOptions;
-  }
-
-  detached() {
-    this.disposeListeners();
-  }
-
-  register(accordionGroup) {
-    this.groups.push(accordionGroup);
-  }
-
-  disposeListeners() {
-    for (let listener of this.toggledListeners) {
-      listener.dispose();
-    }
-
-    this.toggledListeners = [];
-  }
+  constructor() {}
 
   groupToggled(group) {
     if (group.isOpen && this.closeOthers) {
@@ -35,6 +14,19 @@ export class AubsAccordionCustomElement {
           next.isOpen = false;
         }
       }
+    }
+  }
+
+  registerGroup(group) {
+    if (!this.groups.includes(group)) {
+      this.groups.push(group);
+    }
+  }
+
+  unregisterGroup(group) {
+    const index = this.groups.indexOf(group);
+    if (index >= 0) {
+      this.groups.splice(index, 1);
     }
   }
 }

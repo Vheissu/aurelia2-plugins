@@ -1,8 +1,10 @@
-const baseConfig = require('../../jest.config.cjs');
+const base = require('../../jest.config.cjs');
 
 module.exports = {
-    ...baseConfig,
-    setupFiles: [
-        "../../test/jest.setup.ts"
-    ],
+  ...base,
+  transform: {
+    ...base.transform,
+    "\\.(ts|js|html)$": ["@aurelia/ts-jest", { defaultShadowOptions: null }],
+  },
+  setupFiles: ["../../test/jest.setup.ts"],
 };

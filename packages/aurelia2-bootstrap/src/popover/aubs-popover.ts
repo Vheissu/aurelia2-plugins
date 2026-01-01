@@ -16,19 +16,19 @@ export class AubsPopoverCustomAttribute {
 
   triggers = [];
 
-  validPositions = ["top", "bottom", "left", "right"];
+  validPositions = ["top", "bottom", "left", "right", "start", "end"];
   valuesChanged = false;
   visible = false;
   listeners;
   isAttached = false;
 
   popover;
-  tether;
+  popper;
   titleElement;
   bodyElement;
   oldPosition;
 
-  showClass;
+  showClass = "show";
 
   constructor(
     private element: HTMLElement,
@@ -53,7 +53,7 @@ export class AubsPopoverCustomAttribute {
 
     this.triggers = this.trigger.split(" ");
 
-    this.showClass = bootstrapOptions.version === 4 ? "show" : "in";
+    this.showClass = "show";
   }
 
   attached() {
@@ -88,8 +88,8 @@ export class AubsPopoverCustomAttribute {
       }
     }
 
-    if (this.tether) {
-      this.tether.destroy();
+    if (this.popper) {
+      this.popper.destroy();
     }
   }
 
@@ -157,11 +157,11 @@ export class AubsPopoverCustomAttribute {
     }
 
     if (this.customPopover) {
-      if (this.tether) {
-        this.tether.destroy();
+      if (this.popper) {
+        this.popper.destroy();
       }
 
-      this.tether = this.tooltipService.createAttachment(
+      this.popper = this.tooltipService.createAttachment(
         this.element,
         this.popover,
         this.position
@@ -169,7 +169,7 @@ export class AubsPopoverCustomAttribute {
     }
 
     this.popover.style.display = "block";
-    this.tether.position();
+    void this.popper?.update();
 
     velocity(this.popover, "stop").then(() => {
       velocity(this.popover, "fadeIn").then(() => {
@@ -215,22 +215,33 @@ export class AubsPopoverCustomAttribute {
   }
 
   getPositionClass(position) {
-    return (bootstrapOptions.version === 4 ? "popover-" : "") + position;
+    if (position === "left" || position === "start") {
+      return "bs-popover-start";
+    }
+
+    if (position === "right" || position === "end") {
+      return "bs-popover-end";
+    }
+
+    return `bs-popover-${position}`;
   }
 
   createPopover() {
     let arrow = document.createElement("div");
-    arrow.classList.add("arrow");
+    arrow.classList.add("popover-arrow");
 
     if (this.customPopover) {
       this.popover = this.customPopover;
 
-      this.popover.classList.remove(this.getPositionClass(this.oldPosition));
+      if (this.oldPosition) {
+        this.popover.classList.remove(this.getPositionClass(this.oldPosition));
+      }
 
       this.popover.classList.add("popover");
       this.popover.classList.add(this.getPositionClass(this.position));
+      this.popover.setAttribute("role", "tooltip");
 
-      if (!this.popover.querySelector(".arrow")) {
+      if (!this.popover.querySelector(".popover-arrow")) {
         this.popover.appendChild(arrow);
       }
     } else {
@@ -241,30 +252,29 @@ export class AubsPopoverCustomAttribute {
       this.popover = document.createElement("div");
       this.popover.classList.add("popover");
       this.popover.classList.add(this.getPositionClass(this.position));
+      this.popover.setAttribute("role", "tooltip");
 
       this.popover.appendChild(arrow);
 
       if (this.title) {
         this.titleElement = document.createElement("h3");
-        this.titleElement.classList.add("popover-title");
+        this.titleElement.classList.add("popover-header");
         this.titleElement.innerHTML = this.title;
         this.popover.appendChild(this.titleElement);
       }
 
-      let content = document.createElement("div");
-      content.classList.add("popover-content");
-      this.bodyElement = document.createElement("p");
+      this.bodyElement = document.createElement("div");
+      this.bodyElement.classList.add("popover-body");
       this.bodyElement.innerHTML = this.body;
-      content.appendChild(this.bodyElement);
-      this.popover.appendChild(content);
+      this.popover.appendChild(this.bodyElement);
 
       document.body.appendChild(this.popover);
 
-      if (this.tether) {
-        this.tether.destroy();
+      if (this.popper) {
+        this.popper.destroy();
       }
 
-      this.tether = this.tooltipService.createAttachment(
+      this.popper = this.tooltipService.createAttachment(
         this.element,
         this.popover,
         this.position

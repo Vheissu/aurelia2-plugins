@@ -1,5 +1,5 @@
 import { DI } from "aurelia";
-import Tether from "tether";
+import { createPopper, type Instance, type Placement } from "@popperjs/core";
 
 export const ITooltipService = DI.createInterface<ITooltipService>("ITooltipService", (x) =>
   x.singleton(TooltipService)
@@ -7,35 +7,25 @@ export const ITooltipService = DI.createInterface<ITooltipService>("ITooltipServ
 export interface ITooltipService extends TooltipService {}
 
 export class TooltipService {
-  createAttachment(target, element, position) {
-    let attachment;
-    let targetAttachment;
+  createAttachment(target: Element, element: HTMLElement, position: string): Instance {
+    const normalizedPosition = position === "start" ? "left" : position === "end" ? "right" : position;
+    const placement = this.getPlacement(normalizedPosition);
+    const arrow = element.querySelector(".tooltip-arrow, .popover-arrow");
+    const modifiers = [];
 
-    if (position === "top") {
-      attachment = "bottom center";
-      targetAttachment = "top center";
-    } else if (position === "bottom") {
-      attachment = "top center";
-      targetAttachment = "bottom center";
-    } else if (position === "left") {
-      attachment = "center right";
-      targetAttachment = "center left";
-    } else {
-      attachment = "center left";
-      targetAttachment = "center right";
+    if (arrow) {
+      modifiers.push({ name: "arrow", options: { element: arrow } });
     }
 
-    return new Tether({
-      element: element,
-      target: target,
-      attachment: attachment,
-      targetAttachment: targetAttachment,
+    return createPopper(target, element, {
+      placement,
+      modifiers,
     });
   }
 
   setTriggers(element, triggers, listeners) {
     if (!triggers.includes("none")) {
-      if (triggers.includes("mouseover")) {
+      if (triggers.includes("mouseover") || triggers.includes("hover")) {
         element.addEventListener("mouseover", listeners.in);
         element.addEventListener("mouseleave", listeners.out);
       }
@@ -56,7 +46,7 @@ export class TooltipService {
 
   removeTriggers(element, triggers, listeners) {
     if (!triggers.includes("none")) {
-      if (triggers.includes("mouseover")) {
+      if (triggers.includes("mouseover") || triggers.includes("hover")) {
         element.removeEventListener("mouseover", listeners.in);
         element.removeEventListener("mouseleave", listeners.out);
       }
@@ -72,6 +62,18 @@ export class TooltipService {
         element.removeEventListener("click", listeners.in);
         document.removeEventListener("click", listeners.outside);
       }
+    }
+  }
+
+  private getPlacement(position: string): Placement {
+    switch (position) {
+    case "top":
+    case "bottom":
+    case "left":
+    case "right":
+      return position;
+    default:
+      return "top";
     }
   }
 }

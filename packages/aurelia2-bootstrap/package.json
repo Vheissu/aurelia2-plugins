@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-bootstrap",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "description": "A port of the Aurelia Bootstrap plugin to v2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -17,16 +17,18 @@
     "watch:other": "cpx \"./src/**/*.{html,css}\" ./dist --watch",
     "test:debug": "cross-env DEBUG=true npm run test",
     "test:watch": "cross-env DEV=true npm run test",
-    "test": "jest --passWithNoTests"
+    "test": "jest --config ./jest.config.cjs --passWithNoTests"
   },
   "dependencies": {
-    "tether": "^3.0.2",
+    "@popperjs/core": "^2.11.8",
     "velocity-animate": "^2.0.6"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-beta.27"
+    "aurelia": "^2.0.0-beta.27",
+    "bootstrap": "^5.3.8"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-beta.27"
+    "aurelia": ">=2.0.0-beta.27",
+    "bootstrap": "^5.3.8"
   }
 }
