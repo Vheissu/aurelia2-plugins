@@ -1,7 +1,7 @@
 {
   "name": "aurelia2-notification",
-  "version": "0.0.19",
-  "description": "Aurelia notification library",
+  "version": "1.0.0",
+  "description": "Aurelia 2 notification library",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
   "repository": "https://github.com/Vheissu/aurelia2-plugins",
@@ -19,15 +19,17 @@
     "test:watch": "cross-env DEV=true npm run test",
     "test": "jest --passWithNoTests"
   },
-  "dependencies": {
-    "extend": "^3.0.2",
-    "humane-js": "^3.2.2"
-  },
+  "dependencies": {},
   "devDependencies": {
     "aurelia": "^2.0.0-beta.27"
   },
   "peerDependencies": {
     "@aurelia/i18n": ">=2.0.0-beta.27",
     "aurelia": ">=2.0.0-beta.27"
+  },
+  "peerDependenciesMeta": {
+    "@aurelia/i18n": {
+      "optional": true
+    }
   }
 }

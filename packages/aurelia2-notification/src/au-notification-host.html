@@ -1,0 +1,362 @@
+<template>
+  <style>
+    .au-notification-host {
+      --au-notification-z-index: 9999;
+      --au-notification-gap: 0.75rem;
+      --au-notification-offset-x: 1rem;
+      --au-notification-offset-y: 1rem;
+      --au-notification-min-width: 14rem;
+      --au-notification-max-width: 24rem;
+      --au-notification-radius: 0.75rem;
+      --au-notification-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+      --au-notification-accent-width: 4px;
+      --au-notification-focus-ring: 0 0 0 3px rgba(147, 197, 253, 0.45);
+      --au-notification-bg: #111827;
+      --au-notification-color: #f9fafb;
+      --au-notification-fg: var(--au-notification-color);
+      --au-notification-muted: #d1d5db;
+      --au-notification-border: rgba(255, 255, 255, 0.08);
+      --au-notification-action-bg: rgba(255, 255, 255, 0.12);
+      --au-notification-action-hover: rgba(255, 255, 255, 0.22);
+      --au-notification-note-bg: var(--au-notification-bg);
+      --au-notification-note-accent: transparent;
+      --au-notification-success-bg: #0f766e;
+      --au-notification-success-accent: #5eead4;
+      --au-notification-info-bg: #1d4ed8;
+      --au-notification-info-accent: #93c5fd;
+      --au-notification-error-bg: #b91c1c;
+      --au-notification-error-accent: #fca5a5;
+      --au-notification-warning-bg: #92400e;
+      --au-notification-warning-accent: #fbbf24;
+      --au-notification-progress: rgba(255, 255, 255, 0.65);
+      --au-notification-enter-duration: 160ms;
+      --au-notification-exit-duration: 200ms;
+      position: relative;
+      z-index: var(--au-notification-z-index);
+      pointer-events: none;
+    }
+
+    .au-notification-host[data-theme='light'],
+    .au-notification-host.au-notification-host--light {
+      --au-notification-bg: #ffffff;
+      --au-notification-color: #0f172a;
+      --au-notification-fg: var(--au-notification-color);
+      --au-notification-muted: #475569;
+      --au-notification-border: rgba(15, 23, 42, 0.12);
+      --au-notification-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+      --au-notification-action-bg: rgba(15, 23, 42, 0.08);
+      --au-notification-action-hover: rgba(15, 23, 42, 0.14);
+      --au-notification-note-bg: var(--au-notification-bg);
+      --au-notification-note-accent: rgba(15, 23, 42, 0.2);
+      --au-notification-success-bg: #ecfdf3;
+      --au-notification-success-accent: #16a34a;
+      --au-notification-info-bg: #eff6ff;
+      --au-notification-info-accent: #2563eb;
+      --au-notification-warning-bg: #fffbeb;
+      --au-notification-warning-accent: #d97706;
+      --au-notification-error-bg: #fef2f2;
+      --au-notification-error-accent: #dc2626;
+      --au-notification-progress: rgba(15, 23, 42, 0.35);
+      --au-notification-focus-ring: 0 0 0 3px rgba(59, 130, 246, 0.3);
+    }
+
+    .au-notification-container {
+      position: fixed;
+      display: flex;
+      flex-direction: column;
+      gap: var(--au-notification-gap);
+      z-index: var(--au-notification-z-index);
+      pointer-events: none;
+    }
+
+    .au-notification-container--top-left {
+      top: var(--au-notification-offset-y);
+      left: var(--au-notification-offset-x);
+      align-items: flex-start;
+    }
+
+    .au-notification-container--top-center {
+      top: var(--au-notification-offset-y);
+      left: 50%;
+      transform: translateX(-50%);
+      align-items: center;
+    }
+
+    .au-notification-container--top-right {
+      top: var(--au-notification-offset-y);
+      right: var(--au-notification-offset-x);
+      align-items: flex-end;
+    }
+
+    .au-notification-container--bottom-left {
+      bottom: var(--au-notification-offset-y);
+      left: var(--au-notification-offset-x);
+      align-items: flex-start;
+    }
+
+    .au-notification-container--bottom-center {
+      bottom: var(--au-notification-offset-y);
+      left: 50%;
+      transform: translateX(-50%);
+      align-items: center;
+    }
+
+    .au-notification-container--bottom-right {
+      bottom: var(--au-notification-offset-y);
+      right: var(--au-notification-offset-x);
+      align-items: flex-end;
+    }
+
+    .au-notification {
+      pointer-events: auto;
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 0.75rem;
+      align-items: start;
+      min-width: var(--au-notification-min-width);
+      max-width: var(--au-notification-max-width);
+      padding: 0.85rem 1rem;
+      border-radius: var(--au-notification-radius);
+      background: var(--au-notification-surface, var(--au-notification-bg));
+      color: var(--au-notification-fg, var(--au-notification-color));
+      box-shadow: var(--au-notification-shadow);
+      border: 1px solid var(--au-notification-border);
+      border-left: var(--au-notification-accent-width) solid var(--au-notification-accent, transparent);
+      transform: translateY(0);
+      opacity: 1;
+      transition: transform var(--au-notification-exit-duration) ease,
+        opacity var(--au-notification-exit-duration) ease;
+    }
+
+    .au-notification:focus-visible {
+      outline: none;
+      box-shadow: var(--au-notification-shadow), var(--au-notification-focus-ring);
+    }
+
+    .au-notification--note {
+      --au-notification-surface: var(--au-notification-note-bg, var(--au-notification-bg));
+      --au-notification-accent: var(--au-notification-note-accent, transparent);
+    }
+
+    .au-notification--entering {
+      transform: translateY(-6px);
+      opacity: 0;
+      transition-duration: var(--au-notification-enter-duration);
+    }
+
+    .au-notification--visible {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    .au-notification--leaving {
+      transform: translateY(-6px);
+      opacity: 0;
+      transition-duration: var(--au-notification-exit-duration);
+    }
+
+    .au-notification--success {
+      --au-notification-surface: var(--au-notification-success-bg);
+      --au-notification-accent: var(--au-notification-success-accent, var(--au-notification-success-bg));
+    }
+
+    .au-notification--info {
+      --au-notification-surface: var(--au-notification-info-bg);
+      --au-notification-accent: var(--au-notification-info-accent, var(--au-notification-info-bg));
+    }
+
+    .au-notification--error {
+      --au-notification-surface: var(--au-notification-error-bg);
+      --au-notification-accent: var(--au-notification-error-accent, var(--au-notification-error-bg));
+    }
+
+    .au-notification--warning {
+      --au-notification-surface: var(--au-notification-warning-bg);
+      --au-notification-accent: var(--au-notification-warning-accent, var(--au-notification-warning-bg));
+    }
+
+    .au-notification__icon {
+      width: 1.5rem;
+      height: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .au-notification__content {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .au-notification__title {
+      font-weight: 600;
+    }
+
+    .au-notification__message {
+      color: var(--au-notification-muted);
+      font-size: 0.95rem;
+      line-height: 1.35;
+    }
+
+    .au-notification__actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+    }
+
+    .au-notification__action {
+      border: none;
+      background: var(--au-notification-action-bg);
+      color: inherit;
+      padding: 0.35rem 0.6rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .au-notification__action:hover,
+    .au-notification__action:focus-visible {
+      background: var(--au-notification-action-hover);
+      outline: none;
+    }
+
+    .au-notification__action:focus-visible {
+      box-shadow: var(--au-notification-focus-ring);
+    }
+
+    .au-notification__close {
+      border: none;
+      background: transparent;
+      color: inherit;
+      font-size: 1.2rem;
+      line-height: 1;
+      cursor: pointer;
+      opacity: 0.75;
+    }
+
+    .au-notification__close:hover,
+    .au-notification__close:focus-visible {
+      opacity: 1;
+    }
+
+    .au-notification__close:focus-visible {
+      outline: none;
+      box-shadow: var(--au-notification-focus-ring);
+      border-radius: 999px;
+    }
+
+    .au-notification__count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.5rem;
+      height: 1.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      background: rgba(255, 255, 255, 0.2);
+      margin-left: 0.5rem;
+    }
+
+    .au-notification__progress {
+      grid-column: 1 / -1;
+      height: 3px;
+      border-radius: 999px;
+      background: var(--au-notification-progress);
+      animation: au-notification-progress var(--au-notification-duration) linear;
+    }
+
+    .au-notification--paused .au-notification__progress {
+      animation-play-state: paused;
+    }
+
+    @keyframes au-notification-progress {
+      from {
+        transform: scaleX(1);
+        transform-origin: left;
+      }
+      to {
+        transform: scaleX(0);
+        transform-origin: left;
+      }
+    }
+
+    @media (max-width: 600px) {
+      .au-notification {
+        min-width: 12rem;
+        max-width: calc(100vw - 2rem);
+      }
+    }
+  </style>
+
+  <div class.bind="hostClasses()" style.bind="hostStyle()">
+    <template repeat.for="pos of positions">
+      <div class.bind="containerClasses(pos)" data-position.bind="pos">
+        <template repeat.for="item of itemsByPosition[pos]">
+          <div
+            class.bind="itemClasses(item)"
+            data-type.bind="item.type"
+            data-state.bind="item.state"
+            role.bind="item.role"
+            aria-live.bind="item.ariaLive"
+            aria-atomic="true"
+            tabindex.bind="item.dismissible || item.closeOnClick ? 0 : -1"
+            click.trigger="handleClick(item, $event)"
+            mouseenter.trigger="handleMouseEnter(item)"
+            mouseleave.trigger="handleMouseLeave(item)"
+            focusin.trigger="handleFocusIn(item)"
+            focusout.trigger="handleFocusOut(item)"
+            style.bind="item.style"
+          >
+            <div class="au-notification__icon ${config.classes.icon}" if.bind="item.icon">
+              ${item.icon}
+            </div>
+            <div class="au-notification__content">
+              <div class="au-notification__title ${config.classes.title}" if.bind="item.title">
+                ${itemTitle(item)}
+                <span class="au-notification__count ${config.classes.count}" if.bind="item.count > 1">x${item.count}</span>
+              </div>
+              <div class="au-notification__message ${config.classes.message}">
+                <template if.bind="item.allowHtml">
+                  <div innerhtml.bind="messageHtml(item)"></div>
+                </template>
+                <template else>
+                  <template repeat.for="line of messageLines(item)">
+                    <div>${line}</div>
+                  </template>
+                </template>
+              </div>
+              <div class="au-notification__actions" if.bind="item.actions.length">
+                <button
+                  class="au-notification__action ${config.classes.action} ${action.class || ''}"
+                  repeat.for="action of item.actions"
+                  click.trigger="handleAction(item, action, $event)"
+                  aria-label.bind="actionAriaLabel(action)"
+                  type="button"
+                >
+                  ${actionLabel(action)}
+                </button>
+              </div>
+            </div>
+            <button
+              class="au-notification__close ${config.classes.closeButton}"
+              if.bind="item.showCloseButton && item.dismissible"
+              click.trigger="handleDismiss(item, $event)"
+              aria-label.bind="closeLabel(item)"
+              type="button"
+            >
+              ×
+            </button>
+            <div
+              class="au-notification__progress ${config.classes.progress}"
+              if.bind="shouldShowProgress(item)"
+              style.bind="progressStyle(item)"
+            ></div>
+          </div>
+        </template>
+      </div>
+    </template>
+  </div>
+</template>

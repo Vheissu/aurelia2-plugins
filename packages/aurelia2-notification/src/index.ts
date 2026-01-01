@@ -1,52 +1,52 @@
-import { I18N, I18nConfiguration } from '@aurelia/i18n';
-import { INotification } from './aurelia-notification';
-import { INotificationConfig, Config } from './config';
-import { DI, IContainer, IRegistry, Registration } from '@aurelia/kernel';
-import { AppTask } from '@aurelia/runtime-html';
+import { IContainer, IRegistry, Registration } from '@aurelia/kernel';
+import { INotificationConfig, NotificationConfig } from './config';
+import { AuNotificationHostCustomElement } from './au-notification-host';
+import { DefaultNotificationTranslator, INotificationTranslator } from './notification-translator';
+import { INotificationService, NotificationService } from './notification-service';
+import type { NotificationConfigOptions } from './types';
 
 const DefaultComponents: IRegistry[] = [
-    // MyComponent as unknown as IRegistry,
+  AuNotificationHostCustomElement as unknown as IRegistry,
 ];
 
-function createConfiguration(options?: Partial<any>) {
-    return {
-        register(container: IContainer): IContainer {
-            return container.register(
-                AppTask.creating(() => {
-                    const hasI18n = container.has(I18N, true);
+const DefaultServices: IRegistry[] = [
+  Registration.cachedCallback(
+    NotificationService,
+    (container: IContainer) =>
+      new NotificationService(
+        container.get(INotificationConfig) as NotificationConfig,
+        container.get(INotificationTranslator)
+      )
+  ),
+  Registration.aliasTo(NotificationService, INotificationService),
+  Registration.singleton(DefaultNotificationTranslator, DefaultNotificationTranslator),
+  Registration.aliasTo(DefaultNotificationTranslator, INotificationTranslator),
+];
 
-                    if (!hasI18n) {
-                        container.register(I18nConfiguration)
-                    }
+function createConfiguration(options?: NotificationConfigOptions) {
+  return {
+    register(container: IContainer): IContainer {
+      const config = container.get(INotificationConfig) as NotificationConfig;
+      config.configure(options);
 
-                    const config = container.get(Config);
-
-                    config.configure(options);
-        
-                    container.register(
-                        Registration.instance(INotificationConfig, config), 
-                        ...DefaultComponents
-                    );
-                }),
-                AppTask.activated(() => {
-                    const hasNotification = container.has(INotification, true);
-
-                    if (!hasNotification) {
-                        container.register(INotification);
-                    }
-
-                    const notification = container.get(INotification);
-
-                    notification.setBaseCls();
-                })
-            );
-        },
-        configure(options?) {
-            return createConfiguration(options);
-        }
-    }
+      return container.register(
+        Registration.instance(INotificationConfig, config),
+        Registration.instance(NotificationConfig, config),
+        ...DefaultServices,
+        ...DefaultComponents
+      );
+    },
+    configure(next?: NotificationConfigOptions) {
+      return createConfiguration(next);
+    },
+  };
 }
 
-export const AureliaNotification = createConfiguration({});
+export const AureliaNotificationConfiguration = createConfiguration({});
 
-export { INotificationConfig, INotification };
+export { INotificationConfig, NotificationConfig } from './config';
+export { INotificationService, NotificationService } from './notification-service';
+export { INotificationTranslator, DefaultNotificationTranslator } from './notification-translator';
+export { AuNotificationHostCustomElement } from './au-notification-host';
+export { NotificationI18nConfiguration } from './i18n-adapter';
+export * from './types';
