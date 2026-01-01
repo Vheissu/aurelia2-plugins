@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-hooks",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "description": "Aurelia hooks plugin",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
