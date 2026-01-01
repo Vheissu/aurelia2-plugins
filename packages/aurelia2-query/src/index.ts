@@ -18,9 +18,10 @@ export const AureliaQueryConfiguration: IRegistry = {
 };
 
 export * from './types';
-export * from './query-client';
-export * from './query-result';
-export * from './query-observer';
-export * from './query-binding-behavior';
-export * from './query-binding-command';
-export * from './au-query';
+export { QueryClient, IQueryClient } from './query-client';
+export type { QueryCacheEntry, QueryObserver as QueryClientObserver } from './query-client';
+export { QueryResult } from './query-result';
+export { QueryObserver } from './query-observer';
+export { QueryBindingBehavior } from './query-binding-behavior';
+export { QueryBindingCommand } from './query-binding-command';
+export { AuQueryCustomElement } from './au-query';

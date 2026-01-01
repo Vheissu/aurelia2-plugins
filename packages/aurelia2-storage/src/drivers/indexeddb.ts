@@ -1,10 +1,4 @@
-import type { StorageDriver } from '../types';
-
-export interface IndexedDbOptions {
-  dbName: string;
-  storeName: string;
-  version: number;
-}
+import type { IndexedDbOptions, StorageDriver } from '../types';
 
 export class IndexedDbStorageDriver implements StorageDriver {
   private readonly dbPromise: Promise<IDBDatabase>;
@@ -57,8 +51,12 @@ export class IndexedDbStorageDriver implements StorageDriver {
     const db = await this.dbPromise;
     return new Promise((resolve, reject) => {
       const tx = db.transaction(this.options.storeName, 'readonly');
-      const store = tx.objectStore(this.options.storeName);
-      if ('getAllKeys' in store) {
+      const store = tx.objectStore(this.options.storeName) as IDBObjectStore & {
+        getAllKeys?: () => IDBRequest<IDBValidKey[]>;
+        openKeyCursor?: () => IDBRequest<IDBCursor | null>;
+      };
+
+      if (typeof store.getAllKeys === 'function') {
         const req = store.getAllKeys();
         req.onsuccess = () => resolve(req.result.map(String));
         req.onerror = () => reject(req.error);
@@ -66,9 +64,9 @@ export class IndexedDbStorageDriver implements StorageDriver {
       }
 
       const keys: string[] = [];
-      const cursor = store.openKeyCursor();
-      cursor.onsuccess = () => {
-        const result = cursor.result;
+      const cursorRequest = store.openKeyCursor ? store.openKeyCursor() : store.openCursor();
+      cursorRequest.onsuccess = () => {
+        const result = cursorRequest.result;
         if (result) {
           keys.push(String(result.key));
           result.continue();
@@ -76,7 +74,7 @@ export class IndexedDbStorageDriver implements StorageDriver {
           resolve(keys);
         }
       };
-      cursor.onerror = () => reject(cursor.error);
+      cursorRequest.onerror = () => reject(cursorRequest.error);
     });
   }
 

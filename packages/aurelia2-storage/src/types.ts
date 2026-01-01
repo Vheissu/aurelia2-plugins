@@ -5,6 +5,12 @@ export interface StorageOptions {
   ttl?: number;
 }
 
+export interface IndexedDbOptions {
+  dbName: string;
+  storeName: string;
+  version: number;
+}
+
 export interface StorageDriver {
   getItem(key: string): Promise<string | null>;
   setItem(key: string, value: string): Promise<void>;
@@ -16,11 +22,13 @@ export interface StorageDriver {
 export interface StorageConfigOptions {
   defaultBackend?: StorageBackend;
   prefix?: string;
-  indexedDb?: {
-    dbName?: string;
-    storeName?: string;
-    version?: number;
-  };
+  indexedDb?: Partial<IndexedDbOptions>;
+}
+
+export interface ResolvedStorageConfigOptions {
+  defaultBackend: StorageBackend;
+  prefix: string;
+  indexedDb: IndexedDbOptions;
 }
 
 export interface StoredValue<T = unknown> {
