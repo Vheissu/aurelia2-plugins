@@ -1,0 +1,12 @@
+<template>
+  <canvas
+    ref="canvas"
+    role="img"
+    id.bind="chartId"
+    aria-label.bind="ariaLabel"
+    aria-describedby.bind="ariaDescribedby"
+    width.bind="width"
+    height.bind="height">
+    <au-slot></au-slot>
+  </canvas>
+</template>
