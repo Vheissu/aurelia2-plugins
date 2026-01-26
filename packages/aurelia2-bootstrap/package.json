@@ -24,11 +24,11 @@
     "velocity-animate": "^2.0.6"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-beta.27",
+    "aurelia": "^2.0.0-rc.0",
     "bootstrap": "^5.3.8"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-beta.27",
+    "aurelia": ">=2.0.0-rc.0",
     "bootstrap": "^5.3.8"
   }
 }

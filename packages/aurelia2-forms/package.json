@@ -20,12 +20,12 @@
     "test": "jest"
   },
   "dependencies": {
-    "@aurelia/validation": "^2.0.0-beta.27"
+    "@aurelia/validation": "^2.0.0-rc.0"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-beta.27"
+    "aurelia": "^2.0.0-rc.0"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-beta.27"
+    "aurelia": ">=2.0.0-rc.0"
   }
 }

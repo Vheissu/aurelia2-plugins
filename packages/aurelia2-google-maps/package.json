@@ -25,11 +25,11 @@
   },
   "devDependencies": {
     "@types/google.maps": "^3.58.1",
-    "aurelia": "^2.0.0-beta.27"
+    "aurelia": "^2.0.0-rc.0"
   },
   "peerDependencies": {
     "@types/google.maps": ">=3.58.1",
-    "aurelia": ">=2.0.0-beta.27"
+    "aurelia": ">=2.0.0-rc.0"
   },
   "peerDependenciesMeta": {
     "@types/google.maps": {

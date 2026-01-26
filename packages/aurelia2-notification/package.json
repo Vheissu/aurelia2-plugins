@@ -21,11 +21,11 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "aurelia": "^2.0.0-beta.27"
+    "aurelia": "^2.0.0-rc.0"
   },
   "peerDependencies": {
-    "@aurelia/i18n": ">=2.0.0-beta.27",
-    "aurelia": ">=2.0.0-beta.27"
+    "@aurelia/i18n": ">=2.0.0-rc.0",
+    "aurelia": ">=2.0.0-rc.0"
   },
   "peerDependenciesMeta": {
     "@aurelia/i18n": {
