@@ -1,4 +1,4 @@
-import { bindable, customAttribute, INode, inject, optional } from 'aurelia';
+import { bindable, CustomAttribute, customAttribute, INode, inject, optional } from 'aurelia';
 
 import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
 
@@ -18,7 +18,7 @@ export class AutSortCustomAttribute {
     ignoreEvent = false;
 
     constructor(
-        private readonly auTable: AureliaTableCustomAttribute,
+        private auTable: AureliaTableCustomAttribute | null,
         private readonly element: HTMLElement
     ) {
         this.rowSelectedListener = () => {
@@ -40,6 +40,10 @@ export class AutSortCustomAttribute {
     }
 
     attached() {
+        if (!this.auTable) {
+            this.auTable = CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel ?? null;
+        }
+
         if ((this.key || this.custom) && this.element && this.auTable) {
             this.element.style.cursor = 'pointer';
             this.element.classList.add('aut-sort');
@@ -66,8 +70,8 @@ export class AutSortCustomAttribute {
         }
     }
 
-    doSort() {
-        if (this.auTable.dataSource === 'server') {
+  doSort() {
+        if (!this.auTable) {
             return;
         }
 

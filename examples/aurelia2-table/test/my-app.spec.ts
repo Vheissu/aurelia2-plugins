@@ -1,0 +1,18 @@
+import { describe, it } from 'vitest';
+import { MyApp } from '../src/my-app';
+import { createFixture } from '@aurelia/testing';
+
+describe('my-app', () => {
+  it('should render', async () => {
+    const { appHost } = await createFixture(
+      '<my-app></my-app>',
+      {},
+      [MyApp],
+    ).started;
+
+    const element = appHost.querySelector('my-app');
+    if (element === null) {
+      throw new Error('Expected to find my-app element in host');
+    }
+  });
+});

@@ -1,0 +1,52 @@
+<template>
+  <section>
+    <h1>Aurelia 2 Table</h1>
+    <p>Filter, sort, paginate, and select rows using <code>aurelia2-table</code>.</p>
+  </section>
+
+  <section class="controls">
+    <label>
+      Search
+      <input value.bind="filters[0].value" placeholder="Name, role, team" />
+    </label>
+
+    <label>
+      Page size
+      <select value.bind="pageSize">
+        <option repeat.for="size of [5, 10, 20]" value.bind="size">
+          ${size}
+        </option>
+      </select>
+    </label>
+
+    <p if.bind="selectedNames.length">
+      Selected: ${selectedNames}
+    </p>
+  </section>
+
+  <table
+    aurelia-table="data.bind: rows; display-data.two-way: displayRows; current-page.two-way: currentPage; page-size.bind: pageSize; total-items.two-way: totalItems; filters.bind: filters"
+  >
+    <thead>
+      <tr>
+        <th aut-sort="key.bind: 'name'">Name</th>
+        <th aut-sort="key.bind: 'role'">Role</th>
+        <th aut-sort="key.bind: 'team'">Team</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr repeat.for="row of displayRows" aut-select="row.bind: row">
+        <td>${row.name}</td>
+        <td>${row.role}</td>
+        <td>${row.team}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <aut-pagination
+    current-page.two-way="currentPage"
+    page-size.bind="pageSize"
+    total-items.bind="totalItems"
+    boundary-links.bind="true"
+  ></aut-pagination>
+</template>

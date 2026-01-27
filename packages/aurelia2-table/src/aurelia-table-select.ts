@@ -1,4 +1,4 @@
-import { bindable, BindingMode, customAttribute, INode, inject, optional, watch } from 'aurelia';
+import { bindable, BindingMode, customAttribute, CustomAttribute, INode, inject, optional, watch } from 'aurelia';
 import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
 
 @customAttribute('aut-select')
@@ -12,7 +12,7 @@ export class AutSelectCustomAttribute {
   private rowSelectedListener;
 
   constructor(
-    private readonly auTable: AureliaTableCustomAttribute,
+    private auTable: AureliaTableCustomAttribute | null,
     private readonly element: HTMLElement
   ) {
     this.rowSelectedListener = event => {
@@ -21,6 +21,10 @@ export class AutSelectCustomAttribute {
   }
 
   attached() {
+    if (!this.auTable) {
+      this.auTable = CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel ?? null;
+    }
+
     if (!this.custom && this.element) {
       this.element.style.cursor = 'pointer';
       this.element.addEventListener('click', this.rowSelectedListener);
@@ -45,8 +49,12 @@ export class AutSelectCustomAttribute {
   }
 
   handleRowSelected(event) {
-    let source = event.target || event.srcElement;
-    if (source.tagName.toLowerCase() !== 'td') {
+    if (!this.row) {
+      return;
+    }
+
+    const source = event.target || event.srcElement;
+    if (!(source instanceof HTMLElement) || !source.closest('td')) {
       return;
     }
     this.row.$isSelected = this.row.$isSelected ? false : true;
@@ -59,8 +67,12 @@ export class AutSelectCustomAttribute {
     }));
   }
 
-  @watch((x: AutSelectCustomAttribute) => x.row.$isSelected)
+  @watch((x: AutSelectCustomAttribute) => x.row?.$isSelected)
   isSelectedChanged() {
+    if (!this.row) {
+      return;
+    }
+
     this.setClass();
 
     if (this.row.$isSelected) {
@@ -78,5 +90,9 @@ export class AutSelectCustomAttribute {
         item.$isSelected = false;
       }
     });
+  }
+
+  rowChanged() {
+    this.setClass();
   }
 }

@@ -10,7 +10,7 @@ import template from './aurelia-table-pagination.html';
 export class AutPaginationCustomElement implements ICustomElementViewModel {
     @bindable({mode: BindingMode.twoWay}) currentPage;
     @bindable pageSize;
-    @bindable totalItems;
+    @bindable totalItems = 0;
     @bindable hideSinglePage = true;
     @bindable paginationSize;
     @bindable boundaryLinks = false;
@@ -34,20 +34,39 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
             this.pageSize = 5;
         }
 
+        if (this.totalItems === undefined || this.totalItems === null || isNaN(this.totalItems) || this.totalItems < 0) {
+            this.totalItems = 0;
+        }
+
         this.calculatePages();
     }
 
     totalItemsChanged() {
+        if (this.totalItems === undefined || this.totalItems === null || isNaN(this.totalItems) || this.totalItems < 0) {
+            this.totalItems = 0;
+            return;
+        }
+
         this.currentPage = 1;
         this.calculatePages();
     }
 
     pageSizeChanged() {
+        if (this.pageSize === undefined || this.pageSize === null || isNaN(this.pageSize) || this.pageSize < 0) {
+            this.pageSize = 5;
+            return;
+        }
+
         this.currentPage = 1;
         this.calculatePages();
     }
 
     currentPageChanged() {
+        if (this.currentPage === undefined || this.currentPage === null || isNaN(this.currentPage) || this.currentPage < 1) {
+            this.currentPage = 1;
+            return;
+        }
+
         this.calculatePages();
         this.dispatchPageChangedEvent();
     }
@@ -60,10 +79,13 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
     }
 
     calculatePages() {
-        if (this.pageSize === 0) {
+        const pageSize = Number.isFinite(Number(this.pageSize)) ? Number(this.pageSize) : 0;
+        const totalItems = Number.isFinite(Number(this.totalItems)) ? Number(this.totalItems) : 0;
+
+        if (pageSize === 0) {
             this.totalPages = 1
         }else {
-            this.totalPages = this.totalItems <= this.pageSize ? 1 : Math.ceil(this.totalItems / this.pageSize);
+            this.totalPages = totalItems <= pageSize ? 1 : Math.ceil(totalItems / pageSize);
         }
 
         if (isNaN(this.paginationSize) || this.paginationSize <= 0) {
