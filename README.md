@@ -8,6 +8,7 @@ A monorepo of Aurelia 2 plugins maintained and published as individual packages.
 - `aurelia2-bootstrap` — Bootstrap-based UI components
 - `aurelia2-cookie` — Cookie utilities and custom attribute(s)
 - `aurelia2-chartjs` — Chart.js wrapper (`<au-chart>`, typed chart elements)
+- `aurelia2-aurafall` — Virtual waterfall (masonry) list (`<au-aurafall>`)
 - `aurelia2-froala-editor` — Froala editor integration
 - `aurelia2-google-analytics` — Google Analytics integration
 - `aurelia2-google-maps` — Google Maps integration (port of Aurelia Google Maps)
