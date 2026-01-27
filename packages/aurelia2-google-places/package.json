@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-google-places",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A port of the Aurelia Google Places plugin",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",

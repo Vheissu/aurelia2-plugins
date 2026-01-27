@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-froala-editor",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A port of the Aurelia Froala Edittor",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",

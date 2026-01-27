@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-chartjs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Chart.js wrapper for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",

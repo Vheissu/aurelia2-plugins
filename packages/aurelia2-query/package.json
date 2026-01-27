@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-query",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Query/caching utilities for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",

@@ -11,7 +11,7 @@ import type { QueryDefinition } from './types';
   template,
 })
 export class AuQueryCustomElement {
-  @bindable({ primary: true }) public query: QueryDefinition | null = null;
+  @bindable public query: QueryDefinition | null = null;
   @bindable({ mode: BindingMode.twoWay }) public result: QueryResult | null = null;
 
   private readonly client: QueryClient;

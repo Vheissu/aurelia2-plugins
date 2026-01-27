@@ -3,9 +3,9 @@ import { resolve } from '@aurelia/kernel';
 import type { StorageBackend } from './types';
 import { IStorage, AureliaStorage } from './storage';
 
-@customAttribute('persist')
+@customAttribute({ name: 'persist', defaultProperty: 'key' })
 export class PersistCustomAttribute {
-  @bindable({ primary: true }) public key: string | null = null;
+  @bindable public key: string | null = null;
   @bindable({ mode: BindingMode.twoWay }) public value: unknown = undefined;
   @bindable public storage: StorageBackend | undefined = undefined;
   @bindable public ttl: number | undefined = undefined;

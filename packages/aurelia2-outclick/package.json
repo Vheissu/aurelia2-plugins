@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-outclick",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Aurelia outerclick plugin",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",

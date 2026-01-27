@@ -10,10 +10,10 @@ import { IGooglePlacesConfiguration } from './configure';
 import { IGooglePlacesAPI } from './google-places-api';
 import type { GooglePlacesPlaceChangedDetail } from './types';
 
-@customAttribute('google-places')
+@customAttribute({ name: 'google-places', defaultProperty: 'place' })
 @inject(INode, IGooglePlacesConfiguration, IGooglePlacesAPI, ILogger)
 export class GooglePlaces implements ICustomAttributeViewModel {
-  @bindable({ primary: true, mode: BindingMode.fromView })
+  @bindable({ mode: BindingMode.fromView })
   place: google.maps.places.PlaceResult | null = null;
 
   @bindable options: google.maps.places.AutocompleteOptions = {};

@@ -7,10 +7,10 @@ import type { ValidatorFn } from './validators';
 
 export type ValidateOn = 'change' | 'blur' | 'submit';
 
-@customAttribute('au-field')
+@customAttribute({ name: 'au-field', defaultProperty: 'name' })
 @inject(INode, IContainer)
 export class AuFieldCustomAttribute {
-  @bindable({ primary: true }) public name: string | null = null;
+  @bindable public name: string | null = null;
   @bindable({ mode: BindingMode.twoWay }) public value: unknown = undefined;
   @bindable public validators: ValidatorFn[] = [];
   @bindable public validateOn: ValidateOn = 'submit';
