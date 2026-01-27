@@ -1,0 +1,306 @@
+<template>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: 'Work Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    .page {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem 3rem;
+      display: grid;
+      gap: 1.5rem;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      gap: 1rem;
+    }
+
+    .header h1 {
+      font-size: clamp(1.8rem, 1.3rem + 1.8vw, 2.6rem);
+      margin: 0;
+    }
+
+    .header p {
+      margin: 0;
+      color: #475569;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 300px;
+      gap: 1.5rem;
+      align-items: start;
+    }
+
+    .stage {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .stage__controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .stage__controls button {
+      border: none;
+      background: #0f172a;
+      color: white;
+      padding: 0.6rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+    }
+
+    .stage__controls button.secondary {
+      background: #94a3b8;
+      color: #0f172a;
+    }
+
+    au-aurafall {
+      height: 640px;
+      overflow: auto;
+      border-radius: 18px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+    }
+
+    .card {
+      height: 100%;
+      border-radius: 16px;
+      display: grid;
+      grid-template-rows: minmax(120px, 1fr) auto;
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.08);
+      background: white;
+      animation: aurafallFade 360ms ease-out both;
+    }
+
+    .card__image {
+      width: 100%;
+      height: 100%;
+    }
+
+    .card__body {
+      padding: 0.85rem 1rem 1rem;
+      background: rgba(255, 255, 255, 0.9);
+    }
+
+    .card__title {
+      font-weight: 700;
+      font-size: 1rem;
+    }
+
+    .card__meta {
+      color: #475569;
+      font-size: 0.85rem;
+      margin-top: 0.3rem;
+    }
+
+    @keyframes aurafallFade {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .panel {
+      position: sticky;
+      top: 2rem;
+      align-self: start;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 1rem;
+      display: grid;
+      gap: 1rem;
+      box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+    }
+
+    .panel h2 {
+      font-size: 1.1rem;
+      margin: 0;
+    }
+
+    .field {
+      display: grid;
+      gap: 0.4rem;
+      font-size: 0.9rem;
+    }
+
+    .field label {
+      color: #1e293b;
+      font-weight: 600;
+    }
+
+    .field input[type="number"] {
+      width: 100%;
+      border: 1px solid #cbd5f5;
+      border-radius: 10px;
+      padding: 0.45rem 0.6rem;
+      font-size: 0.9rem;
+    }
+
+    .field input[type="checkbox"] {
+      accent-color: #0f172a;
+    }
+
+    .field__row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+    }
+
+    .metrics {
+      background: #f8fafc;
+      border-radius: 12px;
+      padding: 0.75rem;
+      font-size: 0.85rem;
+      color: #475569;
+      display: grid;
+      gap: 0.3rem;
+    }
+
+    .metrics strong {
+      color: #0f172a;
+    }
+  </style>
+
+  <div class="page">
+    <header class="header">
+      <h1>Au-ra-fall</h1>
+      <p>Virtual waterfall layout for Aurelia 2.</p>
+    </header>
+
+    <div class="layout">
+      <section class="stage">
+        <div class="stage__controls">
+          <button click.trigger="addItems()" disabled.bind="loading">Add items</button>
+          <button class="secondary" click.trigger="shuffle()">Shuffle</button>
+          <button class="secondary" click.trigger="backTop()">Back to top</button>
+        </div>
+
+        <au-aurafall
+          ref="aurafall"
+          items.bind="items"
+          virtual.bind="virtual"
+          enable-cache.bind="enableCache"
+          gap.bind="gap"
+          padding.bind="padding"
+          item-min-width.bind="itemMinWidth"
+          max-column-count.bind="maxColumnCount"
+          min-column-count.bind="minColumnCount"
+          preload-screen-count.bind="preloadScreenCount"
+          calc-item-height.bind="calcItemHeight"
+        >
+          <template au-slot="item">
+            <div class="card" style.bind="cardStyle($host.item)">
+              <div class="card__image" style.bind="cardImageStyle($host.item)"></div>
+              <div class="card__body">
+                <div class="card__title">${$host.item.title}</div>
+                <div class="card__meta">#${$host.index + 1} · ${$host.item.height}px</div>
+              </div>
+            </div>
+          </template>
+        </au-aurafall>
+      </section>
+
+      <aside class="panel">
+        <h2>Controls</h2>
+
+        <div class="field">
+          <label>Gap (px)</label>
+          <input type="number" value.bind="gap" min="0" max="100" step="1" change.trigger="requestFill()">
+        </div>
+
+        <div class="field">
+          <label>Padding (px)</label>
+          <input type="number" value.bind="padding" min="0" max="100" step="1" change.trigger="requestFill()">
+        </div>
+
+        <div class="field">
+          <label>Item min width (px)</label>
+          <input type="number" value.bind="itemMinWidth" min="140" max="600" step="1" change.trigger="requestFill()">
+        </div>
+
+        <div class="field">
+          <label>Columns (min / max)</label>
+          <div class="field__row">
+            <input type="number" value.bind="minColumnCount" min="1" max.bind="maxColumnCount" step="1" change.trigger="requestFill()">
+            <input type="number" value.bind="maxColumnCount" min.bind="minColumnCount" max="10" step="1" change.trigger="requestFill()">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Preload screens (top / bottom)</label>
+          <div class="field__row">
+            <input type="number" value.bind="topPreloadScreenCount" min="0" max="5" step="1" change.trigger="requestFill()">
+            <input type="number" value.bind="bottomPreloadScreenCount" min="0" max="5" step="1" change.trigger="requestFill()">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Bottom distance to load (px)</label>
+          <input type="number" value.bind="bottomDistance" min="0" max="1000" step="10" change.trigger="requestFill()">
+        </div>
+
+        <div class="field">
+          <label>Items per load</label>
+          <input type="number" value.bind="pageSize" min="4" max="60" step="1" change.trigger="requestFill()">
+        </div>
+
+        <div class="field">
+          <label>Load delay (ms)</label>
+          <input type="number" value.bind="loadDelayMs" min="0" max="2000" step="50">
+        </div>
+
+        <div class="field">
+          <label>Max items (0 = ∞)</label>
+          <input type="number" value.bind="maxItems" min="0" max="2000" step="10" change.trigger="requestFill()">
+        </div>
+
+        <div class="field">
+          <label>
+            <input type="checkbox" checked.bind="virtual">
+            Virtual list
+          </label>
+        </div>
+
+        <div class="field">
+          <label>
+            <input type="checkbox" checked.bind="enableCache">
+            Cache layout
+          </label>
+        </div>
+
+        <div class="field">
+          <label>
+            <input type="checkbox" checked.bind="autoLoad">
+            Auto load on scroll
+          </label>
+        </div>
+
+        <div class="metrics">
+          <div>Loaded items: <strong>${items.length}</strong></div>
+          <div>Pages: <strong>${page}</strong></div>
+          <div>Visible items: <strong>${visibleCount}</strong></div>
+          <div>Distance from bottom: <strong>${Math.round(distanceFromBottom)}px</strong></div>
+          <div>Loading: <strong>${loading}</strong></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</template>
