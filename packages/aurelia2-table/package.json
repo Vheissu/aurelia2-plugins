@@ -4,6 +4,10 @@
   "description": "A port of the Aurelia Table plugin to v2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
   "repository": "https://github.com/Vheissu/aurelia2-plugins",
   "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
   "license": "MIT",
