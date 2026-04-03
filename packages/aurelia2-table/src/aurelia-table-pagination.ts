@@ -1,4 +1,4 @@
-import { bindable, BindingMode, ICustomElementViewModel, INode, customElement, inject } from 'aurelia';
+import { bindable, BindingMode, ICustomElementViewModel, customElement } from 'aurelia';
 
 import template from './aurelia-table-pagination.html';
 
@@ -6,7 +6,6 @@ import template from './aurelia-table-pagination.html';
   name: 'aut-pagination',
   template
 })
-@inject(INode)
 export class AutPaginationCustomElement implements ICustomElementViewModel {
     @bindable({mode: BindingMode.twoWay}) currentPage;
     @bindable pageSize;
@@ -23,7 +22,11 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
     totalPages = 1;
     displayPages: { title: string; value: number; }[] = [];
 
-    constructor(private readonly element: HTMLElement) {}
+    private element!: HTMLElement;
+
+    created(controller) {
+      this.element = controller.host as HTMLElement;
+    }
 
     bind() {
         if (this.currentPage === undefined || this.currentPage === null || this.currentPage < 1) {
