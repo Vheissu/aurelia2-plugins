@@ -14,11 +14,11 @@
     "packages/*"
   ],
   "devDependencies": {
-    "@aurelia/ts-jest": "^2.0.0-rc.0",
-    "@aurelia/testing": "^2.0.0-rc.0",
+    "@aurelia/ts-jest": "^2.0.0-rc.1",
+    "@aurelia/testing": "^2.0.0-rc.1",
     "@typescript-eslint/eslint-plugin": "^8.51.0",
     "@typescript-eslint/parser": "^8.51.0",
-    "aurelia": "^2.0.0-rc.0",
+    "aurelia": "^2.0.0-rc.1",
     "cpx2": "^8.0.0",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.2",

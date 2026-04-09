@@ -21,12 +21,12 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@aurelia/i18n": "^2.0.0-rc.0",
-    "aurelia": "^2.0.0-rc.0"
+    "@aurelia/i18n": "^2.0.0-rc.1",
+    "aurelia": "^2.0.0-rc.1"
   },
   "peerDependencies": {
-    "@aurelia/i18n": ">=2.0.0-rc.0",
-    "aurelia": ">=2.0.0-rc.0"
+    "@aurelia/i18n": ">=2.0.0-rc.1",
+    "aurelia": ">=2.0.0-rc.1"
   },
   "peerDependenciesMeta": {
     "@aurelia/i18n": {

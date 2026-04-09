@@ -20,11 +20,11 @@
     "test": "jest"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.0",
+    "aurelia": "^2.0.0-rc.1",
     "chart.js": "^4.4.1"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.0",
+    "aurelia": ">=2.0.0-rc.1",
     "chart.js": "^4.1.1"
   }
 }

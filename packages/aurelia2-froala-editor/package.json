@@ -23,9 +23,9 @@
     "froala-editor": "4.7.1"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.0"
+    "aurelia": "^2.0.0-rc.1"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.0"
+    "aurelia": ">=2.0.0-rc.1"
   }
 }
