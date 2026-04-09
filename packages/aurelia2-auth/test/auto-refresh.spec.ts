@@ -131,10 +131,12 @@ describe('Auto-refresh', () => {
     const spy = jest.spyOn(eventAggregator, 'publish');
 
     jest.advanceTimersByTime(6 * 1000);
-    // Need to flush promises
-    await Promise.resolve();
-    await Promise.resolve();
-    await Promise.resolve();
+    // The timer fires, which calls refreshToken(), which calls http.fetch() (returns rejected-ish),
+    // then .then(status) throws (401 status), then .catch() publishes tokenExpired.
+    // We need to flush the full promise chain.
+    for (let i = 0; i < 10; i++) {
+      await Promise.resolve();
+    }
 
     expect(spy).toHaveBeenCalledWith(AuthEvents.tokenExpired);
 
