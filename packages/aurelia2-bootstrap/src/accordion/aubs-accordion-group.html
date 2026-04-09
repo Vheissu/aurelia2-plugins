@@ -1,7 +1,7 @@
 <template>
-    <div class="accordion-item ${panelClass}">
+    <div class.bind="panelClass ? 'accordion-item ' + panelClass : 'accordion-item'">
         <h2 class="accordion-header">
-            <button class="accordion-button ${isOpen ? '' : 'collapsed'}"
+            <button class.bind="isOpen ? 'accordion-button' : 'accordion-button collapsed'"
                     type="button"
                     click.trigger="toggle()"
                     disabled.bind="disabled"

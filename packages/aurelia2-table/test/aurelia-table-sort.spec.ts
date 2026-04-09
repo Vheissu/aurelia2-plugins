@@ -26,7 +26,7 @@ describe('aurelia2-table sort', () => {
 
     sortViewModel.attached();
 
-    expect(tableViewModel.sortKey).toBeUndefined();
+    expect(tableViewModel.sortKey).toBeNull();
     expect(header.classList.contains('aut-sort')).toBe(false);
 
     sortViewModel.key = 'name';

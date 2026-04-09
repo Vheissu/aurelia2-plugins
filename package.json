@@ -8,7 +8,7 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "lint": "eslint packages/*/src/**/*.ts",
-    "test": "jest --passWithNoTests",
+    "test": "cross-env JEST_PROJECTS=1 jest --config ./jest.projects.cjs --passWithNoTests",
     "release": "node scripts/release.mjs",
     "release:dry-run": "node scripts/release.mjs --dry-run"
   },

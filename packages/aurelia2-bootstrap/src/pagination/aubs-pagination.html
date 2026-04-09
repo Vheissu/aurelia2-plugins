@@ -3,29 +3,29 @@
         <nav hide.bind="hideSinglePage && totalPages === 1">
             <ul class="pagination">
 
-                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}" if.bind="boundaryLinks">
+                <li class.bind="currentPage === 1 ? 'page-item disabled' : 'page-item'" if.bind="boundaryLinks">
                     <a class="page-link" aria-label="First" click.trigger="firstPage()">
                         <span aria-hidden="true" innerhtml.bind="firstText"></span>
                     </a>
                 </li>
 
-                <li class="page-item ${currentPage === 1 ? 'disabled' : ''}" if.bind="directionLinks">
+                <li class.bind="currentPage === 1 ? 'page-item disabled' : 'page-item'" if.bind="directionLinks">
                     <a class="page-link" aria-label="Previous" click.trigger="previousPage()">
                         <span aria-hidden="true" innerhtml.bind="previousText"></span>
                     </a>
                 </li>
 
-                <li repeat.for="page of displayPages" class="page-item ${currentPage === page.value ? 'active' : ''}">
+                <li repeat.for="page of displayPages" class.bind="currentPage === page.value ? 'page-item active' : 'page-item'">
                     <a class="page-link" click.trigger="selectPage(page.value)">${page.title}</a>
                 </li>
 
-                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}" if.bind="directionLinks">
+                <li class.bind="currentPage === totalPages ? 'page-item disabled' : 'page-item'" if.bind="directionLinks">
                     <a class="page-link" aria-label="Next" click.trigger="nextPage()">
                         <span aria-hidden="true" innerhtml.bind="nextText"></span>
                     </a>
                 </li>
 
-                <li class="page-item ${currentPage === totalPages ? 'disabled' : ''}" if.bind="boundaryLinks">
+                <li class.bind="currentPage === totalPages ? 'page-item disabled' : 'page-item'" if.bind="boundaryLinks">
                     <a class="page-link" aria-label="Last" click.trigger="lastPage()">
                         <span aria-hidden="true" innerhtml.bind="lastText"></span>
                     </a>

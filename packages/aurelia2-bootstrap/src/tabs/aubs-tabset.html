@@ -1,6 +1,6 @@
-<ul class="nav ${tabsClass} ${vertical ? 'flex-column' : ''}" role="tablist">
+<ul class.bind="'nav' + (tabsClass ? ' ' + tabsClass : '') + (vertical ? ' flex-column' : '')" role="tablist">
     <li repeat.for="tab of tabs" class="nav-item">
-        <button class="nav-link ${tab.active ? 'active' : ''}"
+        <button class.bind="tab.active ? 'nav-link active' : 'nav-link'"
                 type="button"
                 role="tab"
                 aria-selected.bind="tab.active"

@@ -2,13 +2,11 @@ import {
   inject,
   bindable,
   BindingMode,
-  containerless,
 } from "aurelia";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 import velocity from "velocity-animate";
 import { AubsAccordionCustomElement } from "./aubs-accordion";
 
-@containerless
 @inject(AubsAccordionCustomElement)
 export class AubsAccordionGroupCustomElement {
   @bindable title;
@@ -16,7 +14,7 @@ export class AubsAccordionGroupCustomElement {
   @bindable({ mode: BindingMode.twoWay }) isOpen = false;
   @bindable disabled = false;
 
-  showClass: string = '';
+  showClass: string = 'show';
   accordion: AubsAccordionCustomElement;
   $collapse!: HTMLElement;
   headerButton: HTMLElement | null = null;
@@ -29,8 +27,6 @@ export class AubsAccordionGroupCustomElement {
     if (typeof this.isOpen !== "boolean") {
       this.isOpen = false;
     }
-
-    this.showClass = "show";
   }
 
   attached() {
