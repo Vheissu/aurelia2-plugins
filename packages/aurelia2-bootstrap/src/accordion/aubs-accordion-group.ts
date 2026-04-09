@@ -16,12 +16,12 @@ export class AubsAccordionGroupCustomElement {
   @bindable({ mode: BindingMode.twoWay }) isOpen = false;
   @bindable disabled = false;
 
-  showClass;
-  accordion;
-  $collapse;
-  headerButton;
+  showClass: string = '';
+  accordion: AubsAccordionCustomElement;
+  $collapse!: HTMLElement;
+  headerButton: HTMLElement | null = null;
 
-  constructor(accordion) {
+  constructor(accordion: AubsAccordionCustomElement) {
     this.accordion = accordion;
   }
 

@@ -1,4 +1,4 @@
-import { IContainer, IRegistry, noop } from '@aurelia/kernel';
+import { IContainer, IRegistry } from '@aurelia/kernel';
 import { IFroalaConfig } from './froala-editor-config';
 import { FroalaEditor } from './froala-editor';
 
@@ -7,7 +7,11 @@ const DefaultComponents: IRegistry[] = [
     FroalaEditor as unknown as IRegistry,
 ];
 
-function createConfiguration(options) {
+interface FroalaConfigurationOptions {
+    callback?: (config: IFroalaConfig) => void;
+}
+
+function createConfiguration(options?: FroalaConfigurationOptions) {
     return {
         register(container: IContainer) {
             const configClass = container.get(IFroalaConfig);
@@ -18,10 +22,12 @@ function createConfiguration(options) {
 
             return container.register(...DefaultComponents)
         },
-        configure(options) {
-            return createConfiguration(options);
+        configure(next?: FroalaConfigurationOptions) {
+            return createConfiguration(next);
         }
     };
 }
 
 export const FroalaConfiguration = createConfiguration({});
+export { IFroalaConfig, Config, type FroalaOptions } from './froala-editor-config';
+export { FroalaEditor } from './froala-editor';

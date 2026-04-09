@@ -2,29 +2,43 @@ import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Dropdown } from "bootstrap";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 
+interface DropdownEventCallbackPayload {
+  event: Event;
+}
+
+interface DropdownToggleCallbackPayload {
+  open: boolean;
+  event: Event;
+}
+
 @inject(INode)
 export class AubsDropdownCustomAttribute {
-  @bindable options;
-  @bindable({ mode: BindingMode.twoWay }) isOpen;
+  @bindable options: Record<string, unknown>;
+  @bindable({ mode: BindingMode.twoWay }) isOpen: boolean | undefined;
   @bindable autoClose: string | boolean = bootstrapOptions.dropdownAutoClose;
-  @bindable onShow;
-  @bindable onShown;
-  @bindable onHide;
-  @bindable onHidden;
-  @bindable onToggle;
+  @bindable onShow: ((payload: DropdownEventCallbackPayload) => void) | undefined;
+  @bindable onShown: ((payload: DropdownEventCallbackPayload) => void) | undefined;
+  @bindable onHide: ((payload: DropdownEventCallbackPayload) => void) | undefined;
+  @bindable onHidden: ((payload: DropdownEventCallbackPayload) => void) | undefined;
+  @bindable onToggle: ((payload: DropdownToggleCallbackPayload) => void) | undefined;
 
-  instance;
-  toggleElement;
-  isAttached = false;
-  suppressToggle = false;
-  listeners;
+  private instance: InstanceType<typeof Dropdown> | null = null;
+  private toggleElement: HTMLElement | null = null;
+  private isAttached = false;
+  private suppressToggle = false;
+  private listeners: {
+    show: (event: Event) => void;
+    shown: (event: Event) => void;
+    hide: (event: Event) => void;
+    hidden: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      show: (event) => this.handleShow(event),
-      shown: (event) => this.handleShown(event),
-      hide: (event) => this.handleHide(event),
-      hidden: (event) => this.handleHidden(event),
+      show: (event: Event) => this.handleShow(event),
+      shown: (event: Event) => this.handleShown(event),
+      hide: (event: Event) => this.handleHide(event),
+      hidden: (event: Event) => this.handleHidden(event),
     };
   }
 
@@ -44,6 +58,9 @@ export class AubsDropdownCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.toggleElement = null;
+    this.isAttached = false;
   }
 
   autoCloseChanged() {
@@ -94,21 +111,24 @@ export class AubsDropdownCustomAttribute {
   }
 
   addListeners() {
-    this.toggleElement?.addEventListener("show.bs.dropdown", this.listeners.show);
-    this.toggleElement?.addEventListener("shown.bs.dropdown", this.listeners.shown);
-    this.toggleElement?.addEventListener("hide.bs.dropdown", this.listeners.hide);
-    this.toggleElement?.addEventListener("hidden.bs.dropdown", this.listeners.hidden);
+    if (!this.listeners || !this.toggleElement) return;
+    this.toggleElement.addEventListener("show.bs.dropdown", this.listeners.show);
+    this.toggleElement.addEventListener("shown.bs.dropdown", this.listeners.shown);
+    this.toggleElement.addEventListener("hide.bs.dropdown", this.listeners.hide);
+    this.toggleElement.addEventListener("hidden.bs.dropdown", this.listeners.hidden);
   }
 
   removeListeners() {
-    this.toggleElement?.removeEventListener("show.bs.dropdown", this.listeners.show);
-    this.toggleElement?.removeEventListener("shown.bs.dropdown", this.listeners.shown);
-    this.toggleElement?.removeEventListener("hide.bs.dropdown", this.listeners.hide);
-    this.toggleElement?.removeEventListener("hidden.bs.dropdown", this.listeners.hidden);
+    if (!this.listeners || !this.toggleElement) return;
+    this.toggleElement.removeEventListener("show.bs.dropdown", this.listeners.show);
+    this.toggleElement.removeEventListener("shown.bs.dropdown", this.listeners.shown);
+    this.toggleElement.removeEventListener("hide.bs.dropdown", this.listeners.hide);
+    this.toggleElement.removeEventListener("hidden.bs.dropdown", this.listeners.hidden);
   }
 
   createInstance() {
-    const options = { ...(this.options ?? {}) };
+    if (!this.toggleElement) return;
+    const options = { ...(this.options ?? {}) } as Record<string, unknown>;
     if (options.autoClose === undefined) {
       options.autoClose = this.getAutoCloseMode();
     }
@@ -122,13 +142,13 @@ export class AubsDropdownCustomAttribute {
     this.instance = null;
   }
 
-  handleShow(event) {
+  private handleShow(event: Event) {
     if (typeof this.onShow === "function") {
       this.onShow({ event });
     }
   }
 
-  handleShown(event) {
+  private handleShown(event: Event) {
     this.suppressToggle = true;
     this.isOpen = true;
 
@@ -140,13 +160,13 @@ export class AubsDropdownCustomAttribute {
     }
   }
 
-  handleHide(event) {
+  private handleHide(event: Event) {
     if (typeof this.onHide === "function") {
       this.onHide({ event });
     }
   }
 
-  handleHidden(event) {
+  private handleHidden(event: Event) {
     this.suppressToggle = true;
     this.isOpen = false;
 
@@ -158,7 +178,7 @@ export class AubsDropdownCustomAttribute {
     }
   }
 
-  getToggleElement() {
+  getToggleElement(): HTMLElement {
     if (this.toggleElement) {
       return this.toggleElement;
     }
@@ -182,7 +202,7 @@ export class AubsDropdownCustomAttribute {
     return toggle;
   }
 
-  getAutoCloseMode() {
+  getAutoCloseMode(): boolean | "inside" | "outside" {
     if (this.autoClose === true || this.autoClose === "true" || this.autoClose === "always") {
       return true;
     }

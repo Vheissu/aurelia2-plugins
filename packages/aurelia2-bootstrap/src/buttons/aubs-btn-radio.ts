@@ -5,7 +5,7 @@ export class AubsBtnRadioCustomAttribute {
   @bindable({ mode: BindingMode.twoWay }) model;
   @bindable value;
 
-  clickedListener;
+  private clickedListener: (() => void) | null;
 
   constructor(private element: HTMLButtonElement) {
     if (this.element.tagName !== "BUTTON" && this.element.tagName !== "A") {
@@ -24,12 +24,17 @@ export class AubsBtnRadioCustomAttribute {
   }
 
   attached() {
-    this.element.addEventListener("click", this.clickedListener);
+    if (this.clickedListener) {
+      this.element.addEventListener("click", this.clickedListener);
+    }
     this.setClass();
   }
 
   detached() {
-    this.element.removeEventListener("click", this.clickedListener);
+    if (this.clickedListener) {
+      this.element.removeEventListener("click", this.clickedListener);
+    }
+    this.clickedListener = null;
   }
 
   modelChanged() {

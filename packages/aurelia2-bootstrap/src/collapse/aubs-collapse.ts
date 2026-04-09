@@ -1,26 +1,35 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Collapse } from "bootstrap";
 
+interface CollapseEventCallbackPayload {
+  event: Event;
+}
+
 @inject(INode)
 export class AubsCollapseCustomAttribute {
-  @bindable options;
-  @bindable({ mode: BindingMode.twoWay }) collapsed;
-  @bindable onShow;
-  @bindable onShown;
-  @bindable onHide;
-  @bindable onHidden;
+  @bindable options: Record<string, unknown>;
+  @bindable({ mode: BindingMode.twoWay }) collapsed: boolean | undefined;
+  @bindable onShow: ((payload: CollapseEventCallbackPayload) => void) | undefined;
+  @bindable onShown: ((payload: CollapseEventCallbackPayload) => void) | undefined;
+  @bindable onHide: ((payload: CollapseEventCallbackPayload) => void) | undefined;
+  @bindable onHidden: ((payload: CollapseEventCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressToggle = false;
-  listeners;
+  private instance: InstanceType<typeof Collapse> | null = null;
+  private isAttached = false;
+  private suppressToggle = false;
+  private listeners: {
+    show: (event: Event) => void;
+    shown: (event: Event) => void;
+    hide: (event: Event) => void;
+    hidden: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      show: (event) => this.handleShow(event),
-      shown: (event) => this.handleShown(event),
-      hide: (event) => this.handleHide(event),
-      hidden: (event) => this.handleHidden(event),
+      show: (event: Event) => this.handleShow(event),
+      shown: (event: Event) => this.handleShown(event),
+      hide: (event: Event) => this.handleHide(event),
+      hidden: (event: Event) => this.handleHidden(event),
     };
   }
 
@@ -35,6 +44,8 @@ export class AubsCollapseCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   optionsChanged() {
@@ -73,6 +84,7 @@ export class AubsCollapseCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("show.bs.collapse", this.listeners.show);
     this.element.addEventListener("shown.bs.collapse", this.listeners.shown);
     this.element.addEventListener("hide.bs.collapse", this.listeners.hide);
@@ -80,6 +92,7 @@ export class AubsCollapseCustomAttribute {
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("show.bs.collapse", this.listeners.show);
     this.element.removeEventListener("shown.bs.collapse", this.listeners.shown);
     this.element.removeEventListener("hide.bs.collapse", this.listeners.hide);
@@ -101,13 +114,13 @@ export class AubsCollapseCustomAttribute {
     this.instance = null;
   }
 
-  handleShow(event) {
+  private handleShow(event: Event) {
     if (typeof this.onShow === "function") {
       this.onShow({ event });
     }
   }
 
-  handleShown(event) {
+  private handleShown(event: Event) {
     this.suppressToggle = true;
     this.collapsed = false;
 
@@ -116,13 +129,13 @@ export class AubsCollapseCustomAttribute {
     }
   }
 
-  handleHide(event) {
+  private handleHide(event: Event) {
     if (typeof this.onHide === "function") {
       this.onHide({ event });
     }
   }
 
-  handleHidden(event) {
+  private handleHidden(event: Event) {
     this.suppressToggle = true;
     this.collapsed = true;
 

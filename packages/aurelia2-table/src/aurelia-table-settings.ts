@@ -4,13 +4,13 @@ export class TableSettings {
     @observable pageSize = 10;
     @observable currentPage = 1;
 
-    private getItems;
+    private getItems: (query: any) => Promise<any>;
 
-    totalItems = 0;
-    items;
-    filter;
+    totalItems: number = 0;
+    items: any[] = [];
+    filter: any = null;
 
-    draw = 0;
+    draw: number = 0;
 
     get start() {
         return (this.currentPage - 1) * this.pageSize;
@@ -58,9 +58,9 @@ export class TableSettings {
 }
 
 export class TableResult {
-    draw;
-    totalItems;
-    items;
+    draw: number;
+    totalItems: number;
+    items: any[];
 
     constructor(result) {
         this.draw = result.draw;

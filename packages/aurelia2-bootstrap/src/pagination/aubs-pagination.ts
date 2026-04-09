@@ -2,11 +2,11 @@ import { bindable, BindingMode } from "aurelia";
 import { bootstrapOptions } from "../utils/bootstrap-options";
 
 export class AubsPaginationCustomElement {
-  @bindable({ mode: BindingMode.twoWay }) currentPage;
-  @bindable pageSize;
-  @bindable totalItems;
+  @bindable({ mode: BindingMode.twoWay }) currentPage: number = 1;
+  @bindable pageSize: number = 5;
+  @bindable totalItems: number = 0;
   @bindable hideSinglePage = bootstrapOptions.paginationHideSinglePage;
-  @bindable paginationSize;
+  @bindable paginationSize: number = 0;
   @bindable boundaryLinks = bootstrapOptions.paginationBoundaryLinks;
   @bindable firstText = bootstrapOptions.paginationFirstText;
   @bindable lastText = bootstrapOptions.paginationLastText;
@@ -15,7 +15,7 @@ export class AubsPaginationCustomElement {
   @bindable nextText = bootstrapOptions.paginationNextText;
 
   totalPages = 1;
-  displayPages = [];
+  displayPages: { title: string; value: number }[] = [];
 
   bind() {
     if (
@@ -114,7 +114,7 @@ export class AubsPaginationCustomElement {
     this.displayPages = displayPages;
   }
 
-  selectPage(page) {
+  selectPage(page: number) {
     if (page < 1 || page > this.totalPages || page === this.currentPage) {
       return;
     }

@@ -1,27 +1,38 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Modal } from "bootstrap";
 
+type ModalOptions = ConstructorParameters<typeof Modal>[1];
+
+interface ModalEventCallbackPayload {
+  event: Event;
+}
+
 @inject(INode)
 export class AubsModalCustomAttribute {
-  @bindable options;
+  @bindable options: ModalOptions;
   @bindable({ mode: BindingMode.twoWay }) isOpen = false;
-  @bindable onShow;
-  @bindable onShown;
-  @bindable onHide;
-  @bindable onHidden;
+  @bindable onShow: ((payload: ModalEventCallbackPayload) => void) | undefined;
+  @bindable onShown: ((payload: ModalEventCallbackPayload) => void) | undefined;
+  @bindable onHide: ((payload: ModalEventCallbackPayload) => void) | undefined;
+  @bindable onHidden: ((payload: ModalEventCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressToggle = false;
+  private instance: InstanceType<typeof Modal> | null = null;
+  private isAttached = false;
+  private suppressToggle = false;
 
-  listeners;
+  private listeners: {
+    show: (event: Event) => void;
+    shown: (event: Event) => void;
+    hide: (event: Event) => void;
+    hidden: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      show: (event) => this.handleShow(event),
-      shown: (event) => this.handleShown(event),
-      hide: (event) => this.handleHide(event),
-      hidden: (event) => this.handleHidden(event),
+      show: (event: Event) => this.handleShow(event),
+      shown: (event: Event) => this.handleShown(event),
+      hide: (event: Event) => this.handleHide(event),
+      hidden: (event: Event) => this.handleHidden(event),
     };
   }
 
@@ -38,6 +49,8 @@ export class AubsModalCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   optionsChanged() {
@@ -70,6 +83,7 @@ export class AubsModalCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("show.bs.modal", this.listeners.show);
     this.element.addEventListener("shown.bs.modal", this.listeners.shown);
     this.element.addEventListener("hide.bs.modal", this.listeners.hide);
@@ -77,6 +91,7 @@ export class AubsModalCustomAttribute {
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("show.bs.modal", this.listeners.show);
     this.element.removeEventListener("shown.bs.modal", this.listeners.shown);
     this.element.removeEventListener("hide.bs.modal", this.listeners.hide);
@@ -94,13 +109,13 @@ export class AubsModalCustomAttribute {
     this.instance = null;
   }
 
-  handleShow(event) {
+  private handleShow(event: Event) {
     if (typeof this.onShow === "function") {
       this.onShow({ event });
     }
   }
 
-  handleShown(event) {
+  private handleShown(event: Event) {
     this.suppressToggle = true;
     this.isOpen = true;
 
@@ -109,13 +124,13 @@ export class AubsModalCustomAttribute {
     }
   }
 
-  handleHide(event) {
+  private handleHide(event: Event) {
     if (typeof this.onHide === "function") {
       this.onHide({ event });
     }
   }
 
-  handleHidden(event) {
+  private handleHidden(event: Event) {
     this.suppressToggle = true;
     this.isOpen = false;
 

@@ -112,6 +112,7 @@ export class NotificationService {
     const exit = Math.max(0, this.config.animations.exit);
     if (item.removalTimeoutId) {
       clearTimeout(item.removalTimeoutId);
+      item.removalTimeoutId = null;
     }
 
     if (exit === 0) {
@@ -159,8 +160,7 @@ export class NotificationService {
     const items = this.items.filter((item) => item.position === position && item.state !== 'queued');
 
     return items.sort((a, b) => {
-      if (a.createdAt === b.createdAt) return 0;
-      const comparison = a.createdAt > b.createdAt ? 1 : -1;
+      const comparison = a.createdAt - b.createdAt || a.id.localeCompare(b.id);
       return newestOnTop ? -comparison : comparison;
     });
   }

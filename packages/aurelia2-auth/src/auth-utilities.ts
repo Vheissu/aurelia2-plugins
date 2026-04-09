@@ -32,19 +32,19 @@ function baseExtend(dst, objs, deep) {
   return dst;
 }
 
-export function status(response) {
+export function status(response: Response): Promise<any> {
   if (response.status >= 200 && response.status < 400) {
-    return response.json().catch((error) => null);
+    return response.json().catch(() => ({}));
   }
 
   throw response;
 }
 
-export function isDefined(value) {
+export function isDefined(value: unknown): boolean {
   return typeof value !== "undefined";
 }
 
-export function camelCase(name) {
+export function camelCase(name: string): string {
   return name.replace(
     /([\:\-\_]+(.))/g,
     function (_, separator, letter, offset) {
@@ -53,10 +53,10 @@ export function camelCase(name) {
   );
 }
 
-export function parseQueryString(keyValue) {
+export function parseQueryString(keyValue: string): Record<string, string | boolean> {
   let key;
   let value;
-  let obj = {};
+  let obj: Record<string, string | boolean> = {};
 
   forEach((keyValue || "").split("&"), function (kv) {
     if (kv) {
@@ -69,19 +69,19 @@ export function parseQueryString(keyValue) {
   return obj;
 }
 
-export function isString(value) {
+export function isString(value: unknown): value is string {
   return typeof value === "string";
 }
 
-export function isObject(value) {
+export function isObject(value: unknown): value is Record<string, any> {
   return value !== null && typeof value === "object";
 }
 
-export function isFunction(value) {
+export function isFunction(value: unknown): value is Function {
   return typeof value === "function";
 }
 
-export function joinUrl(baseUrl, url) {
+export function joinUrl(baseUrl: string, url: string): string {
   if (/^(?:[a-z]+:)?\/\//i.test(url)) {
     return url;
   }
@@ -98,13 +98,13 @@ export function joinUrl(baseUrl, url) {
   return normalize(joined);
 }
 
-export function isBlankObject(value) {
+export function isBlankObject(value: unknown): boolean {
   return (
     value !== null && typeof value === "object" && !Object.getPrototypeOf(value)
   );
 }
 
-export function isArrayLike(obj) {
+export function isArrayLike(obj: any): boolean {
   if (obj === null || isWindow(obj)) {
     return false;
   }
@@ -121,7 +121,7 @@ export function isArrayLike(obj) {
   return length >= 0 && Number.isFinite(length) && Math.floor(length) === length;
 }
 
-export function isWindow(obj) {
+export function isWindow(obj: any): boolean {
   return obj && obj.window === obj;
 }
 
@@ -174,8 +174,7 @@ export function forEach(obj, iterator, context?) {
     } else {
       // Slow path for objects which do not have a method `hasOwnProperty`
       for (key in obj) {
-        // @ts-expect-error
-        if (hasOwnProperty.call(obj, key)) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
           iterator.call(context, obj[key], key, obj);
         }
       }

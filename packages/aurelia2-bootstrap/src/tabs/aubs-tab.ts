@@ -4,18 +4,18 @@ import velocity from "velocity-animate";
 
 @inject(AubsTabsetCustomElement, INode)
 export class AubsTabCustomElement {
-  @bindable header;
+  @bindable header: string = '';
   @bindable disabled = false;
-  @bindable onSelect;
-  @bindable onDeselect;
+  @bindable onSelect: ((payload: { index: number }) => void) | undefined;
+  @bindable onDeselect: ((payload: { index: number }) => void) | undefined;
 
-  index;
+  index: number = 0;
   active = false;
 
   private tabset: AubsTabsetCustomElement;
   private element: Element;
 
-  $tabPane;
+  $tabPane: HTMLElement | null = null;
 
   constructor(tabset: AubsTabsetCustomElement, element: HTMLElement) {
     this.tabset = tabset;
@@ -38,7 +38,7 @@ export class AubsTabCustomElement {
     this.tabset.unregisterTab(this);
   }
 
-  handleTabChanged(index) {
+  handleTabChanged(index: number) {
     let isSelected = index === this.index;
 
     if (isSelected === this.active) {

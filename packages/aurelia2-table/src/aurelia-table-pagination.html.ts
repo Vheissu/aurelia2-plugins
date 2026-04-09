@@ -26,7 +26,7 @@ export default `<template>
             </li>
 
             <li class="page-item \${currentPage === totalPages ? 'disabled' : ''}" if.bind="boundaryLinks">
-                <a class="page-link" aria-label="Previous" click.trigger="lastPage()">
+                <a class="page-link" aria-label="Last" click.trigger="lastPage()">
                     <span aria-hidden="true" innerhtml.bind="lastText"></span>
                 </a>
             </li>

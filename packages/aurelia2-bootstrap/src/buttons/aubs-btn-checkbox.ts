@@ -6,7 +6,7 @@ export class AubsBtnCheckboxCustomAttribute {
   @bindable checkedValue;
   @bindable uncheckedValue;
 
-  clickedListener;
+  private clickedListener: (() => void) | null;
 
   constructor(private element: HTMLButtonElement) {
     if (this.element.tagName !== "BUTTON" && this.element.tagName !== "A") {
@@ -36,12 +36,17 @@ export class AubsBtnCheckboxCustomAttribute {
   }
 
   attached() {
-    this.element.addEventListener("click", this.clickedListener);
+    if (this.clickedListener) {
+      this.element.addEventListener("click", this.clickedListener);
+    }
     this.setClass();
   }
 
   detached() {
-    this.element.removeEventListener("click", this.clickedListener);
+    if (this.clickedListener) {
+      this.element.removeEventListener("click", this.clickedListener);
+    }
+    this.clickedListener = null;
   }
 
   stateChanged() {

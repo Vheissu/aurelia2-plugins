@@ -23,7 +23,7 @@ export class TooltipService {
     });
   }
 
-  setTriggers(element, triggers, listeners) {
+  setTriggers(element: Element, triggers: string[], listeners: { in?: EventListener; out?: EventListener; click?: EventListener; outside?: EventListener }) {
     if (!triggers.includes("none")) {
       if (triggers.includes("mouseover") || triggers.includes("hover")) {
         element.addEventListener("mouseover", listeners.in);
@@ -44,7 +44,7 @@ export class TooltipService {
     }
   }
 
-  removeTriggers(element, triggers, listeners) {
+  removeTriggers(element: Element, triggers: string[], listeners: { in?: EventListener; out?: EventListener; click?: EventListener; outside?: EventListener }) {
     if (!triggers.includes("none")) {
       if (triggers.includes("mouseover") || triggers.includes("hover")) {
         element.removeEventListener("mouseover", listeners.in);

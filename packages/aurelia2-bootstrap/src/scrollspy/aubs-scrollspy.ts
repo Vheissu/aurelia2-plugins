@@ -1,20 +1,28 @@
 import { INode, bindable, inject } from "aurelia";
 import { ScrollSpy } from "bootstrap";
 
+type ScrollSpyOptions = ConstructorParameters<typeof ScrollSpy>[1];
+
+interface ScrollSpyEventCallbackPayload {
+  event: Event;
+}
+
 @inject(INode)
 export class AubsScrollspyCustomAttribute {
-  @bindable options;
+  @bindable options: ScrollSpyOptions;
   @bindable enabled = true;
   @bindable refreshTrigger = 0;
-  @bindable onActivate;
+  @bindable onActivate: ((payload: ScrollSpyEventCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  listeners;
+  private instance: InstanceType<typeof ScrollSpy> | null = null;
+  private isAttached = false;
+  private listeners: {
+    activate: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      activate: (event) => this.handleActivate(event),
+      activate: (event: Event) => this.handleActivate(event),
     };
   }
 
@@ -29,6 +37,8 @@ export class AubsScrollspyCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   enabledChanged() {
@@ -61,10 +71,12 @@ export class AubsScrollspyCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("activate.bs.scrollspy", this.listeners.activate);
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("activate.bs.scrollspy", this.listeners.activate);
   }
 
@@ -79,7 +91,7 @@ export class AubsScrollspyCustomAttribute {
     this.instance = null;
   }
 
-  handleActivate(event) {
+  private handleActivate(event: Event) {
     if (typeof this.onActivate === "function") {
       this.onActivate({ event });
     }

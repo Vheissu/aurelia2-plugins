@@ -140,8 +140,12 @@ export const IQueryClient = DI.createInterface<IQueryClient>('IQueryClient', x =
 export interface IQueryClient extends QueryClient {}
 
 function stableStringify(value: unknown): string {
+  if (value === undefined) return 'undefined';
   const seen = new WeakSet<object>();
   return JSON.stringify(value, (_key, val) => {
+    if (typeof val === 'bigint') {
+      return `bigint:${val.toString()}`;
+    }
     if (val && typeof val === 'object') {
       if (seen.has(val as object)) {
         return '[Circular]';
@@ -159,5 +163,5 @@ function stableStringify(value: unknown): string {
       return sorted;
     }
     return val;
-  });
+  }) ?? 'undefined';
 }

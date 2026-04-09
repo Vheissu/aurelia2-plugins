@@ -1,26 +1,35 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Tab } from "bootstrap";
 
+interface TabEventCallbackPayload {
+  event: Event;
+}
+
 @inject(INode)
 export class AubsTabToggleCustomAttribute {
   @bindable({ mode: BindingMode.twoWay }) active = false;
-  @bindable onShow;
-  @bindable onShown;
-  @bindable onHide;
-  @bindable onHidden;
+  @bindable onShow: ((payload: TabEventCallbackPayload) => void) | undefined;
+  @bindable onShown: ((payload: TabEventCallbackPayload) => void) | undefined;
+  @bindable onHide: ((payload: TabEventCallbackPayload) => void) | undefined;
+  @bindable onHidden: ((payload: TabEventCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressActive = false;
-  listeners;
-  clickListener;
+  private instance: InstanceType<typeof Tab> | null = null;
+  private isAttached = false;
+  private suppressActive = false;
+  private listeners: {
+    show: (event: Event) => void;
+    shown: (event: Event) => void;
+    hide: (event: Event) => void;
+    hidden: (event: Event) => void;
+  } | null;
+  private clickListener: ((event: Event) => void) | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      show: (event) => this.handleShow(event),
-      shown: (event) => this.handleShown(event),
-      hide: (event) => this.handleHide(event),
-      hidden: (event) => this.handleHidden(event),
+      show: (event: Event) => this.handleShow(event),
+      shown: (event: Event) => this.handleShown(event),
+      hide: (event: Event) => this.handleHide(event),
+      hidden: (event: Event) => this.handleHidden(event),
     };
     this.clickListener = (event: Event) => this.handleClick(event);
   }
@@ -29,7 +38,9 @@ export class AubsTabToggleCustomAttribute {
     this.createInstance();
     this.addListeners();
     this.isAttached = true;
-    this.element.addEventListener("click", this.clickListener);
+    if (this.clickListener) {
+      this.element.addEventListener("click", this.clickListener);
+    }
 
     if (this.active || this.isActive()) {
       this.instance?.show();
@@ -37,9 +48,14 @@ export class AubsTabToggleCustomAttribute {
   }
 
   detached() {
-    this.element.removeEventListener("click", this.clickListener);
+    if (this.clickListener) {
+      this.element.removeEventListener("click", this.clickListener);
+    }
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.clickListener = null;
+    this.isAttached = false;
   }
 
   activeChanged() {
@@ -54,6 +70,7 @@ export class AubsTabToggleCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("show.bs.tab", this.listeners.show);
     this.element.addEventListener("shown.bs.tab", this.listeners.shown);
     this.element.addEventListener("hide.bs.tab", this.listeners.hide);
@@ -61,6 +78,7 @@ export class AubsTabToggleCustomAttribute {
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("show.bs.tab", this.listeners.show);
     this.element.removeEventListener("shown.bs.tab", this.listeners.shown);
     this.element.removeEventListener("hide.bs.tab", this.listeners.hide);
@@ -91,13 +109,13 @@ export class AubsTabToggleCustomAttribute {
     this.instance?.show();
   }
 
-  handleShow(event) {
+  private handleShow(event: Event) {
     if (typeof this.onShow === "function") {
       this.onShow({ event });
     }
   }
 
-  handleShown(event) {
+  private handleShown(event: Event) {
     this.suppressActive = true;
     this.active = true;
 
@@ -106,13 +124,13 @@ export class AubsTabToggleCustomAttribute {
     }
   }
 
-  handleHide(event) {
+  private handleHide(event: Event) {
     if (typeof this.onHide === "function") {
       this.onHide({ event });
     }
   }
 
-  handleHidden(event) {
+  private handleHidden(event: Event) {
     this.suppressActive = true;
     this.active = false;
 

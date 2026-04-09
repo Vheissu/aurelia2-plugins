@@ -86,13 +86,20 @@ export class IndexedDbStorageDriver implements StorageDriver {
     return new Promise((resolve, reject) => {
       const request = indexedDB.open(this.options.dbName, this.options.version);
       request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains(this.options.storeName)) {
-          db.createObjectStore(this.options.storeName);
+        try {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(this.options.storeName)) {
+            db.createObjectStore(this.options.storeName);
+          }
+        } catch (error) {
+          reject(error);
         }
       };
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
+      request.onblocked = () => reject(new Error(
+        `IndexedDB "${this.options.dbName}" is blocked by another connection. Close other tabs using this database.`
+      ));
     });
   }
 }

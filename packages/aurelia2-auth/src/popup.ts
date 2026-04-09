@@ -57,15 +57,13 @@ export class Popup {
         if (parser.search || parser.hash) {
           let queryParams = parser.search.substring(1).replace(/\/$/, '');
           let hashParams = parser.hash.substring(1).replace(/\/$/, '');
-          let hash = parseQueryString(hashParams);
-          let qs = parseQueryString(queryParams);
-          
+          let hash: Record<string, string | boolean> = parseQueryString(hashParams);
+          let qs: Record<string, string | boolean> = parseQueryString(queryParams);
+
           extend(qs, hash);
 
-          // @ts-expect-error
           if (qs.error) {
             reject({
-              // @ts-expect-error
               error: qs.error,
             });
           } else {

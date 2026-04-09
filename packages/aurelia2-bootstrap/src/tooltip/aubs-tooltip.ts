@@ -1,28 +1,36 @@
 import { bindable, inject, BindingMode, INode } from 'aurelia';
 import {TooltipService} from '../utils/tooltip-service';
 import {bootstrapOptions} from '../utils/bootstrap-options';
+import type { Instance as PopperInstance } from '@popperjs/core';
 import velocity from 'velocity-animate';
+
+interface TooltipListeners {
+    in: () => void;
+    out: () => void;
+    click: () => void;
+    outside: (event: Event) => void;
+}
 
 @inject(INode, TooltipService)
 export class AubsTooltipCustomAttribute {
-    @bindable text;
+    @bindable text: string = '';
     @bindable position = bootstrapOptions.tooltipPosition;
     @bindable disabled = false;
     @bindable({ mode: BindingMode.twoWay }) open = false;
     @bindable trigger = bootstrapOptions.tooltipTrigger;
     @bindable class = bootstrapOptions.tooltipClass;
 
-    triggers = [];
+    triggers: string[] = [];
 
-    validPositions = ['top', 'bottom', 'left', 'right', 'start', 'end'];
-    valuesChanged = false;
-    visible = false;
-    listeners;
-    isAttached = false;
-    tooltip;
-    popper;
-    body;
-    showClass = 'show';
+    private validPositions = ['top', 'bottom', 'left', 'right', 'start', 'end'];
+    private valuesChanged = false;
+    private visible = false;
+    private listeners: TooltipListeners | null;
+    private isAttached = false;
+    private tooltip: HTMLElement | null = null;
+    private popper: PopperInstance | null = null;
+    private body: HTMLElement | null = null;
+    private showClass = 'show';
 
     constructor(private element: HTMLElement, private tooltipService: TooltipService) {
         this.listeners = {
@@ -31,7 +39,7 @@ export class AubsTooltipCustomAttribute {
             click: () => {
                 this.visible ? this.handleHide() : this.handleShow()
             },
-            outside: event => this.handleOutside(event)
+            outside: (event: Event) => this.handleOutside(event)
         };
     }
 
@@ -44,7 +52,9 @@ export class AubsTooltipCustomAttribute {
     }
 
     attached() {
-        this.tooltipService.setTriggers(this.element, this.triggers, this.listeners);
+        if (this.listeners) {
+            this.tooltipService.setTriggers(this.element, this.triggers, this.listeners);
+        }
 
         this.isAttached = true;
         if (this.open) {
@@ -53,15 +63,23 @@ export class AubsTooltipCustomAttribute {
     }
 
     detached() {
-        this.tooltipService.removeTriggers(this.element, this.triggers, this.listeners);
+        if (this.listeners) {
+            this.tooltipService.removeTriggers(this.element, this.triggers, this.listeners);
+        }
 
-        if (this.tooltip) {
+        if (this.tooltip && document.body.contains(this.tooltip)) {
             document.body.removeChild(this.tooltip);
         }
 
         if (this.popper) {
             this.popper.destroy();
         }
+
+        this.tooltip = null;
+        this.popper = null;
+        this.body = null;
+        this.listeners = null;
+        this.isAttached = false;
     }
 
     openChanged() {
@@ -77,10 +95,14 @@ export class AubsTooltipCustomAttribute {
     }
 
     triggerChanged() {
-        this.tooltipService.removeTriggers(this.element, this.triggers, this.listeners);
+        if (this.listeners) {
+            this.tooltipService.removeTriggers(this.element, this.triggers, this.listeners);
+        }
 
         this.triggers = this.trigger.split(' ');
-        this.tooltipService.setTriggers(this.element, this.triggers, this.listeners);
+        if (this.listeners) {
+            this.tooltipService.setTriggers(this.element, this.triggers, this.listeners);
+        }
     }
 
     textChanged() {
@@ -91,7 +113,7 @@ export class AubsTooltipCustomAttribute {
         }
     }
 
-    positionChanged(newValue, oldValue) {
+    positionChanged(newValue: string, oldValue: string) {
         if (!this.validPositions.includes(newValue)) {
             this.position = oldValue;
             return;
@@ -110,13 +132,16 @@ export class AubsTooltipCustomAttribute {
             this.valuesChanged = false;
         }
 
+        if (!this.tooltip) return;
+
         this.tooltip.style.display = 'block';
         void this.popper?.update();
 
-        velocity(this.tooltip, 'stop')
+        const tooltipEl = this.tooltip;
+        velocity(tooltipEl, 'stop')
             .then(() => {
-                velocity(this.tooltip, 'fadeIn').then(() => {
-                    this.tooltip.classList.add(this.showClass);
+                velocity(tooltipEl, 'fadeIn').then(() => {
+                    tooltipEl.classList.add(this.showClass);
                 });
             });
 
@@ -126,13 +151,14 @@ export class AubsTooltipCustomAttribute {
     }
 
     handleHide() {
-        if (!this.visible) {
+        if (!this.visible || !this.tooltip) {
             return;
         }
 
-        velocity(this.tooltip, 'stop').then(() => {
-            velocity(this.tooltip, 'fadeOut').then(() => {
-                this.tooltip.classList.remove(this.showClass);
+        const tooltipEl = this.tooltip;
+        velocity(tooltipEl, 'stop').then(() => {
+            velocity(tooltipEl, 'fadeOut').then(() => {
+                tooltipEl.classList.remove(this.showClass);
             });
         });
 
@@ -140,39 +166,40 @@ export class AubsTooltipCustomAttribute {
         this.open = false;
     }
 
-    handleOutside(event) {
+    handleOutside(event: Event) {
         if (this.element !== event.target) {
             this.handleHide();
         }
     }
 
     createTooltip() {
-        if (this.tooltip) {
+        if (this.tooltip && document.body.contains(this.tooltip)) {
             document.body.removeChild(this.tooltip);
         }
 
-        this.tooltip = document.createElement('div');
-        this.parseClassList().forEach(next => this.tooltip.classList.add(next.trim()));
+        const tooltipEl = document.createElement('div');
+        this.tooltip = tooltipEl;
+        this.parseClassList().forEach(next => tooltipEl.classList.add(next.trim()));
 
-        this.tooltip.classList.add(this.getPlacementClass(this.position));
-        this.tooltip.setAttribute('role', 'tooltip');
+        tooltipEl.classList.add(this.getPlacementClass(this.position));
+        tooltipEl.setAttribute('role', 'tooltip');
 
-        let arrow = document.createElement('div');
+        const arrow = document.createElement('div');
         arrow.classList.add('tooltip-arrow');
-        this.tooltip.appendChild(arrow);
+        tooltipEl.appendChild(arrow);
 
         this.body = document.createElement('div');
         this.body.classList.add('tooltip-inner');
         this.body.innerHTML = this.text;
-        this.tooltip.appendChild(this.body);
+        tooltipEl.appendChild(this.body);
 
-        document.body.appendChild(this.tooltip);
+        document.body.appendChild(tooltipEl);
 
         if (this.popper) {
             this.popper.destroy();
         }
 
-        this.popper = this.tooltipService.createAttachment(this.element, this.tooltip, this.position);
+        this.popper = this.tooltipService.createAttachment(this.element, tooltipEl, this.position);
     }
 
     parseClassList() {

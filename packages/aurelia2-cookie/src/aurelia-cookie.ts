@@ -9,7 +9,7 @@ export interface OptionsInterface {
   path?: string;
   domain?: string;
   secure?: boolean;
-  sameSite?: string;
+  sameSite?: 'Strict' | 'Lax' | 'None';
 }
 
 export class AureliaCookie {
@@ -17,8 +17,8 @@ export class AureliaCookie {
   *
   * Get a cookie by its name
   */
-  public static get(name: string) {
-      let cookies: any = this.all();
+  public static get(name: string): string | null {
+      let cookies: Record<string, string> = this.all();
 
       if (cookies && cookies[name]) {
           return cookies[name];
@@ -30,7 +30,7 @@ export class AureliaCookie {
   /**
   * Set a cookie
   */
-  static set(name: string, value: string, options: OptionsInterface) {
+  static set(name: string, value: string, options: OptionsInterface = {}) {
       let str = `${this.encode(name)}=${this.encode(value)}`;
 
       if (value === null) {
@@ -64,7 +64,7 @@ export class AureliaCookie {
       }
 
       if (options?.sameSite) {
-          str += `; samesite=${options.sameSite}`;
+          str += `; SameSite=${options.sameSite}`;
       }
 
       document.cookie = str;
@@ -74,7 +74,7 @@ export class AureliaCookie {
   * Deletes a cookie by setting its expiry date in the past
   */
   static delete(name: string, domain?: string, path?: string) {
-      let cookieString = `${name} =;expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+      let cookieString = `${name}=;expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
 
       if (domain) {
           cookieString += `; domain=${domain}`;
@@ -90,14 +90,14 @@ export class AureliaCookie {
   /**
   * Get all set cookies and return an array
   */
-  static all() {
+  static all(): Record<string, string> {
       return this.parse(document.cookie);
   }
 
-  static parse(str: string) {
-      let obj: any = {};
-      let pairs: any = str.split(/ *; */);
-      let pair: any;
+  static parse(str: string): Record<string, string> {
+      let obj: Record<string, string> = {};
+      let pairs: string[] = str.split(/ *; */);
+      let pair: string[];
 
       if (pairs[0] === '') {
           return obj;
@@ -105,7 +105,11 @@ export class AureliaCookie {
 
       for (let i = 0; i < pairs.length; ++i) {
           pair = pairs[i].split('=');
-          obj[this.decode(pair[0])] = this.decode(pair[1]);
+          const key = this.decode(pair[0]);
+          const value = pair[1] !== undefined ? this.decode(pair[1]) : null;
+          if (key !== null) {
+              obj[key] = value ?? '';
+          }
       }
 
       return obj;
@@ -119,7 +123,7 @@ export class AureliaCookie {
       }
   }
 
-  static decode(value: string): any {
+  static decode(value: string): string | null {
       try {
           return decodeURIComponent(value);
       } catch (e) {

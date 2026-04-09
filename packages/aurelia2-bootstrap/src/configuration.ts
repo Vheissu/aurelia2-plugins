@@ -47,19 +47,23 @@ export const DefaultComponents: IRegistry[] = [
     BootstrapConfig as unknown as IRegistry,
 ];
 
-function createBootstrapConfiguration(options) {
+interface BootstrapConfigurationOptions {
+    callback?: (config: BootstrapConfig) => void;
+}
+
+function createBootstrapConfiguration(options: BootstrapConfigurationOptions) {
     return {
         register(container: IContainer) {
             if (options?.callback) {
-                let config = new BootstrapConfig();
-                
+                const config = new BootstrapConfig();
+
                 options.callback(config);
             }
 
             return container.register(...DefaultComponents)
         },
-        configure(options) {
-            return createBootstrapConfiguration(options);
+        configure(configureOptions: BootstrapConfigurationOptions) {
+            return createBootstrapConfiguration(configureOptions);
         }
     };
 }

@@ -108,69 +108,69 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
         this.displayPages = displayPages;
     }
 
-  limitVisiblePages() {
-    let displayPages: { title: string; value: number; }[] = [];
+    limitVisiblePages() {
+        let displayPages: { title: string; value: number; }[] = [];
 
-    let totalTiers = Math.ceil(this.totalPages / this.paginationSize);
+        let totalTiers = Math.ceil(this.totalPages / this.paginationSize);
 
-    let activeTier = Math.ceil(this.currentPage / this.paginationSize);
+        let activeTier = Math.ceil(this.currentPage / this.paginationSize);
 
-    let start = ((activeTier - 1) * this.paginationSize) + 1;
-    let end = start + this.paginationSize;
+        let start = ((activeTier - 1) * this.paginationSize) + 1;
+        let end = start + this.paginationSize;
 
-    if (activeTier > 1) {
-      displayPages.push({
-        title: '...',
-        value: start - 1
-      });
+        if (activeTier > 1) {
+            displayPages.push({
+                title: '...',
+                value: start - 1
+            });
+        }
+
+        for (let i = start; i < end; i++) {
+            if (i > this.totalPages) {
+                break;
+            }
+
+            displayPages.push({
+                title: i.toString(),
+                value: i
+            });
+        }
+
+        if (activeTier < totalTiers) {
+            displayPages.push({
+                title: '...',
+                value: end
+            });
+        }
+
+        this.displayPages = displayPages;
     }
 
-    for (let i = start; i < end; i++) {
-      if (i > this.totalPages) {
-        break;
-      }
+    selectPage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) {
+            return;
+        }
 
-      displayPages.push({
-        title: i.toString(),
-        value: i
-      });
+        this.currentPage = page;
     }
 
-    if (activeTier < totalTiers) {
-      displayPages.push({
-        title: '...',
-        value: end
-      });
+    nextPage() {
+        if (this.currentPage < this.totalPages) {
+            this.currentPage++;
+        }
     }
 
-    this.displayPages = displayPages;
-  }
-
-  selectPage(page) {
-    if (page < 1 || page > this.totalPages || page === this.currentPage) {
-      return;
+    previousPage() {
+        if (this.currentPage > 1) {
+            this.currentPage--;
+        }
     }
 
-    this.currentPage = page;
-  }
-
-  nextPage() {
-    if (this.currentPage < this.totalPages) {
-      this.currentPage++;
+    firstPage() {
+        this.currentPage = 1;
     }
-  }
 
-  previousPage() {
-    if (this.currentPage > 1) {
-      this.currentPage--;
+    lastPage() {
+        this.currentPage = this.totalPages;
     }
-  }
-
-  firstPage() {
-    this.currentPage = 1;
-  }
-
-  lastPage() {
-    this.currentPage = this.totalPages;
-  }
 }

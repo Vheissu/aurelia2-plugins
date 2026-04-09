@@ -57,6 +57,54 @@ export class GoogleMaps implements ICustomElementViewModel {
   public _renderedPolygons: google.maps.Polygon[] = [];
   public _polygonsSubscription: any = null;
 
+  /** Bound element event handlers for proper cleanup */
+  private _onStartMarkerHighlight = (data: Event) => {
+    const detail = (data as CustomEvent).detail;
+    const marker = this._renderedMarkers[detail.index];
+    if (!marker) return;
+    const custom = (marker as any)?.custom;
+    if (custom?.altIcon) {
+      marker.setIcon(custom.altIcon);
+    }
+    marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);
+  };
+
+  private _onStopMarkerHighlight = (data: Event) => {
+    const detail = (data as CustomEvent).detail;
+    const marker = this._renderedMarkers[detail.index];
+    if (!marker) return;
+    const custom = (marker as any)?.custom;
+    if (custom?.defaultIcon) {
+      marker.setIcon(custom.defaultIcon);
+    }
+  };
+
+  private _onPanToMarker = (data: Event) => {
+    const detail = (data as CustomEvent).detail;
+    const marker = this._renderedMarkers[detail.index];
+    if (!marker) return;
+    const position = marker.getPosition();
+    if (position) {
+      this.map?.panTo(position);
+      this.map?.setZoom(17);
+    }
+  };
+
+  private _onClearMarkers = () => {
+    this.clearMarkers();
+  };
+
+  private _onDragStart = (evt: Event) => {
+    evt.preventDefault();
+  };
+
+  private _onZoomToBounds = () => {
+    this.zoomToMarkerBounds(true);
+  };
+
+  /** Google Maps event listeners for cleanup */
+  private _mapListeners: google.maps.MapsEventListener[] = [];
+
   constructor(
     readonly element: HTMLElement,
     readonly config: IGoogleMapsConfiguration,
@@ -80,11 +128,10 @@ export class GoogleMaps implements ICustomElementViewModel {
     this.markerClustering.loadScript();
     this._scriptPromise = this.googleMapsApi.getMapsInstance();
 
-    let self: GoogleMaps = this;
     this._mapPromise = this._scriptPromise.then(() => {
       return new Promise<void>((resolve) => {
         // Register the the resolve method for _mapPromise
-        self._mapResolve = resolve;
+        this._mapResolve = resolve;
       });
     });
 
@@ -93,36 +140,23 @@ export class GoogleMaps implements ICustomElementViewModel {
      */
     this.element.addEventListener(
       Events.START_MARKER_HIGHLIGHT,
-      (data: any) => {
-        const marker = self._renderedMarkers[data.detail.index];
-        const custom = (marker as any)?.custom;
-        if (custom?.altIcon) {
-          marker.setIcon(custom.altIcon);
-        }
-        marker.setZIndex(google.maps.Marker.MAX_ZINDEX + 1);
-      }
+      this._onStartMarkerHighlight
     );
 
-    this.element.addEventListener(Events.STOP_MARKER_HIGHLIGHT, (data: any) => {
-      const marker = self._renderedMarkers[data.detail.index];
-      const custom = (marker as any)?.custom;
-      if (custom?.defaultIcon) {
-        marker.setIcon(custom.defaultIcon);
-      }
-    });
+    this.element.addEventListener(
+      Events.STOP_MARKER_HIGHLIGHT,
+      this._onStopMarkerHighlight
+    );
 
-    this.element.addEventListener(Events.PAN_TO_MARKER, (data: any) => {
-      const marker = self._renderedMarkers[data.detail.index];
-      const position = marker.getPosition();
-      if (position) {
-        self.map?.panTo(position);
-        self.map?.setZoom(17);
-      }
-    });
+    this.element.addEventListener(
+      Events.PAN_TO_MARKER,
+      this._onPanToMarker
+    );
 
-    this.element.addEventListener(Events.CLEAR_MARKERS, () => {
-      this.clearMarkers();
-    });
+    this.element.addEventListener(
+      Events.CLEAR_MARKERS,
+      this._onClearMarkers
+    );
   }
 
   bound() {
@@ -147,18 +181,13 @@ export class GoogleMaps implements ICustomElementViewModel {
   }
 
   attached() {
-    this.element.addEventListener("dragstart", (evt) => {
-      evt.preventDefault();
-    });
-
-    this.element.addEventListener("zoom_to_bounds", () => {
-      this.zoomToMarkerBounds(true);
-    });
+    this.element.addEventListener("dragstart", this._onDragStart);
+    this.element.addEventListener("zoom_to_bounds", this._onZoomToBounds);
 
     this._scriptPromise?.then(() => {
       let latLng = new google.maps.LatLng(
-        parseFloat(<any>this.latitude),
-        parseFloat(<any>this.longitude)
+        parseFloat(this.latitude as unknown as string),
+        parseFloat(this.longitude as unknown as string)
       );
       let mapTypeId = this.getMapTypeId();
 
@@ -168,7 +197,7 @@ export class GoogleMaps implements ICustomElementViewModel {
         this.config.get("options"),
         {
           center: latLng,
-          zoom: parseInt(<any>this.zoom, 10),
+          zoom: parseInt(this.zoom as unknown as string, 10),
           disableDefaultUI: this.disableDefaultUi,
           mapTypeId: mapTypeId,
         }
@@ -179,44 +208,82 @@ export class GoogleMaps implements ICustomElementViewModel {
       this._mapResolve?.();
 
       // Add event listener for click event
-      this.map.addListener("click", (e: google.maps.MapMouseEvent) => {
-        this.emitEvent(
-          { type: Events.MAPCLICK, event: e },
-          Events.MAPCLICK,
-          e
-        );
-
-        // If there is an infoWindow open, close it
-        if (!this.autoInfoWindow) return;
-
-        if (this._currentInfoWindow) {
-          this._currentInfoWindow.close();
-
-          // Dispatch and event that the info window has been closed
+      this._mapListeners.push(
+        this.map.addListener("click", (e: google.maps.MapMouseEvent) => {
           this.emitEvent(
-            {
-              type: Events.INFOWINDOWCLOSE,
-              infoWindow: this._currentInfoWindow,
-            },
-            Events.INFOWINDOWCLOSE,
-            { infoWindow: this._currentInfoWindow }
+            { type: Events.MAPCLICK, event: e },
+            Events.MAPCLICK,
+            e
           );
-        }
-      });
+
+          // If there is an infoWindow open, close it
+          if (!this.autoInfoWindow) return;
+
+          if (this._currentInfoWindow) {
+            this._currentInfoWindow.close();
+
+            // Dispatch and event that the info window has been closed
+            this.emitEvent(
+              {
+                type: Events.INFOWINDOWCLOSE,
+                infoWindow: this._currentInfoWindow,
+              },
+              Events.INFOWINDOWCLOSE,
+              { infoWindow: this._currentInfoWindow }
+            );
+          }
+        })
+      );
 
       /**
        * As a proxy for the very noisy bounds_changed event, we'll
        * listen to these two instead:
        *
        * dragend */
-      this.map.addListener("dragend", () => {
-        this.sendBoundsEvent();
-      });
+      this._mapListeners.push(
+        this.map.addListener("dragend", () => {
+          this.sendBoundsEvent();
+        })
+      );
       /* zoom_changed */
-      this.map.addListener("zoom_changed", () => {
-        this.sendBoundsEvent();
-      });
+      this._mapListeners.push(
+        this.map.addListener("zoom_changed", () => {
+          this.sendBoundsEvent();
+        })
+      );
     });
+  }
+
+  detaching() {
+    // Remove element event listeners
+    this.element.removeEventListener(Events.START_MARKER_HIGHLIGHT, this._onStartMarkerHighlight);
+    this.element.removeEventListener(Events.STOP_MARKER_HIGHLIGHT, this._onStopMarkerHighlight);
+    this.element.removeEventListener(Events.PAN_TO_MARKER, this._onPanToMarker);
+    this.element.removeEventListener(Events.CLEAR_MARKERS, this._onClearMarkers);
+    this.element.removeEventListener("dragstart", this._onDragStart);
+    this.element.removeEventListener("zoom_to_bounds", this._onZoomToBounds);
+
+    // Remove Google Maps event listeners
+    for (const listener of this._mapListeners) {
+      listener.remove();
+    }
+    this._mapListeners = [];
+
+    // Clean up markers and polygons
+    this.clearMarkers();
+    for (const polygon of this._renderedPolygons) {
+      polygon.setMap(null);
+    }
+    this._renderedPolygons = [];
+
+    // Destroy drawing manager
+    this.destroyDrawingManager();
+
+    // Close any open info window
+    this._currentInfoWindow?.close();
+    this._currentInfoWindow = null;
+
+    this.map = null;
   }
 
   /**
@@ -485,7 +552,7 @@ export class GoogleMaps implements ICustomElementViewModel {
 
   setCenter(latLong: google.maps.LatLng | google.maps.LatLngLiteral) {
     if (latLong) {
-      this._mapPromise.then(() => {
+      this._mapPromise?.then(() => {
         if (!this.map) {
           return;
         }
@@ -497,12 +564,12 @@ export class GoogleMaps implements ICustomElementViewModel {
 
   updateCenter() {
     if (this.latitude && this.longitude) {
-      this._mapPromise.then(() => {
+      this._mapPromise?.then(() => {
         let latLng = new google.maps.LatLng(
-          parseFloat(<any>this.latitude),
-          parseFloat(<any>this.longitude)
+          parseFloat(this.latitude as unknown as string),
+          parseFloat(this.longitude as unknown as string)
         );
-  
+
         if (latLng) {
           this.setCenter(latLng);
         }
@@ -511,7 +578,7 @@ export class GoogleMaps implements ICustomElementViewModel {
   }
 
   latitudeChanged() {
-    this._mapPromise.then(() => {
+    this._mapPromise?.then(() => {
       queueTask(() => {
         this.updateCenter();
       });
@@ -519,17 +586,17 @@ export class GoogleMaps implements ICustomElementViewModel {
   }
 
   longitudeChanged() {
-    this._mapPromise.then(() => {
+    this._mapPromise?.then(() => {
       queueTask(() => {
         this.updateCenter();
       });
     });
   }
 
-  zoomChanged(newValue: any) {
-    this._mapPromise.then(() => {
+  zoomChanged(newValue: number | string) {
+    this._mapPromise?.then(() => {
       queueTask(() => {
-        let zoomValue = parseInt(newValue, 10);
+        let zoomValue = parseInt(newValue as string, 10);
         this.map?.setZoom(zoomValue);
       });
     });
@@ -580,16 +647,12 @@ export class GoogleMaps implements ICustomElementViewModel {
   }
 
   zoomToMarkerBounds(force = false) {
-    if (typeof force === "undefined") {
-      force = false;
-    }
-
     // Unless forced, if there's no markers, or not auto update bounds
-    if (!force && (!this._renderedMarkers || !this.autoUpdateBounds)) {
+    if (!force && (!this._renderedMarkers.length || !this.autoUpdateBounds)) {
       return;
     }
 
-    this._mapPromise.then(() => {
+    this._mapPromise?.then(() => {
       let bounds = new google.maps.LatLngBounds();
 
       for (let marker of this._renderedMarkers) {

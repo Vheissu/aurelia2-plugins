@@ -13,10 +13,10 @@ export interface IAuthentication extends Authentication {}
 
 @inject(IStorage, IAuthOptions, optional(IWindow))
 export class Authentication {
-  private tokenName;
-  private idTokenName;
-  private refreshTokenName;
-  private initialUrl;
+  private tokenName: string;
+  private idTokenName: string;
+  private refreshTokenName: string;
+  private initialUrl: string | undefined;
 
   constructor(
     readonly storage: IStorage,
@@ -84,7 +84,7 @@ export class Authentication {
     return this.decomposeToken(token);
   }
 
-  decomposeToken(token) {
+  decomposeToken(token: string | null): any {
     if (!token || token.split('.').length !== 3) {
       return null;
     }
@@ -121,11 +121,11 @@ export class Authentication {
     return null;
   }
 
-  setInitialUrl(url) {
+  setInitialUrl(url: string) {
     this.initialUrl = url;
   }
 
-  setToken(response, redirect?) {
+  setToken(response: any, redirect?: string) {
     const tokenName = this.config.tokenName ?? 'token';
     const idTokenName = this.config.idTokenName ?? 'id_token';
     const refreshTokenName = this.config.refreshTokenName ?? 'refresh_token';
@@ -267,7 +267,7 @@ export class Authentication {
     return true;
   }
 
-  logout(redirect): Promise<void> {
+  logout(redirect?: string): Promise<void> {
     return new Promise((resolve) => {
       this.clearTokens();
 

@@ -1,26 +1,37 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Offcanvas } from "bootstrap";
 
+type OffcanvasOptions = ConstructorParameters<typeof Offcanvas>[1];
+
+interface OffcanvasEventCallbackPayload {
+  event: Event;
+}
+
 @inject(INode)
 export class AubsOffcanvasCustomAttribute {
-  @bindable options;
+  @bindable options: OffcanvasOptions;
   @bindable({ mode: BindingMode.twoWay }) isOpen = false;
-  @bindable onShow;
-  @bindable onShown;
-  @bindable onHide;
-  @bindable onHidden;
+  @bindable onShow: ((payload: OffcanvasEventCallbackPayload) => void) | undefined;
+  @bindable onShown: ((payload: OffcanvasEventCallbackPayload) => void) | undefined;
+  @bindable onHide: ((payload: OffcanvasEventCallbackPayload) => void) | undefined;
+  @bindable onHidden: ((payload: OffcanvasEventCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressToggle = false;
-  listeners;
+  private instance: InstanceType<typeof Offcanvas> | null = null;
+  private isAttached = false;
+  private suppressToggle = false;
+  private listeners: {
+    show: (event: Event) => void;
+    shown: (event: Event) => void;
+    hide: (event: Event) => void;
+    hidden: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      show: (event) => this.handleShow(event),
-      shown: (event) => this.handleShown(event),
-      hide: (event) => this.handleHide(event),
-      hidden: (event) => this.handleHidden(event),
+      show: (event: Event) => this.handleShow(event),
+      shown: (event: Event) => this.handleShown(event),
+      hide: (event: Event) => this.handleHide(event),
+      hidden: (event: Event) => this.handleHidden(event),
     };
   }
 
@@ -37,6 +48,8 @@ export class AubsOffcanvasCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   optionsChanged() {
@@ -69,6 +82,7 @@ export class AubsOffcanvasCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("show.bs.offcanvas", this.listeners.show);
     this.element.addEventListener("shown.bs.offcanvas", this.listeners.shown);
     this.element.addEventListener("hide.bs.offcanvas", this.listeners.hide);
@@ -76,6 +90,7 @@ export class AubsOffcanvasCustomAttribute {
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("show.bs.offcanvas", this.listeners.show);
     this.element.removeEventListener("shown.bs.offcanvas", this.listeners.shown);
     this.element.removeEventListener("hide.bs.offcanvas", this.listeners.hide);
@@ -93,13 +108,13 @@ export class AubsOffcanvasCustomAttribute {
     this.instance = null;
   }
 
-  handleShow(event) {
+  private handleShow(event: Event) {
     if (typeof this.onShow === "function") {
       this.onShow({ event });
     }
   }
 
-  handleShown(event) {
+  private handleShown(event: Event) {
     this.suppressToggle = true;
     this.isOpen = true;
 
@@ -108,13 +123,13 @@ export class AubsOffcanvasCustomAttribute {
     }
   }
 
-  handleHide(event) {
+  private handleHide(event: Event) {
     if (typeof this.onHide === "function") {
       this.onHide({ event });
     }
   }
 
-  handleHidden(event) {
+  private handleHidden(event: Event) {
     this.suppressToggle = true;
     this.isOpen = false;
 

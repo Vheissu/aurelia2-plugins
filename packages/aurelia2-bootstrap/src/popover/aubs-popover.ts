@@ -1,48 +1,58 @@
 import { bindable, BindingMode, INode, inject } from "aurelia";
 import { ITooltipService } from "../utils/tooltip-service";
 import { bootstrapOptions } from "../utils/bootstrap-options";
+import type { Instance as PopperInstance } from "@popperjs/core";
 import velocity from "velocity-animate";
+
+interface PopoverListeners {
+  in: () => void;
+  out: () => void;
+  click: () => void;
+  outside: (event: Event) => void;
+}
+
+interface PopoverToggleCallbackPayload {
+  open: boolean;
+}
 
 @inject(INode, ITooltipService)
 export class AubsPopoverCustomAttribute {
-  @bindable title;
-  @bindable body;
+  @bindable title: string = '';
+  @bindable body: string = '';
   @bindable position = bootstrapOptions.popoverPosition;
   @bindable disabled = false;
   @bindable({ mode: BindingMode.twoWay }) isOpen = false;
   @bindable trigger = bootstrapOptions.popoverTrigger;
-  @bindable customPopover;
-  @bindable onToggle;
+  @bindable customPopover: HTMLElement | null = null;
+  @bindable onToggle: ((payload: PopoverToggleCallbackPayload) => void) | undefined;
 
-  triggers = [];
+  triggers: string[] = [];
 
-  validPositions = ["top", "bottom", "left", "right", "start", "end"];
-  valuesChanged = false;
-  visible = false;
-  listeners;
-  isAttached = false;
+  private validPositions = ["top", "bottom", "left", "right", "start", "end"];
+  private valuesChanged = false;
+  private visible = false;
+  private listeners: PopoverListeners | null;
+  private isAttached = false;
 
-  popover;
-  popper;
-  titleElement;
-  bodyElement;
-  oldPosition;
+  private popover: HTMLElement | null = null;
+  private popper: PopperInstance | null = null;
+  private titleElement: HTMLElement | null = null;
+  private bodyElement: HTMLElement | null = null;
+  private oldPosition: string | null = null;
 
-  showClass = "show";
+  private showClass = "show";
 
   constructor(
     private element: HTMLElement,
     private tooltipService: ITooltipService
   ) {
-    this.element = element;
-
     this.listeners = {
       in: () => this.handleShow(),
       out: () => this.handleHide(),
       click: () => {
         this.visible ? this.handleHide() : this.handleShow();
       },
-      outside: (event) => this.handleOutside(event),
+      outside: (event: Event) => this.handleOutside(event),
     };
   }
 
@@ -57,11 +67,13 @@ export class AubsPopoverCustomAttribute {
   }
 
   attached() {
-    this.tooltipService.setTriggers(
-      this.element,
-      this.triggers,
-      this.listeners
-    );
+    if (this.listeners) {
+      this.tooltipService.setTriggers(
+        this.element,
+        this.triggers,
+        this.listeners
+      );
+    }
 
     if (this.customPopover) {
       this.customPopover.style.display = "none";
@@ -74,11 +86,13 @@ export class AubsPopoverCustomAttribute {
   }
 
   detached() {
-    this.tooltipService.removeTriggers(
-      this.element,
-      this.triggers,
-      this.listeners
-    );
+    if (this.listeners) {
+      this.tooltipService.removeTriggers(
+        this.element,
+        this.triggers,
+        this.listeners
+      );
+    }
 
     if (this.popover && document.body.contains(this.popover)) {
       if (!this.customPopover) {
@@ -91,6 +105,13 @@ export class AubsPopoverCustomAttribute {
     if (this.popper) {
       this.popper.destroy();
     }
+
+    this.popover = null;
+    this.popper = null;
+    this.titleElement = null;
+    this.bodyElement = null;
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   isOpenChanged() {
@@ -121,7 +142,7 @@ export class AubsPopoverCustomAttribute {
     }
   }
 
-  positionChanged(newValue, oldValue) {
+  positionChanged(newValue: string, oldValue: string) {
     if (!this.validPositions.includes(newValue)) {
       this.position = oldValue;
       return;
@@ -131,19 +152,23 @@ export class AubsPopoverCustomAttribute {
     this.valuesChanged = true;
   }
 
-  triggerChanged(newValue, oldValue) {
-    this.tooltipService.removeTriggers(
-      this.element,
-      this.triggers,
-      this.listeners
-    );
+  triggerChanged(_newValue: string, _oldValue: string) {
+    if (this.listeners) {
+      this.tooltipService.removeTriggers(
+        this.element,
+        this.triggers,
+        this.listeners
+      );
+    }
 
     this.triggers = this.trigger.split(" ");
-    this.tooltipService.setTriggers(
-      this.element,
-      this.triggers,
-      this.listeners
-    );
+    if (this.listeners) {
+      this.tooltipService.setTriggers(
+        this.element,
+        this.triggers,
+        this.listeners
+      );
+    }
   }
 
   handleShow() {
@@ -155,6 +180,8 @@ export class AubsPopoverCustomAttribute {
       this.createPopover();
       this.valuesChanged = false;
     }
+
+    if (!this.popover) return;
 
     if (this.customPopover) {
       if (this.popper) {
@@ -171,9 +198,10 @@ export class AubsPopoverCustomAttribute {
     this.popover.style.display = "block";
     void this.popper?.update();
 
-    velocity(this.popover, "stop").then(() => {
-      velocity(this.popover, "fadeIn").then(() => {
-        this.popover.classList.add(this.showClass);
+    const popoverEl = this.popover;
+    velocity(popoverEl, "stop").then(() => {
+      velocity(popoverEl, "fadeIn").then(() => {
+        popoverEl.classList.add(this.showClass);
 
         if (typeof this.onToggle === "function") {
           this.onToggle({ open: true });
@@ -186,13 +214,14 @@ export class AubsPopoverCustomAttribute {
   }
 
   handleHide() {
-    if (!this.visible) {
+    if (!this.visible || !this.popover) {
       return;
     }
 
-    velocity(this.popover, "stop").then(() => {
-      velocity(this.popover, "fadeOut").then(() => {
-        this.popover.classList.remove(this.showClass);
+    const popoverEl = this.popover;
+    velocity(popoverEl, "stop").then(() => {
+      velocity(popoverEl, "fadeOut").then(() => {
+        popoverEl.classList.remove(this.showClass);
 
         if (typeof this.onToggle === "function") {
           this.onToggle({ open: false });
@@ -204,17 +233,18 @@ export class AubsPopoverCustomAttribute {
     this.isOpen = false;
   }
 
-  handleOutside(event) {
+  handleOutside(event: Event) {
     if (!this.visible) {
       return;
     }
 
-    if (this.element !== event.target && !this.popover.contains(event.target)) {
+    const target = event.target as Node;
+    if (this.element !== target && !this.popover?.contains(target)) {
       this.handleHide();
     }
   }
 
-  getPositionClass(position) {
+  getPositionClass(position: string) {
     if (position === "left" || position === "start") {
       return "bs-popover-start";
     }
@@ -245,7 +275,7 @@ export class AubsPopoverCustomAttribute {
         this.popover.appendChild(arrow);
       }
     } else {
-      if (this.popover) {
+      if (this.popover && document.body.contains(this.popover)) {
         document.body.removeChild(this.popover);
       }
 

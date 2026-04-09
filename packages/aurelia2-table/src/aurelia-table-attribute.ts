@@ -17,12 +17,12 @@ export class AureliaTableCustomAttribute {
 
     isAttached = false;
 
-    sortKey;
-    sortOrder;
+    sortKey: string | ((item: any, order: number) => any) | null = null;
+    sortOrder: number = 0;
     sortChangedListeners: any[] = [];
     beforePagination: any[] = [];
 
-    private customSort;
+    private customSort: ((a: any, b: any, order: number) => number) | null = null;
 
     bind() {
         this.api = {
@@ -64,12 +64,12 @@ export class AureliaTableCustomAttribute {
      * Copies the data into the display data
      */
     getDataCopy() {
-        return [].concat(this.data);
+        return [...this.data];
     }
 
     getPageData(localData) {
         if (this.hasPagination()) {
-            this.beforePagination = [].concat(localData);
+            this.beforePagination = [...localData];
             return this.doPaginate(localData);
         }
         
@@ -99,7 +99,7 @@ export class AureliaTableCustomAttribute {
         this.displayData = this.getPageData(localData);
     }
 
-    doFilter(toFilter) {
+    doFilter(toFilter: any[]) {
         let filteredData: any[] = [];
 
         for (let item of toFilter) {
@@ -120,7 +120,7 @@ export class AureliaTableCustomAttribute {
         return filteredData;
     }
 
-    passFilter(item, filter) {
+    passFilter(item: any, filter: any) {
         if (typeof filter.custom === 'function' && !filter.custom(filter.value, item)) {
             return false;
         }
@@ -143,7 +143,7 @@ export class AureliaTableCustomAttribute {
         return false;
     }
 
-    doSort(toSort) {
+    doSort(toSort: any[]) {
         toSort.sort((a, b) => {
             if (typeof this.customSort === 'function') {
                 return this.customSort(a, b, this.sortOrder);
@@ -181,7 +181,7 @@ export class AureliaTableCustomAttribute {
      * @param keyPath the path
      * @returns {*} the value
      */
-    getPropertyValue(object, keyPath) {
+    getPropertyValue(object: any, keyPath: string) {
         keyPath = keyPath.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
         keyPath = keyPath.replace(/^\./, ''); // strip a leading dot
         let a = keyPath.split('.');
@@ -196,8 +196,8 @@ export class AureliaTableCustomAttribute {
         return object;
     }
 
-    isNumeric(toCheck) {
-        return !isNaN(parseFloat(toCheck)) && isFinite(toCheck);
+    isNumeric(toCheck: any) {
+        return !isNaN(parseFloat(toCheck)) && Number.isFinite(Number(toCheck));
     }
 
     doPaginate(toPaginate) {
@@ -220,7 +220,7 @@ export class AureliaTableCustomAttribute {
         return this.currentPage > 0 && this.pageSize > 0;
     }
 
-    sortChanged(key, custom, order) {
+    sortChanged(key: any, custom: any, order: number) {
         this.sortKey = key;
         this.customSort = custom;
         this.sortOrder = order;

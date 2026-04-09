@@ -1,11 +1,12 @@
 import { bindable, BindingMode } from "aurelia";
 import {bootstrapOptions} from "../utils/bootstrap-options";
+import type { AubsTabCustomElement } from "./aubs-tab";
 
 export class AubsTabsetCustomElement {
     @bindable type = bootstrapOptions.tabsetType;
     @bindable vertical = bootstrapOptions.tabsetVertical;
     @bindable({ mode: BindingMode.twoWay }) active = 0;
-    tabs = [];
+    tabs: AubsTabCustomElement[] = [];
 
     tabsClass = 'nav-tabs';
 
@@ -17,7 +18,7 @@ export class AubsTabsetCustomElement {
         this.tabsClass = this.type === 'pills' ? 'nav-pills' : 'nav-tabs';
     }
 
-    activeChanged(newValue){
+    activeChanged(newValue: number){
 
         if(!this.tabs || this.tabs.length == 0) {
             return;
@@ -48,14 +49,14 @@ export class AubsTabsetCustomElement {
         this.selectTab(this.tabs[this.active]);
     }
 
-    registerTab(tab) {
+    registerTab(tab: AubsTabCustomElement) {
         if (!this.tabs.includes(tab)) {
             this.tabs.push(tab);
             this.tabsChanged();
         }
     }
 
-    unregisterTab(tab) {
+    unregisterTab(tab: AubsTabCustomElement) {
         const index = this.tabs.indexOf(tab);
         if (index >= 0) {
             this.tabs.splice(index, 1);
@@ -63,7 +64,7 @@ export class AubsTabsetCustomElement {
         }
     }
 
-    selectTab(tab, force = false) {
+    selectTab(tab: AubsTabCustomElement | undefined, force = false) {
         if (!tab) {
             return;
         }

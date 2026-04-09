@@ -1,26 +1,37 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Toast } from "bootstrap";
 
+type ToastOptions = ConstructorParameters<typeof Toast>[1];
+
+interface ToastEventCallbackPayload {
+  event: Event;
+}
+
 @inject(INode)
 export class AubsToastCustomAttribute {
-  @bindable options;
+  @bindable options: ToastOptions;
   @bindable({ mode: BindingMode.twoWay }) isOpen = false;
-  @bindable onShow;
-  @bindable onShown;
-  @bindable onHide;
-  @bindable onHidden;
+  @bindable onShow: ((payload: ToastEventCallbackPayload) => void) | undefined;
+  @bindable onShown: ((payload: ToastEventCallbackPayload) => void) | undefined;
+  @bindable onHide: ((payload: ToastEventCallbackPayload) => void) | undefined;
+  @bindable onHidden: ((payload: ToastEventCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressToggle = false;
-  listeners;
+  private instance: InstanceType<typeof Toast> | null = null;
+  private isAttached = false;
+  private suppressToggle = false;
+  private listeners: {
+    show: (event: Event) => void;
+    shown: (event: Event) => void;
+    hide: (event: Event) => void;
+    hidden: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      show: (event) => this.handleShow(event),
-      shown: (event) => this.handleShown(event),
-      hide: (event) => this.handleHide(event),
-      hidden: (event) => this.handleHidden(event),
+      show: (event: Event) => this.handleShow(event),
+      shown: (event: Event) => this.handleShown(event),
+      hide: (event: Event) => this.handleHide(event),
+      hidden: (event: Event) => this.handleHidden(event),
     };
   }
 
@@ -37,6 +48,8 @@ export class AubsToastCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   optionsChanged() {
@@ -69,6 +82,7 @@ export class AubsToastCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("show.bs.toast", this.listeners.show);
     this.element.addEventListener("shown.bs.toast", this.listeners.shown);
     this.element.addEventListener("hide.bs.toast", this.listeners.hide);
@@ -76,6 +90,7 @@ export class AubsToastCustomAttribute {
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("show.bs.toast", this.listeners.show);
     this.element.removeEventListener("shown.bs.toast", this.listeners.shown);
     this.element.removeEventListener("hide.bs.toast", this.listeners.hide);
@@ -93,13 +108,13 @@ export class AubsToastCustomAttribute {
     this.instance = null;
   }
 
-  handleShow(event) {
+  private handleShow(event: Event) {
     if (typeof this.onShow === "function") {
       this.onShow({ event });
     }
   }
 
-  handleShown(event) {
+  private handleShown(event: Event) {
     this.suppressToggle = true;
     this.isOpen = true;
 
@@ -108,13 +123,13 @@ export class AubsToastCustomAttribute {
     }
   }
 
-  handleHide(event) {
+  private handleHide(event: Event) {
     if (typeof this.onHide === "function") {
       this.onHide({ event });
     }
   }
 
-  handleHidden(event) {
+  private handleHidden(event: Event) {
     this.suppressToggle = true;
     this.isOpen = false;
 

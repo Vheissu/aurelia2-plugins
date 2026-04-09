@@ -1,22 +1,32 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Carousel } from "bootstrap";
 
+type CarouselOptions = ConstructorParameters<typeof Carousel>[1];
+
+interface CarouselSlideCallbackPayload {
+  event: Event;
+  index: number | null;
+}
+
 @inject(INode)
 export class AubsCarouselCustomAttribute {
-  @bindable options;
+  @bindable options: CarouselOptions;
   @bindable({ mode: BindingMode.twoWay }) active = 0;
-  @bindable onSlide;
-  @bindable onSlid;
+  @bindable onSlide: ((payload: CarouselSlideCallbackPayload) => void) | undefined;
+  @bindable onSlid: ((payload: CarouselSlideCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressActive = false;
-  listeners;
+  private instance: InstanceType<typeof Carousel> | null = null;
+  private isAttached = false;
+  private suppressActive = false;
+  private listeners: {
+    slide: (event: Event) => void;
+    slid: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      slide: (event) => this.handleSlide(event),
-      slid: (event) => this.handleSlid(event),
+      slide: (event: Event) => this.handleSlide(event),
+      slid: (event: Event) => this.handleSlid(event),
     };
   }
 
@@ -33,6 +43,8 @@ export class AubsCarouselCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   optionsChanged() {
@@ -67,11 +79,13 @@ export class AubsCarouselCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("slide.bs.carousel", this.listeners.slide);
     this.element.addEventListener("slid.bs.carousel", this.listeners.slid);
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("slide.bs.carousel", this.listeners.slide);
     this.element.removeEventListener("slid.bs.carousel", this.listeners.slid);
   }
@@ -87,21 +101,23 @@ export class AubsCarouselCustomAttribute {
     this.instance = null;
   }
 
-  handleSlide(event) {
+  private handleSlide(event: Event) {
     if (typeof this.onSlide === "function") {
-      const index = typeof event?.to === "number" ? event.to : null;
+      const bsEvent = event as Event & { to?: number };
+      const index = typeof bsEvent.to === "number" ? bsEvent.to : null;
       this.onSlide({ event, index });
     }
   }
 
-  handleSlid(event) {
-    if (typeof event?.to === "number") {
+  private handleSlid(event: Event) {
+    const bsEvent = event as Event & { to?: number };
+    if (typeof bsEvent.to === "number") {
       this.suppressActive = true;
-      this.active = event.to;
+      this.active = bsEvent.to;
     }
 
     if (typeof this.onSlid === "function") {
-      const index = typeof event?.to === "number" ? event.to : null;
+      const index = typeof bsEvent.to === "number" ? bsEvent.to : null;
       this.onSlid({ event, index });
     }
   }

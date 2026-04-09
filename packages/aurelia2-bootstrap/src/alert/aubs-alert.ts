@@ -1,21 +1,28 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Alert } from "bootstrap";
 
+interface AlertEventCallbackPayload {
+  event: Event;
+}
+
 @inject(INode)
 export class AubsAlertCustomAttribute {
   @bindable({ mode: BindingMode.twoWay }) isOpen = true;
-  @bindable onClose;
-  @bindable onClosed;
+  @bindable onClose: ((payload: AlertEventCallbackPayload) => void) | undefined;
+  @bindable onClosed: ((payload: AlertEventCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressToggle = false;
-  listeners;
+  private instance: InstanceType<typeof Alert> | null = null;
+  private isAttached = false;
+  private suppressToggle = false;
+  private listeners: {
+    close: (event: Event) => void;
+    closed: (event: Event) => void;
+  } | null;
 
   constructor(private element: HTMLElement) {
     this.listeners = {
-      close: (event) => this.handleClose(event),
-      closed: (event) => this.handleClosed(event),
+      close: (event: Event) => this.handleClose(event),
+      closed: (event: Event) => this.handleClosed(event),
     };
   }
 
@@ -32,6 +39,8 @@ export class AubsAlertCustomAttribute {
   detached() {
     this.removeListeners();
     this.disposeInstance();
+    this.listeners = null;
+    this.isAttached = false;
   }
 
   isOpenChanged() {
@@ -46,11 +55,13 @@ export class AubsAlertCustomAttribute {
   }
 
   addListeners() {
+    if (!this.listeners) return;
     this.element.addEventListener("close.bs.alert", this.listeners.close);
     this.element.addEventListener("closed.bs.alert", this.listeners.closed);
   }
 
   removeListeners() {
+    if (!this.listeners) return;
     this.element.removeEventListener("close.bs.alert", this.listeners.close);
     this.element.removeEventListener("closed.bs.alert", this.listeners.closed);
   }
@@ -66,13 +77,13 @@ export class AubsAlertCustomAttribute {
     this.instance = null;
   }
 
-  handleClose(event) {
+  private handleClose(event: Event) {
     if (typeof this.onClose === "function") {
       this.onClose({ event });
     }
   }
 
-  handleClosed(event) {
+  private handleClosed(event: Event) {
     this.suppressToggle = true;
     this.isOpen = false;
 

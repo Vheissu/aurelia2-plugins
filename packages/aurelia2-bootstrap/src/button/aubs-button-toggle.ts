@@ -1,15 +1,19 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Button } from "bootstrap";
 
+interface ButtonToggleCallbackPayload {
+  active: boolean;
+}
+
 @inject(INode)
 export class AubsButtonToggleCustomAttribute {
   @bindable({ mode: BindingMode.twoWay }) active = false;
-  @bindable onToggle;
+  @bindable onToggle: ((payload: ButtonToggleCallbackPayload) => void) | undefined;
 
-  instance;
-  isAttached = false;
-  suppressActive = false;
-  clickListener;
+  private instance: InstanceType<typeof Button> | null = null;
+  private isAttached = false;
+  private suppressActive = false;
+  private clickListener: (() => void) | null;
 
   constructor(private element: HTMLElement) {
     this.clickListener = () => this.handleClick();
@@ -18,14 +22,20 @@ export class AubsButtonToggleCustomAttribute {
   attached() {
     this.createInstance();
     this.isAttached = true;
-    this.element.addEventListener("click", this.clickListener);
+    if (this.clickListener) {
+      this.element.addEventListener("click", this.clickListener);
+    }
 
     this.syncState();
   }
 
   detached() {
-    this.element.removeEventListener("click", this.clickListener);
+    if (this.clickListener) {
+      this.element.removeEventListener("click", this.clickListener);
+    }
     this.disposeInstance();
+    this.clickListener = null;
+    this.isAttached = false;
   }
 
   activeChanged() {

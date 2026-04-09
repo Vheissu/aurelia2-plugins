@@ -67,11 +67,11 @@ export class Configure {
         });
     }
 
-    get(key: string) {
+    get<K extends keyof ConfigInterface>(key: K): ConfigInterface[K] {
         return this._config[key];
     }
 
-    set(key: string, val: any) {
+    set<K extends keyof ConfigInterface>(key: K, val: ConfigInterface[K]): ConfigInterface[K] {
         this._config[key] = val;
         return this._config[key];
     }

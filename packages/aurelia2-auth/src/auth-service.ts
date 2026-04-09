@@ -50,20 +50,20 @@ export class AuthService {
     return this.auth.getPayload();
   }
 
-  setToken(token) {
+  setToken(token: string) {
     this.auth.setToken(
       Object.defineProperty({}, this.config.tokenName, { value: token })
     );
   }
 
-  signup(displayName, email, password) {
+  signup(displayNameOrData: string | Record<string, any>, email?: string, password?: string) {
     let signupUrl = this.auth.getSignupUrl();
     let content;
-    if (typeof arguments[0] === "object") {
-      content = arguments[0];
+    if (typeof displayNameOrData === "object") {
+      content = displayNameOrData;
     } else {
       content = {
-        displayName: displayName,
+        displayName: displayNameOrData,
         email: email,
         password: password,
       };
@@ -91,14 +91,14 @@ export class AuthService {
       });
   }
 
-  login(email, password) {
+  login(emailOrData: string | Record<string, any>, password?: string) {
     let loginUrl = this.auth.getLoginUrl();
     let content;
-    if (typeof arguments[1] !== "string") {
-      content = arguments[0];
+    if (typeof emailOrData === "object") {
+      content = emailOrData;
     } else {
       content = {
-        email: email,
+        email: emailOrData,
         password: password,
       };
     }
@@ -120,13 +120,13 @@ export class AuthService {
       });
   }
 
-  logout(redirectUri) {
+  logout(redirectUri?: string) {
     return this.auth.logout(redirectUri).then(() => {
       this.eventAggregator.publish("auth:logout");
     });
   }
 
-  authenticate(name, redirect, userData) {
+  authenticate(name: string, redirect?: string, userData?: any) {
     const providerConfig = this.config.providers?.[name];
     if (!providerConfig) {
       return Promise.reject(new Error(`Unknown auth provider: ${name}`));
@@ -145,7 +145,7 @@ export class AuthService {
     });
   }
 
-  unlink(provider) {
+  unlink(provider: string) {
     let unlinkUrl = this.config.baseUrl
       ? joinUrl(this.config.baseUrl, this.config.unlinkUrl)
       : this.config.unlinkUrl;

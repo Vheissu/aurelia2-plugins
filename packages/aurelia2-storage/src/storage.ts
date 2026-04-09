@@ -54,7 +54,15 @@ export class AureliaStorage {
     const driver = this.getDriver(options.storage);
     const expiresAt = options.ttl ? Date.now() + options.ttl : undefined;
     const payload: StoredValue<T> = { value, expiresAt };
-    await driver.setItem(this.withPrefix(key), JSON.stringify(payload));
+    let serialized: string;
+    try {
+      serialized = JSON.stringify(payload);
+    } catch (error) {
+      throw new Error(
+        `Failed to serialize value for key "${key}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+    await driver.setItem(this.withPrefix(key), serialized);
   }
 
   public async remove(key: string, options: StorageOptions = {}): Promise<void> {

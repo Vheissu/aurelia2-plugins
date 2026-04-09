@@ -8,7 +8,7 @@ export class AubsBtnLoadingCustomAttribute {
   @bindable disabled = false;
 
   isAttached = false;
-  innerHTML;
+  private innerHTML: string = '';
 
   constructor(private element: HTMLButtonElement) {
     if (this.element.tagName !== "BUTTON" && this.element.tagName !== "A") {

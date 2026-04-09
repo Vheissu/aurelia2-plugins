@@ -50,16 +50,18 @@ export class AuFormCustomElement {
   public async handleSubmit(event: SubmitEvent): Promise<void> {
     event.preventDefault();
 
+    if (!this.form) return;
+
     this.updateValidationContext();
 
     if (this.validateOnSubmit) {
-      const valid = await this.form?.validate();
+      const valid = await this.form.validate();
       if (!valid) return;
     }
 
     this.submit?.({
-      form: this.form as FormController,
-      value: (this.form as FormController).value,
+      form: this.form,
+      value: this.form.value,
       event,
     });
   }

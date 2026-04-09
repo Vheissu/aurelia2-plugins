@@ -19,7 +19,7 @@ export type IOAuth2 = OAuth2;
 
 @inject(IStorage, IPopup, IAuthentication, IHttpClient, IAuthOptions)
 export class OAuth2 {
-  protected defaults;
+  protected defaults: Record<string, any>;
 
   constructor(
     readonly storage: IStorage,
@@ -47,7 +47,7 @@ export class OAuth2 {
     };
   }
 
-  async open(options, userData) {
+  async open(options: any, userData: any) {
     let current = extend({}, this.defaults, options);
     current.responseType = current.responseType ?? this.defaults.responseType;
     const responseType = String(current.responseType ?? '').toLowerCase();
@@ -96,6 +96,9 @@ export class OAuth2 {
         return Promise.reject('OAuth 2.0 state parameter mismatch.');
       }
 
+      this.storage.remove(stateName);
+      this.storage.remove(nonceName);
+
       if (
         String(current.responseType ?? '')
           .toUpperCase()
@@ -113,7 +116,7 @@ export class OAuth2 {
     });
   }
 
-  verifyIdToken(oauthData, providerName) {
+  verifyIdToken(oauthData: any, providerName: string): boolean {
     let idToken = oauthData && oauthData[this.config.responseIdTokenProp];
     if (!idToken) return true;
     let idTokenObject = this.auth.decomposeToken(idToken);
@@ -127,7 +130,7 @@ export class OAuth2 {
     return true;
   }
 
-  exchangeForToken(oauthData, userData, current) {
+  exchangeForToken(oauthData: any, userData: any, current: any) {
     let data = extend({}, userData, {
       code: oauthData.code,
       clientId: current.clientId,

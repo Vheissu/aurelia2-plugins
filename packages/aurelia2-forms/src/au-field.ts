@@ -1,6 +1,6 @@
 import { bindable, BindingMode, customAttribute, inject, INode } from 'aurelia';
 import { IContainer } from '@aurelia/kernel';
-import { FormController, IFormController } from './form-controller';
+import { FormController, IFormController, type FieldValidationOptions } from './form-controller';
 import { FieldState } from './field-state';
 import type { IValidateable } from '@aurelia/validation';
 import type { ValidatorFn } from './validators';
@@ -109,7 +109,7 @@ export class AuFieldCustomAttribute {
     return new FormController();
   }
 
-  private createValidationConfig(form: FormController) {
+  private createValidationConfig(form: FormController): FieldValidationOptions | null {
     const model = this.validationModel ?? form.validationContext?.model ?? null;
     const propertyName = this.validationProperty ?? this.name ?? null;
 
