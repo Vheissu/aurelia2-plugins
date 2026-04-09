@@ -35,6 +35,10 @@ export class AureliaTableCustomAttribute {
         this.applyPlugins();
     }
 
+    bound() {
+        this.applyPlugins();
+    }
+
     dataChanged() {
         this.applyPlugins();
     }

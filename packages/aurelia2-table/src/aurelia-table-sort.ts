@@ -1,9 +1,8 @@
-import { bindable, CustomAttribute, customAttribute, INode, inject, optional } from 'aurelia';
+import { bindable, CustomAttribute, customAttribute } from 'aurelia';
 
 import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
 
 @customAttribute('aut-sort')
-@inject(optional(AureliaTableCustomAttribute), INode)
 export class AutSortCustomAttribute {
     @bindable key;
     @bindable custom;
@@ -11,16 +10,17 @@ export class AutSortCustomAttribute {
 
     private rowSelectedListener;
     private sortChangedListener;
+    private element!: HTMLElement;
+    private controller: any;
+    private auTable: AureliaTableCustomAttribute | null = null;
 
     order = 0;
     orderClasses = ['aut-desc', 'aut-sortable', 'aut-asc'];
 
     ignoreEvent = false;
+    isInitialized = false;
 
-    constructor(
-        private auTable: AureliaTableCustomAttribute | null,
-        private readonly element: HTMLElement
-    ) {
+    constructor() {
         this.rowSelectedListener = () => {
             this.handleHeaderClicked();
         };
@@ -28,6 +28,38 @@ export class AutSortCustomAttribute {
         this.sortChangedListener = () => {
             this.handleSortChanged();
         };
+    }
+
+    created(controller) {
+        this.controller = controller;
+        this.element = controller.host as HTMLElement;
+    }
+
+    keyChanged() {
+        this.initializeSorting();
+    }
+
+    customChanged() {
+        this.initializeSorting();
+    }
+
+    resolveTable() {
+        let currentController = this.controller?.parent;
+        while (currentController != null) {
+            if (currentController.viewModel instanceof AureliaTableCustomAttribute) {
+                this.auTable = currentController.viewModel;
+                return;
+            }
+            currentController = currentController.parent;
+        }
+
+        const tableElement = this.element?.closest('table');
+        const tableController = tableElement
+            ? CustomAttribute.for(tableElement, 'aurelia-table')
+            : null;
+
+        this.auTable = tableController?.viewModel as AureliaTableCustomAttribute | null
+            ?? CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel as AureliaTableCustomAttribute | null;
     }
 
     handleSortChanged() {
@@ -40,27 +72,41 @@ export class AutSortCustomAttribute {
     }
 
     attached() {
-        if (!this.auTable) {
-            this.auTable = CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel ?? null;
-        }
-
-        if ((this.key || this.custom) && this.element && this.auTable) {
-            this.element.style.cursor = 'pointer';
-            this.element.classList.add('aut-sort');
-
-            this.element.addEventListener('click', this.rowSelectedListener);
-            this.auTable.addSortChangedListener(this.sortChangedListener);
-
-            this.handleDefault();
-            this.setClass();
-        }
+        this.initializeSorting();
     }
 
     detached() {
-        if (this.key || this.custom) {
+        if (this.isInitialized) {
             this.element?.removeEventListener('click', this.rowSelectedListener);
             this.auTable?.removeSortChangedListener(this.sortChangedListener);
         }
+
+        this.auTable = null;
+        this.controller = null;
+        this.isInitialized = false;
+    }
+
+    initializeSorting() {
+        if (this.isInitialized || !(this.key || this.custom) || !this.element) {
+            return;
+        }
+
+        this.resolveTable();
+
+        if (!this.auTable) {
+            return;
+        }
+
+        this.element.style.cursor = 'pointer';
+        this.element.classList.add('aut-sort');
+
+        this.element.addEventListener('click', this.rowSelectedListener);
+        this.auTable.addSortChangedListener(this.sortChangedListener);
+
+        this.isInitialized = true;
+
+        this.handleDefault();
+        this.setClass();
     }
 
     handleDefault() {
@@ -70,7 +116,7 @@ export class AutSortCustomAttribute {
         }
     }
 
-  doSort() {
+    doSort() {
         if (!this.auTable) {
             return;
         }

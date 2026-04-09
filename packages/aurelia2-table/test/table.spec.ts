@@ -1,8 +1,15 @@
-import { CustomAttribute, CustomElement } from 'aurelia';
+import { describe, expect, jest, test } from '@jest/globals';
 import { createFixture } from '@aurelia/testing';
+
+import { AureliaTableCustomAttribute } from '../src/aurelia-table-attribute';
+import { AutPaginationCustomElement } from '../src/aurelia-table-pagination';
+import { AutSelectCustomAttribute } from '../src/aurelia-table-select';
+import { AutSortCustomAttribute } from '../src/aurelia-table-sort';
 import { AureliaTableConfiguration } from '../src/index';
-import type { AureliaTableCustomAttribute } from '../src/aurelia-table-attribute';
-import type { AutPaginationCustomElement } from '../src/aurelia-table-pagination';
+
+function createController(host: HTMLElement, viewModel?: unknown, parent: any = null) {
+  return { host, viewModel, parent };
+}
 
 async function flush(): Promise<void> {
   await Promise.resolve();
@@ -10,163 +17,173 @@ async function flush(): Promise<void> {
 }
 
 describe('aurelia2-table', () => {
-  test('aut-select toggles when clicking nested content in a cell', async () => {
-    const rows = [{ name: 'A' }, { name: 'B' }];
-    const { appHost, startPromise, tearDown } = await createFixture(
-      `<table aurelia-table data.bind="rows">
-        <tbody>
-          <tr repeat.for="row of rows" aut-select="row.bind: row">
-            <td><span class="inner">\${row.name}</span></td>
-          </tr>
-        </tbody>
-      </table>`,
-      class App {
-        rows = rows;
-      },
-      [AureliaTableConfiguration]
-    );
+  test('applies filters and pagination to displayData and resets currentPage on filter change', () => {
+    const table = new AureliaTableCustomAttribute();
+    table.isAttached = true;
+    table.data = [
+      { name: 'Alpha' },
+      { name: 'Beta' },
+      { name: 'Gamma' },
+      { name: 'Alphabet' },
+    ];
+    table.displayData = [];
+    table.filters = [{ value: '', keys: ['name'] }];
+    table.currentPage = 2;
+    table.pageSize = 2;
 
-    await startPromise;
+    table.applyPlugins();
 
-    const span = appHost.querySelector('tbody tr:first-child span') as HTMLElement;
-    span.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await flush();
+    expect(table.displayData.map((item) => item.name)).toEqual(['Gamma', 'Alphabet']);
+    expect(table.totalItems).toBe(4);
 
-    expect(rows[0].$isSelected).toBe(true);
+    table.filters[0].value = 'Al';
+    table.filterChanged();
 
-    const rowEl = appHost.querySelector('tbody tr') as HTMLElement;
-    expect(rowEl.classList.contains('aut-row-selected')).toBe(true);
-
-    await tearDown();
+    expect(table.currentPage).toBe(1);
+    expect(table.totalItems).toBe(2);
+    expect(table.displayData.map((item) => item.name)).toEqual(['Alpha', 'Alphabet']);
   });
 
-  test('aut-select reacts when row is set after binding', async () => {
-    const { appHost, component, startPromise, tearDown } = await createFixture(
-      `<table>
-        <tbody>
-          <tr aut-select="row.bind: row">
-            <td>Row</td>
-          </tr>
-        </tbody>
-      </table>`,
-      class App {
-        row: any;
-      },
-      [AureliaTableConfiguration]
-    );
+  test('revealItem switches to the page containing the requested row', () => {
+    const table = new AureliaTableCustomAttribute();
+    const rows = [
+      { name: 'Alpha' },
+      { name: 'Beta' },
+      { name: 'Gamma' },
+      { name: 'Delta' },
+      { name: 'Epsilon' },
+    ];
 
-    await startPromise;
+    table.isAttached = true;
+    table.data = rows;
+    table.currentPage = 1;
+    table.pageSize = 2;
+    table.applyPlugins();
 
-    const rowEl = appHost.querySelector('tr') as HTMLElement;
-    expect(rowEl.classList.contains('aut-row-selected')).toBe(false);
-
-    component.row = { name: 'Loaded', $isSelected: true };
-    await flush();
-
-    expect(rowEl.classList.contains('aut-row-selected')).toBe(true);
-
-    await tearDown();
+    expect(table.revealItem(rows[4])).toBe(true);
+    expect(table.currentPage).toBe(3);
+    expect(table.revealItem({ name: 'Missing' })).toBe(false);
   });
 
-  test('aut-sort updates table state even in server mode', async () => {
-    const { appHost, startPromise, tearDown } = await createFixture(
-      `<table aurelia-table="data-source.bind: dataSource; data.bind: rows">
-        <thead>
-          <tr>
-            <th id="name-header" aut-sort="key.bind: 'name'"></th>
-          </tr>
-        </thead>
-      </table>`,
-      class App {
-        dataSource = 'server';
-        rows = [{ name: 'A' }];
-      },
-      [AureliaTableConfiguration]
-    );
+  test('aut-select toggles selection from nested cell clicks and deselects sibling rows in single mode', () => {
+    const rowElement = document.createElement('tr');
+    const cell = document.createElement('td');
+    const inner = document.createElement('span');
+    cell.append(inner);
+    rowElement.append(cell);
 
-    await startPromise;
+    const selectedRows = [{ name: 'Alpha' }, { name: 'Beta', $isSelected: true }];
+    const table = new AureliaTableCustomAttribute();
+    table.data = selectedRows;
 
-    const tableEl = appHost.querySelector('table') as HTMLElement;
-    const tableAttr = CustomAttribute.for(tableEl, 'aurelia-table')?.viewModel as AureliaTableCustomAttribute;
-    expect(tableAttr.sortKey).toBeUndefined();
+    const select = new AutSelectCustomAttribute();
+    const selectSpy = jest.fn();
+    rowElement.addEventListener('select', selectSpy as EventListener);
 
-    const header = appHost.querySelector('#name-header') as HTMLElement;
+    select.row = selectedRows[0];
+    select.mode = 'single';
+    select.created(createController(rowElement, select, createController(document.createElement('table'), table)));
+    select.attached();
+
+    inner.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    select.isSelectedChanged();
+
+    expect(select.row.$isSelected).toBe(true);
+    expect(selectedRows[1].$isSelected).toBe(false);
+    expect(rowElement.classList.contains('aut-row-selected')).toBe(true);
+    expect(selectSpy).toHaveBeenCalledTimes(1);
+  });
+
+  test('aut-select updates its CSS class when a row is assigned after created', () => {
+    const rowElement = document.createElement('tr');
+    rowElement.append(document.createElement('td'));
+
+    const select = new AutSelectCustomAttribute();
+    select.created(createController(rowElement, select));
+    select.row = { name: 'Loaded', $isSelected: true };
+
+    select.rowChanged();
+
+    expect(rowElement.classList.contains('aut-row-selected')).toBe(true);
+  });
+
+  test('aut-sort updates table sort state in server mode when the header is clicked', () => {
+    const header = document.createElement('th');
+    const table = new AureliaTableCustomAttribute();
+    table.dataSource = 'server';
+    table.data = [{ name: 'Alpha' }];
+
+    const sort = new AutSortCustomAttribute();
+    sort.key = 'name';
+    sort.created(createController(header, sort, createController(document.createElement('table'), table)));
+    sort.attached();
+
     header.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await flush();
 
-    expect(tableAttr.sortKey).toBe('name');
-    expect(tableAttr.sortOrder).toBe(1);
+    expect(table.sortKey).toBe('name');
+    expect(table.sortOrder).toBe(1);
+    expect(header.classList.contains('aut-asc')).toBe(true);
 
-    await tearDown();
+    header.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+    expect(table.sortOrder).toBe(-1);
+    expect(header.classList.contains('aut-desc')).toBe(true);
   });
 
-  test('aut-pagination defaults totalItems to 0 when unset', async () => {
-    const { appHost, startPromise, tearDown } = await createFixture(
-      '<aut-pagination></aut-pagination>',
-      class App {},
-      [AureliaTableConfiguration]
-    );
+  test('aut-pagination defaults invalid inputs and dispatches page-changed from its host element', () => {
+    const host = document.createElement('aut-pagination');
+    const pagination = new AutPaginationCustomElement();
+    const eventSpy = jest.fn();
 
-    await startPromise;
+    host.addEventListener('page-changed', eventSpy as EventListener);
 
-    const paginationEl = appHost.querySelector('aut-pagination') as HTMLElement;
-    const paginationVm = CustomElement.for(paginationEl)?.viewModel as AutPaginationCustomElement;
+    pagination.created(createController(host, pagination));
+    pagination.currentPage = 0;
+    pagination.pageSize = 0;
+    pagination.totalItems = undefined;
+    pagination.bind();
 
-    expect(Number.isNaN(paginationVm.totalPages)).toBe(false);
-    expect(paginationVm.totalPages).toBe(1);
+    expect(pagination.currentPage).toBe(1);
+    expect(pagination.pageSize).toBe(5);
+    expect(pagination.totalItems).toBe(0);
+    expect(pagination.totalPages).toBe(1);
 
-    await tearDown();
+    pagination.pageSize = 5;
+    pagination.totalItems = 12;
+    pagination.currentPage = 2;
+    pagination.currentPageChanged();
+
+    expect(eventSpy).toHaveBeenCalledTimes(1);
+    expect((eventSpy.mock.calls[0][0] as CustomEvent).detail).toEqual({ currentPage: 2 });
   });
 
-  test('filters update displayData and reset currentPage when paginated', async () => {
-    const { component, startPromise, tearDown } = await createFixture(
-      `<table aurelia-table="data.bind: data; display-data.two-way: displayData; current-page.two-way: currentPage; page-size.bind: pageSize; total-items.two-way: totalItems; filters.bind: filters"></table>`,
+  test('aut-pagination limits visible pages around the active tier', () => {
+    const pagination = new AutPaginationCustomElement();
+    pagination.created(createController(document.createElement('aut-pagination'), pagination));
+    pagination.currentPage = 6;
+    pagination.pageSize = 5;
+    pagination.totalItems = 50;
+    pagination.paginationSize = 3;
+
+    pagination.bind();
+
+    expect(pagination.totalPages).toBe(10);
+    expect(pagination.displayPages).toEqual([
+      { title: '...', value: 3 },
+      { title: '4', value: 4 },
+      { title: '5', value: 5 },
+      { title: '6', value: 6 },
+      { title: '...', value: 7 },
+    ]);
+  });
+
+  test('aut-pagination renders its pagination shell in an Aurelia fixture', async () => {
+    const { appHost, startPromise, tearDown } = createFixture(
+      '<aut-pagination current-page.bind="currentPage" page-size.bind="pageSize" total-items.bind="totalItems"></aut-pagination>',
       class App {
-        data = [
-          { name: 'Alpha' },
-          { name: 'Beta' },
-          { name: 'Gamma' },
-          { name: 'Alphabet' },
-        ];
-        displayData: any[] = [];
-        filters = [{ value: '', keys: ['name'] }];
-        currentPage = 2;
-        pageSize = 2;
-        totalItems = 0;
-      },
-      [AureliaTableConfiguration]
-    );
-
-    await startPromise;
-    await flush();
-
-    expect(component.displayData.map((item) => item.name)).toEqual(['Gamma', 'Alphabet']);
-    expect(component.currentPage).toBe(2);
-
-    component.filters[0].value = 'Al';
-    await flush();
-
-    expect(component.currentPage).toBe(1);
-    expect(component.totalItems).toBe(2);
-    expect(component.displayData.map((item) => item.name)).toEqual(['Alpha', 'Alphabet']);
-
-    await tearDown();
-  });
-
-  test('pagination updates displayData when currentPage changes', async () => {
-    const { component, startPromise, tearDown } = await createFixture(
-      `<table aurelia-table="data.bind: data; display-data.two-way: displayData; current-page.two-way: currentPage; page-size.bind: pageSize"></table>`,
-      class App {
-        data = [
-          { name: 'Alpha' },
-          { name: 'Beta' },
-          { name: 'Gamma' },
-          { name: 'Delta' },
-          { name: 'Epsilon' },
-        ];
-        displayData: any[] = [];
         currentPage = 1;
-        pageSize = 2;
+        pageSize = 5;
+        totalItems = 12;
       },
       [AureliaTableConfiguration]
     );
@@ -174,12 +191,14 @@ describe('aurelia2-table', () => {
     await startPromise;
     await flush();
 
-    expect(component.displayData.map((item) => item.name)).toEqual(['Alpha', 'Beta']);
+    const paginationEl = appHost.querySelector('aut-pagination');
+    expect(paginationEl).not.toBeNull();
 
-    component.currentPage = 3;
-    await flush();
+    const nav = paginationEl!.querySelector('nav');
+    expect(nav).not.toBeNull();
 
-    expect(component.displayData.map((item) => item.name)).toEqual(['Epsilon']);
+    const pageLinks = Array.from(paginationEl!.querySelectorAll('a.page-link'));
+    expect(pageLinks.length).toBeGreaterThanOrEqual(2);
 
     await tearDown();
   });

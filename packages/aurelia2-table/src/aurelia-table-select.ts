@@ -1,8 +1,7 @@
-import { bindable, BindingMode, customAttribute, CustomAttribute, INode, inject, optional, watch } from 'aurelia';
+import { bindable, BindingMode, customAttribute, CustomAttribute, watch } from 'aurelia';
 import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
 
 @customAttribute('aut-select')
-@inject(optional(AureliaTableCustomAttribute), INode)
 export class AutSelectCustomAttribute {
   @bindable({mode: BindingMode.twoWay}) row;
   @bindable mode = 'single';
@@ -10,20 +9,42 @@ export class AutSelectCustomAttribute {
   @bindable custom = false;
 
   private rowSelectedListener;
+  private element!: HTMLElement;
+  private controller: any;
+  private auTable: AureliaTableCustomAttribute | null = null;
 
-  constructor(
-    private auTable: AureliaTableCustomAttribute | null,
-    private readonly element: HTMLElement
-  ) {
+  constructor() {
     this.rowSelectedListener = event => {
       this.handleRowSelected(event);
     };
   }
 
-  attached() {
-    if (!this.auTable) {
-      this.auTable = CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel ?? null;
+  created(controller) {
+    this.controller = controller;
+    this.element = controller.host as HTMLElement;
+  }
+
+  resolveTable() {
+    let currentController = this.controller?.parent;
+    while (currentController != null) {
+      if (currentController.viewModel instanceof AureliaTableCustomAttribute) {
+        this.auTable = currentController.viewModel;
+        return;
+      }
+      currentController = currentController.parent;
     }
+
+    const tableElement = this.element?.closest('table');
+    const tableController = tableElement
+      ? CustomAttribute.for(tableElement, 'aurelia-table')
+      : null;
+
+    this.auTable = tableController?.viewModel as AureliaTableCustomAttribute | null
+      ?? CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel as AureliaTableCustomAttribute | null;
+  }
+
+  attached() {
+    this.resolveTable();
 
     if (!this.custom && this.element) {
       this.element.style.cursor = 'pointer';
@@ -37,6 +58,9 @@ export class AutSelectCustomAttribute {
     if (!this.custom) {
       this.element?.removeEventListener('click', this.rowSelectedListener);
     }
+
+    this.auTable = null;
+    this.controller = null;
   }
 
   setClass() {
