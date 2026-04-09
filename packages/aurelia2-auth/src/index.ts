@@ -5,6 +5,8 @@ import { createDefaultAuthConfigOptions } from './base-config';
 import { IAuthService, AuthService } from './auth-service';
 import { AuthorizeHook } from './authorize-hook';
 import { AuthFilterValueConverter } from './auth-filter';
+import { IfAuthenticatedCustomAttribute } from './if-authenticated';
+import { IfRolesCustomAttribute } from './if-roles';
 import { IContainer, IRegistry, Registration } from '@aurelia/kernel';
 import { Auth } from './helpers';
 import { IOAuth1, OAuth1 } from './oAuth1';
@@ -13,9 +15,12 @@ import { IPopup, Popup } from './popup';
 import { IStorage, Storage } from './storage';
 import { AppTask, IWindow } from '@aurelia/runtime-html';
 import { AuthInterceptor } from './interceptor';
+import { AuthEvents } from './auth-events';
 
 export const DefaultComponents: IRegistry[] = [
   AuthFilterValueConverter as unknown as IRegistry,
+  IfAuthenticatedCustomAttribute as unknown as IRegistry,
+  IfRolesCustomAttribute as unknown as IRegistry,
 ];
 
 const DefaultServices: IRegistry[] = [
@@ -107,5 +112,17 @@ function createConfiguration(options?: Partial<IAuthConfigOptions>) {
 
 export const AureliaAuthConfiguration = createConfiguration({});
 
-export { AuthorizeHook, IAuthOptions, IFetchConfig, IAuthService, IAuthentication, Auth };
+export {
+  AuthorizeHook,
+  IAuthOptions,
+  IFetchConfig,
+  IAuthService,
+  IAuthentication,
+  Auth,
+  AuthEvents,
+  AuthFilterValueConverter,
+  IfAuthenticatedCustomAttribute,
+  IfRolesCustomAttribute,
+};
 export type { IAuthConfigOptions, IAuthProviderConfig, IOAuthPopupOptions } from './configuration';
+export type { AuthEventName } from './auth-events';

@@ -42,6 +42,7 @@ export interface IAuthConfigOptions {
   refreshUrl?: string;
   loginRoute?: string;
   signupRoute?: string;
+  unauthorizedRoute?: string;
   tokenRoot?: string;
   tokenName?: string;
   idTokenName?: string;
@@ -64,6 +65,26 @@ export interface IAuthConfigOptions {
   tokenExpirationLeeway?: number;
   pkce?: boolean;
   pkceMethod?: 'S256' | 'plain';
+
+  // Role-based access control
+  rolesProperty?: string;
+  permissionsProperty?: string;
+
+  // Password reset
+  forgotPasswordUrl?: string;
+  resetPasswordUrl?: string;
+
+  // Auto-refresh
+  autoRefresh?: boolean;
+  autoRefreshBuffer?: number;
+
+  // Idle timeout
+  idleTimeout?: number;
+  idleEvents?: string[];
+
+  // Multi-tab sync
+  tabSync?: boolean;
+  tabSyncChannel?: string;
 }
 
 export const IAuthOptions = DI.createInterface<IAuthConfigOptions>('IAuthOptions');

@@ -43,6 +43,30 @@ export function createDefaultAuthConfigOptions(
     tokenExpirationLeeway: 0,
     pkce: false,
     pkceMethod: 'S256',
+
+    // Role-based access control
+    rolesProperty: 'roles',
+    permissionsProperty: 'permissions',
+
+    // Password reset
+    forgotPasswordUrl: '/auth/forgot-password',
+    resetPasswordUrl: '/auth/reset-password',
+
+    // Route for unauthorized (insufficient role) access
+    unauthorizedRoute: '/unauthorized',
+
+    // Auto-refresh
+    autoRefresh: false,
+    autoRefreshBuffer: 30,
+
+    // Idle timeout (0 = disabled, value in seconds)
+    idleTimeout: 0,
+    idleEvents: ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'],
+
+    // Multi-tab sync
+    tabSync: false,
+    tabSyncChannel: 'aurelia-auth-sync',
+
     providers: {
       identSrv: {
         name: 'identSrv',
