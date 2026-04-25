@@ -1,0 +1,97 @@
+<template>
+  <style>
+    .au-tour-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 10020;
+      background: rgba(15, 23, 42, 0.42);
+    }
+
+    .au-tour-card {
+      position: fixed;
+      z-index: 10021;
+      width: min(24rem, calc(100vw - 2rem));
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 8px;
+      background: #fff;
+      color: #0f172a;
+      padding: 1rem;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .au-tour-card[data-placement="center"] {
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .au-tour-title {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+      font-weight: 700;
+    }
+
+    .au-tour-content {
+      margin: 0;
+      color: #475569;
+      line-height: 1.45;
+    }
+
+    .au-tour-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-top: 1rem;
+    }
+
+    .au-tour-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .au-tour-button {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      color: #0f172a;
+      padding: 0.45rem 0.75rem;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .au-tour-button.primary {
+      border-color: #2563eb;
+      background: #2563eb;
+      color: #fff;
+    }
+
+    .au-tour-progress {
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+  </style>
+
+  <div if.bind="active" class="au-tour-backdrop"></div>
+  <section
+    if.bind="active && current"
+    class="au-tour-card"
+    data-placement.bind="placement"
+    style.bind="cardStyle"
+    role="dialog"
+    aria-modal="true"
+    aria-live="polite"
+  >
+    <h2 class="au-tour-title">${current.title}</h2>
+    <p class="au-tour-content">${current.content}</p>
+    <div class="au-tour-actions">
+      <span class="au-tour-progress">${index + 1} / ${steps.length}</span>
+      <span class="au-tour-buttons">
+        <button type="button" class="au-tour-button" click.trigger="stop()">${closeLabel}</button>
+        <button type="button" class="au-tour-button" disabled.bind="index === 0" click.trigger="previous()">${previousLabel}</button>
+        <button type="button" class="au-tour-button primary" click.trigger="next()">${nextLabel}</button>
+      </span>
+    </div>
+  </section>
+</template>

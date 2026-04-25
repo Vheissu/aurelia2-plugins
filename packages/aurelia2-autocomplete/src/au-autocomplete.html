@@ -1,0 +1,123 @@
+<template>
+  <style>
+    .au-ac {
+      position: relative;
+      display: grid;
+      gap: 0.35rem;
+      color: #0f172a;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .au-ac-input {
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0.55rem 0.7rem;
+      font: inherit;
+    }
+
+    .au-ac-list {
+      position: absolute;
+      top: calc(100% + 0.25rem);
+      left: 0;
+      right: 0;
+      z-index: 50;
+      max-height: 18rem;
+      overflow-y: auto;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+      padding: 0.25rem;
+    }
+
+    .au-ac-option {
+      display: grid;
+      gap: 0.15rem;
+      width: 100%;
+      border: 0;
+      border-radius: 5px;
+      background: transparent;
+      color: inherit;
+      padding: 0.55rem 0.65rem;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .au-ac-option[aria-selected="true"] {
+      background: #eff6ff;
+    }
+
+    .au-ac-label {
+      font-weight: 650;
+    }
+
+    .au-ac-description,
+    .au-ac-empty {
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+
+    .au-ac-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .au-ac-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 999px;
+      background: #f8fafc;
+      padding: 0.25rem 0.45rem 0.25rem 0.6rem;
+      font-size: 0.85rem;
+    }
+
+    .au-ac-chip button {
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+    }
+  </style>
+
+  <div class="au-ac">
+    <div if.bind="multiple && selectedItems.length > 0" class="au-ac-chips">
+      <span repeat.for="item of selectedItems" class="au-ac-chip">
+        ${item.label}
+        <button type="button" click.trigger="remove(item)" aria-label.bind="'Remove ' + item.label">×</button>
+      </span>
+    </div>
+
+    <input
+      class="au-ac-input"
+      type="text"
+      value.two-way="query"
+      placeholder.bind="placeholderText"
+      disabled.bind="disabled"
+      role="combobox"
+      aria-expanded.bind="open"
+      aria-autocomplete="list"
+      focus.trigger="openList()"
+      keydown.trigger="onKeydown($event)"
+    >
+
+    <div if.bind="open" class="au-ac-list" role="listbox">
+      <button
+        repeat.for="option of results"
+        type="button"
+        class="au-ac-option"
+        role="option"
+        aria-selected.bind="$index === activeIndex"
+        click.trigger="select(option)"
+      >
+        <span class="au-ac-label">${option.label}</span>
+        <span if.bind="option.description" class="au-ac-description">${option.description}</span>
+      </button>
+      <div if.bind="results.length === 0" class="au-ac-empty">${noResultsTextValue}</div>
+    </div>
+  </div>
+</template>

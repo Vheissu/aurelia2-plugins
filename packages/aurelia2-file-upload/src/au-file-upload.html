@@ -1,0 +1,120 @@
+<template>
+  <style>
+    .au-upload {
+      display: grid;
+      gap: 0.75rem;
+      color: #0f172a;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .au-upload-dropzone {
+      display: grid;
+      gap: 0.45rem;
+      place-items: center;
+      min-height: 8rem;
+      border: 2px dashed #cbd5e1;
+      border-radius: 8px;
+      background: #f8fafc;
+      padding: 1.25rem;
+      text-align: center;
+      cursor: pointer;
+    }
+
+    .au-upload-dropzone[data-dragging="true"] {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .au-upload-dropzone[aria-disabled="true"] {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .au-upload-browse {
+      border: 1px solid #2563eb;
+      border-radius: 6px;
+      background: #2563eb;
+      color: #fff;
+      padding: 0.45rem 0.75rem;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .au-upload-list {
+      display: grid;
+      gap: 0.4rem;
+      padding: 0;
+      margin: 0;
+      list-style: none;
+    }
+
+    .au-upload-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.75rem;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 0.65rem 0.75rem;
+      background: #fff;
+    }
+
+    .au-upload-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+
+    .au-upload-meta,
+    .au-upload-error {
+      color: #64748b;
+      font-size: 0.83rem;
+    }
+
+    .au-upload-error {
+      color: #b91c1c;
+    }
+
+    .au-upload-progress {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+  </style>
+
+  <div class="au-upload">
+    <input
+      ref="fileInput"
+      type="file"
+      accept.bind="accept"
+      multiple.bind="multiple"
+      disabled.bind="disabled"
+      change.trigger="onInputChange($event)"
+      hidden
+    >
+
+    <div
+      class="au-upload-dropzone"
+      data-dragging.bind="dragging"
+      aria-disabled.bind="disabled"
+      dragover.trigger="onDragOver($event)"
+      dragleave.trigger="onDragLeave($event)"
+      drop.trigger="onDrop($event)"
+      click.trigger="browse()"
+    >
+      <strong>${dropText}</strong>
+      <button type="button" class="au-upload-browse" disabled.bind="disabled">${browseText}</button>
+    </div>
+
+    <ul if.bind="items.length > 0" class="au-upload-list">
+      <li repeat.for="item of items" class="au-upload-item" data-status.bind="item.status">
+        <span>
+          <span class="au-upload-name">${item.name}</span>
+          <span class="au-upload-meta">${formatSize(item.size)} · ${item.status}</span>
+          <span if.bind="item.error" class="au-upload-error">${item.error}</span>
+        </span>
+        <button type="button" click.trigger="remove(item)" aria-label.bind="'Remove ' + item.name">Remove</button>
+        <progress if.bind="item.status === 'uploading'" class="au-upload-progress" max="100" value.bind="item.progress"></progress>
+      </li>
+    </ul>
+  </div>
+</template>

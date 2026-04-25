@@ -4,7 +4,7 @@ import { createPopper, type Instance, type Placement } from "@popperjs/core";
 export const ITooltipService = DI.createInterface<ITooltipService>("ITooltipService", (x) =>
   x.singleton(TooltipService)
 );
-export interface ITooltipService extends TooltipService {}
+export type ITooltipService = TooltipService;
 
 export class TooltipService {
   createAttachment(target: Element, element: HTMLElement, position: string): Instance {

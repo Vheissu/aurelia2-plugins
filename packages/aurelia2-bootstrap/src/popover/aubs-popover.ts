@@ -50,7 +50,11 @@ export class AubsPopoverCustomAttribute {
       in: () => this.handleShow(),
       out: () => this.handleHide(),
       click: () => {
-        this.visible ? this.handleHide() : this.handleShow();
+        if (this.visible) {
+          this.handleHide();
+        } else {
+          this.handleShow();
+        }
       },
       outside: (event: Event) => this.handleOutside(event),
     };

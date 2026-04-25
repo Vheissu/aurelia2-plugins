@@ -1,0 +1,109 @@
+<template>
+  <style>
+    .au-wizard {
+      display: grid;
+      gap: 1rem;
+      color: #0f172a;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+
+    .au-wizard-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+      gap: 0.5rem;
+    }
+
+    .au-wizard-step {
+      display: grid;
+      gap: 0.2rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      background: #fff;
+      padding: 0.7rem;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .au-wizard-step[aria-current="step"] {
+      border-color: #2563eb;
+      background: #eff6ff;
+    }
+
+    .au-wizard-step.completed {
+      border-color: #16a34a;
+    }
+
+    .au-wizard-step:disabled {
+      cursor: not-allowed;
+      opacity: 0.55;
+    }
+
+    .au-wizard-title {
+      font-weight: 700;
+    }
+
+    .au-wizard-description,
+    .au-wizard-counter {
+      color: #64748b;
+      font-size: 0.85rem;
+    }
+
+    .au-wizard-panel {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #fff;
+      padding: 1rem;
+    }
+
+    .au-wizard-actions {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+    }
+
+    .au-wizard-button {
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #fff;
+      color: #0f172a;
+      padding: 0.5rem 0.8rem;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .au-wizard-button.primary {
+      border-color: #2563eb;
+      background: #2563eb;
+      color: #fff;
+    }
+  </style>
+
+  <section class="au-wizard">
+    <div class="au-wizard-steps" role="tablist">
+      <button
+        repeat.for="step of steps"
+        type="button"
+        class.bind="stepClasses[$index]"
+        disabled.bind="!enterable[$index]"
+        aria-current.bind="$index === index ? 'step' : null"
+        click.trigger="goTo($index)"
+      >
+        <span class="au-wizard-title">${step.title}</span>
+        <span if.bind="step.description" class="au-wizard-description">${step.description}</span>
+      </button>
+    </div>
+
+    <div class="au-wizard-panel" role="tabpanel">
+      <div class="au-wizard-counter">Step ${index + 1} of ${steps.length}</div>
+      <h2>${activeStep.title}</h2>
+      <p if.bind="activeStep.content">${activeStep.content}</p>
+      <au-slot name="step" expose.bind="{ step: activeStep, index: index }"></au-slot>
+    </div>
+
+    <div class="au-wizard-actions">
+      <button type="button" class="au-wizard-button" disabled.bind="!state.canGoPrevious" click.trigger="previous()">${previousLabelText}</button>
+      <button type="button" class="au-wizard-button primary" click.trigger="next()">${nextLabelText}</button>
+    </div>
+  </section>
+</template>

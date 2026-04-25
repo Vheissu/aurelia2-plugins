@@ -1,0 +1,113 @@
+<template>
+  <style>
+    .au-cp-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: grid;
+      place-items: start center;
+      padding: 12vh 1rem 1rem;
+      background: rgba(15, 23, 42, 0.38);
+    }
+
+    .au-cp {
+      width: min(42rem, 100%);
+      overflow: hidden;
+      border: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 8px;
+      background: #fff;
+      color: #0f172a;
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.28);
+    }
+
+    .au-cp-input {
+      width: 100%;
+      box-sizing: border-box;
+      border: 0;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 0.9rem 1rem;
+      font: inherit;
+      outline: none;
+    }
+
+    .au-cp-list {
+      max-height: 24rem;
+      overflow-y: auto;
+      padding: 0.35rem;
+    }
+
+    .au-cp-item {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 0.75rem;
+      width: 100%;
+      border: 0;
+      border-radius: 6px;
+      padding: 0.7rem 0.75rem;
+      background: transparent;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+    }
+
+    .au-cp-item[aria-selected="true"] {
+      background: #eff6ff;
+    }
+
+    .au-cp-item[disabled] {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .au-cp-title {
+      font-weight: 650;
+    }
+
+    .au-cp-meta,
+    .au-cp-shortcut {
+      color: #64748b;
+      font-size: 0.82rem;
+    }
+
+    .au-cp-empty {
+      padding: 1.2rem;
+      color: #64748b;
+      text-align: center;
+    }
+  </style>
+
+  <div if.bind="open" class="au-cp-backdrop" click.trigger="onBackdropClick($event)">
+    <section class="au-cp" role="dialog" aria-modal="true" click.trigger="$event.stopPropagation()">
+      <input
+        class="au-cp-input"
+        type="search"
+        value.two-way="query"
+        placeholder.bind="placeholderText"
+        keydown.trigger="onKeydown($event)"
+        aria-label.bind="placeholderText"
+      >
+
+      <div class="au-cp-list" role="listbox">
+        <button
+          repeat.for="command of results"
+          type="button"
+          class="au-cp-item"
+          disabled.bind="command.disabled"
+          aria-selected.bind="$index === activeIndex"
+          click.trigger="select(command)"
+        >
+          <span>
+            <span class="au-cp-title">${command.title}</span>
+            <span if.bind="command.subtitle || command.section" class="au-cp-meta">
+              ${command.subtitle || command.section}
+            </span>
+          </span>
+          <span if.bind="command.shortcut" class="au-cp-shortcut">${command.shortcut}</span>
+        </button>
+
+        <div if.bind="results.length === 0" class="au-cp-empty">${emptyTextValue}</div>
+      </div>
+    </section>
+  </div>
+</template>
