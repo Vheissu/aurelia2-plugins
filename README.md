@@ -12,6 +12,7 @@ A monorepo of Aurelia 2 plugins maintained and published as individual packages.
 - `aurelia2-clipboard` — Clipboard service + `copy` attribute
 - `aurelia2-command-palette` — Command palette UI + command registry
 - `aurelia2-date-picker` — Date picker component with locale-aware calendar grids and min/max constraints
+- `aurelia2-feature-flags` — Feature flag targeting, rollouts, variants, provider refresh, and template gates
 - `aurelia2-aurafall` — Virtual waterfall (masonry) list (`<au-aurafall>`)
 - `aurelia2-file-upload` — File upload/dropzone component with validation and progress
 - `aurelia2-focus-trap` — Focus trapping for modals, drawers, and overlays
@@ -25,8 +26,10 @@ A monorepo of Aurelia 2 plugins maintained and published as individual packages.
 - `aurelia2-intersection` — IntersectionObserver service + `intersect` attribute
 - `aurelia2-media` — matchMedia service + `media` attribute
 - `aurelia2-notification` — Notification system (port of Aurelia Notification)
+- `aurelia2-offline-sync` — Offline mutation queue with persistence, retry limits, dedupe, and network-aware sync
 - `aurelia2-outclick` — `outclick` custom attribute
 - `aurelia2-query` — Query + caching helpers (`.query`, `<au-query>`, `QueryClient`)
+- `aurelia2-realtime` — Realtime channel service with transport abstraction, subscriptions, queued sends, and reconnects
 - `aurelia2-resize` — ResizeObserver service + `resize` attribute
 - `aurelia2-forms` — Form state + validation (`<au-form>`, `au-field`, `FormController`)
 - `aurelia2-router-extras` — Breadcrumbs + meta tags (`<au-breadcrumbs>`, `RouterExtras`)
