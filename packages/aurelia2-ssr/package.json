@@ -1,21 +1,105 @@
 {
   "name": "aurelia2-ssr",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Server-side rendering, prerendering, SEO, preboot, and hydration utilities for Aurelia 2",
   "type": "module",
+  "sideEffects": false,
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "SSR.md"
+  ],
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./assets": {
+      "types": "./dist/types/assets.d.ts",
+      "import": "./dist/assets.js"
+    },
+    "./client": {
+      "types": "./dist/types/client-takeover.d.ts",
+      "import": "./dist/client-takeover.js"
+    },
+    "./client-takeover": {
+      "types": "./dist/types/client-takeover.d.ts",
+      "import": "./dist/client-takeover.js"
+    },
+    "./configuration": {
+      "types": "./dist/types/configuration.d.ts",
+      "import": "./dist/configuration.js"
+    },
+    "./diagnostics": {
+      "types": "./dist/types/diagnostics.d.ts",
+      "import": "./dist/diagnostics.js"
+    },
+    "./document": {
+      "types": "./dist/types/document.d.ts",
+      "import": "./dist/document.js"
+    },
+    "./globals": {
+      "types": "./dist/types/globals.d.ts",
+      "import": "./dist/globals.js"
+    },
+    "./html": {
+      "types": "./dist/types/html.d.ts",
+      "import": "./dist/html.js"
+    },
+    "./preboot": {
+      "types": "./dist/types/preboot.d.ts",
+      "import": "./dist/preboot.js"
+    },
+    "./renderer": {
+      "types": "./dist/types/renderer.d.ts",
+      "import": "./dist/renderer.js"
+    },
+    "./router": {
+      "types": "./dist/types/router.d.ts",
+      "import": "./dist/router.js"
+    },
+    "./routes": {
+      "types": "./dist/types/routes.d.ts",
+      "import": "./dist/routes.js"
+    },
+    "./shadow-dom": {
+      "types": "./dist/types/shadow-dom.d.ts",
+      "import": "./dist/shadow-dom.js"
+    },
+    "./types": {
+      "types": "./dist/types/types.d.ts",
+      "import": "./dist/types.js"
     }
   },
-  "repository": "https://github.com/Vheissu/aurelia2-plugins",
+  "typesVersions": {
+    "*": {
+      "assets": ["dist/types/assets.d.ts"],
+      "client": ["dist/types/client-takeover.d.ts"],
+      "client-takeover": ["dist/types/client-takeover.d.ts"],
+      "configuration": ["dist/types/configuration.d.ts"],
+      "diagnostics": ["dist/types/diagnostics.d.ts"],
+      "document": ["dist/types/document.d.ts"],
+      "globals": ["dist/types/globals.d.ts"],
+      "html": ["dist/types/html.d.ts"],
+      "preboot": ["dist/types/preboot.d.ts"],
+      "renderer": ["dist/types/renderer.d.ts"],
+      "router": ["dist/types/router.d.ts"],
+      "routes": ["dist/types/routes.d.ts"],
+      "shadow-dom": ["dist/types/shadow-dom.d.ts"],
+      "types": ["dist/types/types.d.ts"]
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Vheissu/aurelia2-plugins.git",
+    "directory": "packages/aurelia2-ssr"
+  },
   "author": "Dwayne Charrington <dwaynecharrington@gmail.com>",
   "license": "MIT",
   "scripts": {
-    "clean": "rimraf ./dist",
+    "clean": "rimraf ./dist ./.tsbuildinfo",
     "prebuild": "npm run clean",
     "build:ts": "tsc",
     "build:other": "cpx \"./src/**/*.{html,css}\" ./dist",
@@ -27,10 +111,17 @@
     "test": "jest"
   },
   "devDependencies": {
+    "@aurelia/kernel": "^2.0.0-rc.1",
+    "@aurelia/platform-browser": "^2.0.0-rc.1",
+    "@aurelia/router": "^2.0.0-rc.1",
+    "@aurelia/runtime-html": "^2.0.0-rc.1",
     "aurelia": "^2.0.0-rc.1"
   },
   "peerDependencies": {
+    "@aurelia/kernel": ">=2.0.0-rc.1",
+    "@aurelia/platform-browser": ">=2.0.0-rc.1",
     "@aurelia/router": ">=2.0.0-rc.1",
+    "@aurelia/runtime-html": ">=2.0.0-rc.1",
     "aurelia": ">=2.0.0-rc.1",
     "jsdom": ">=24.0.0"
   },
