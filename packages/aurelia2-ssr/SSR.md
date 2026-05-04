@@ -49,11 +49,24 @@ Client:
 
 ```ts
 const host = prepareSsrHostForTakeover({ selector: 'my-app', mode: 'remount' });
-await Aurelia.app({ host: host as HTMLElement, component: MyApp }).start();
-finishSsrTakeover();
+
+if (!host) {
+  throw new Error('App host was not found.');
+}
+
+Aurelia
+  .app(MyApp)
+  .start()
+  .then(() => finishSsrTakeover());
 ```
 
 This clears the server-rendered host before Aurelia mounts. That avoids duplicate homepages, duplicate nav, and broken event handlers caused by mounting a second app under an existing prerendered tree.
+
+Keep the client boot shape the SPA already uses. For Aurelia Router apps that
+normally start with `.app(MyApp)`, switching to `.app({ host, component:
+MyApp })` can leave `<au-viewport>` inactive after remount. Use the returned
+host to verify/clear SSR markup, but let Aurelia keep its normal root-component
+startup path.
 
 ### Manifest Hydration
 
@@ -352,6 +365,26 @@ Fix: use remount takeover if you do not have a manifest:
 ```ts
 prepareSsrHostForTakeover({ selector: 'my-app', mode: 'remount' });
 ```
+
+### Blank Viewport After Client Takeover
+
+Cause: the app changed its client bootstrap shape while adding SSR, commonly
+from `.app(MyApp)` to `.app({ host, component: MyApp })`. Some routed apps rely
+on the original root-component startup path for initial viewport activation.
+
+Fix: keep the same `.app(...)` form that worked before SSR. In remount mode,
+call `prepareSsrHostForTakeover(...)` before start to clear prerendered markup,
+then call `finishSsrTakeover()` only after `start()` resolves.
+
+### Fastify Root Returns 403
+
+Cause: `@fastify/static` can treat `/` as a directory request when registered
+with `index: false`, returning 403 before the SSR fallback runs.
+
+Fix: register an explicit `GET /` SSR/app route before `@fastify/static`, or
+serve `index.html` through the static plugin and reserve the fallback for
+non-file app routes. Keep missing asset requests as real 404s so stale hashed
+assets do not return app HTML.
 
 ### Hamburger or Other Event Handlers Do Not Work
 

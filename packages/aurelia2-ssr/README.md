@@ -85,8 +85,27 @@ const host = prepareSsrHostForTakeover({
   mode: 'remount',
 });
 
+if (!host) {
+  throw new Error('App host was not found.');
+}
+
+Aurelia
+  .app(MyApp)
+  .start()
+  .then(() => finishSsrTakeover());
+```
+
+Keep the same `.app(...)` form your SPA already uses. For router apps that
+boot with `.app(MyApp)`, do not switch to `.app({ host, component: MyApp })`
+just for SSR takeover; doing so can leave the initial viewport inactive. Use
+`prepareSsrHostForTakeover(...)` to clear/check the host, then call
+`finishSsrTakeover()` after Aurelia starts.
+
+If your app already boots with an explicit host, keep that shape:
+
+```ts
 await Aurelia
-  .app({ host: host as HTMLElement, component: MyApp })
+  .app({ host, component: MyApp })
   .start();
 
 finishSsrTakeover();
