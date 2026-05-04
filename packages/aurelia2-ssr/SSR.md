@@ -299,6 +299,50 @@ try {
 
 ## Common Edge Cases
 
+### Vite Runtime Identity Split
+
+Cause: the SSR bundle resolves `aurelia` and `@aurelia/*` through different
+versions or physical module paths. Aurelia resources, DI interfaces, and
+compiled definitions are identity-sensitive, so the server renderer can fail
+even though the browser build works.
+
+Fix:
+
+- keep `aurelia`, `@aurelia/*`, `@aurelia/vite-plugin`, and `@aurelia/testing`
+  pinned to the same version
+- verify with `npm ls aurelia @aurelia/runtime-html @aurelia/kernel @aurelia/router`
+- if Vite still splits the SSR runtime, alias `aurelia` in the SSR config to a
+  server-only shim that re-exports the primitives your app uses from
+  `@aurelia/kernel`, `@aurelia/runtime`, and `@aurelia/runtime-html`
+
+Example:
+
+```ts
+// src/ssr/aurelia-shim.ts
+export { resolve } from '@aurelia/kernel';
+export { IObserverLocator } from '@aurelia/runtime';
+export { Aurelia, bindable, INode } from '@aurelia/runtime-html';
+export { Aurelia as default } from '@aurelia/runtime-html';
+```
+
+Use the shim only for the server bundle. The browser bundle can keep normal
+top-level `aurelia` imports.
+
+### First Render Works, Later SSR Requests Fail
+
+Cause: a long-running request-time SSR server is reusing one Vite-built module
+graph for many routed renders. Some routed app shapes can leave compiled route
+module or resource-definition state behind after `aurelia.stop(true)`.
+
+Fix: run the app render in an isolated worker thread or short-lived process, and
+cache only static assets such as `index.html`, the Vite manifest, and the server
+entry URL in the parent server. Treat a worker timeout or render diagnostic as a
+soft failure and return the SPA shell.
+
+This is usually unnecessary for static prerender scripts, but request-time SSR
+should include a smoke test that renders several public routes sequentially from
+the built server bundle.
+
 ### Duplicate Page After SSR
 
 Cause: the client mounted into a host that still contained prerendered markup.

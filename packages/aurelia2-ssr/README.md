@@ -20,6 +20,18 @@ npm install aurelia2-ssr jsdom
 
 If your app uses the Aurelia router, also install `@aurelia/router`.
 
+For Vite SSR builds, keep every Aurelia package on the same version and avoid
+mixing multiple runtime identities. A common safe set is:
+
+```bash
+npm install aurelia @aurelia/router @aurelia/vite-plugin @aurelia/testing aurelia2-ssr jsdom
+```
+
+Pin the Aurelia packages to the same prerelease or stable version. If the server
+bundle imports some resources from `aurelia` and the SSR package resolves
+`@aurelia/runtime-html` from a different copy, server rendering can fail with
+missing resource, DI, or compiled-definition errors.
+
 ## Quick Start
 
 Create a server entry that renders your root component:
@@ -81,6 +93,110 @@ finishSsrTakeover();
 ```
 
 Use `mode: 'hydrate'` with `hydrateAureliaSsr(...)` when you have a matching `ISSRScope` manifest and AOT-ready definitions.
+
+## Vite Import Identity
+
+The package uses Aurelia core packages directly for SSR primitives. In normal npm
+installs those are deduped with the top-level `aurelia` package, but Vite SSR
+bundles can still create identity splits if dependencies are resolved through
+different paths or versions.
+
+Symptoms include:
+
+- resources registered from `aurelia` not being visible to the server renderer
+- `resolve(...)` or DI registrations behaving differently in the server bundle
+- render failures that disappear after aliasing imports to one Aurelia runtime
+
+Fixes:
+
+- keep `aurelia`, `@aurelia/*`, `@aurelia/vite-plugin`, and `@aurelia/testing`
+  on the same version
+- check `npm ls aurelia @aurelia/runtime-html @aurelia/kernel @aurelia/router`
+  for duplicates
+- in the SSR Vite config, alias `aurelia` to a small server-only shim if your app
+  needs one runtime source of truth:
+
+```ts
+// vite.ssr.config.ts
+import { defineConfig } from 'vite';
+import aurelia from '@aurelia/vite-plugin';
+import path from 'node:path';
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      aurelia: path.resolve('src/ssr/aurelia-shim.ts'),
+    },
+  },
+  build: {
+    ssr: 'src/entry-server.ts',
+  },
+  plugins: [
+    aurelia({ useDev: false }),
+  ],
+});
+```
+
+```ts
+// src/ssr/aurelia-shim.ts
+export { resolve } from '@aurelia/kernel';
+export { IObserverLocator } from '@aurelia/runtime';
+export { Aurelia, bindable, INode } from '@aurelia/runtime-html';
+export { Aurelia as default } from '@aurelia/runtime-html';
+```
+
+Only add the shim when you have confirmed an identity split. Apps that already
+resolve one Aurelia runtime do not need it.
+
+## Long-Running Servers
+
+For prerendering, a single Node process rendering every route is usually fine.
+For request-time SSR in a long-running API server, test multiple sequential
+renders of routed pages against the production server bundle. Vite and Aurelia
+may cache compiled route modules and resource definitions between renders, and
+some app shapes currently need stronger isolation.
+
+If the first SSR request succeeds but a later route fails with a compiled
+definition or duplicate-resource error, run each SSR render in an isolated worker
+thread or short-lived process while keeping the asset/template cache in the
+parent server. The parent can fall back to the SPA shell if the worker times out
+or returns diagnostics.
+
+This pattern keeps request state, DOM globals, router state, and module caches
+from leaking between users:
+
+```ts
+// parent server
+const worker = new Worker(new URL('./ssr-worker.js', import.meta.url), {
+  workerData: {
+    entryUrl,
+    url,
+    origin,
+    apiBase,
+    template,
+    manifest,
+  },
+});
+```
+
+```ts
+// ssr-worker.ts
+import { parentPort, workerData } from 'node:worker_threads';
+
+try {
+  const entry = await import(workerData.entryUrl);
+  const result = await entry.renderPage(workerData.url, workerData);
+  parentPort?.postMessage({ ok: true, result });
+} catch (err) {
+  parentPort?.postMessage({
+    ok: false,
+    error: {
+      message: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    },
+  });
+}
+```
 
 ## Configuration
 
