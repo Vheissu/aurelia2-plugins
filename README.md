@@ -33,6 +33,7 @@ A monorepo of Aurelia 2 plugins maintained and published as individual packages.
 - `aurelia2-resize` — ResizeObserver service + `resize` attribute
 - `aurelia2-forms` — Form state + validation (`<au-form>`, `au-field`, `FormController`)
 - `aurelia2-router-extras` — Breadcrumbs + meta tags (`<au-breadcrumbs>`, `RouterExtras`)
+- `aurelia2-ssr` — Server rendering, prerendering, SEO, preboot, Shadow DOM serialization, and Aurelia hydration helpers
 - `aurelia2-storage` — Storage service + `persist` attribute (memory/local/session/indexeddb)
 - `aurelia2-table` — Table component (port of Aurelia Table)
 - `aurelia2-tour` — Product tour and onboarding overlay
