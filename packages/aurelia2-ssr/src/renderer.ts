@@ -24,7 +24,9 @@ export function createServerContainer(
   registrations: readonly unknown[] = [],
   preserveMarkers = true,
   container: IContainer = DI.createContainer(),
-): { container: IContainer; platform: BrowserPlatform } {
+): { container: IContainer; platform: BrowserPlatform; restorePlatform: () => void } {
+  const previousGlobalPlatform = BrowserPlatform.getOrCreate(globalThis);
+  const previousWindowPlatform = BrowserPlatform.getOrCreate(window as unknown as typeof globalThis);
   const platform = new BrowserPlatform(window as unknown as typeof globalThis);
   BrowserPlatform.set(globalThis, platform);
   BrowserPlatform.set(window as unknown as typeof globalThis, platform);
@@ -36,7 +38,14 @@ export function createServerContainer(
     ...registrations,
   );
 
-  return { container, platform };
+  return {
+    container,
+    platform,
+    restorePlatform: () => {
+      BrowserPlatform.set(globalThis, previousGlobalPlatform);
+      BrowserPlatform.set(window as unknown as typeof globalThis, previousWindowPlatform);
+    },
+  };
 }
 
 export async function renderAureliaToString<TComponent extends object = object>(
@@ -130,6 +139,7 @@ async function renderAureliaCore<TComponent extends object>(
     : installDomGlobals(window);
 
   let aurelia: Aurelia | null = null;
+  let restorePlatform = () => undefined;
 
   try {
     const host = ensureSsrHost(
@@ -141,12 +151,14 @@ async function renderAureliaCore<TComponent extends object>(
     const serializeOptions = normalizeSerializeOptions(options.serialize, site);
     const preserveMarkers = route?.render?.preserveMarkers
       ?? !serializeOptions.stripAureliaMarkers;
-    const { container, platform } = createServerContainer(
+    const server = createServerContainer(
       window,
       options.registrations ?? [],
       preserveMarkers,
       options.container,
     );
+    const { container, platform } = server;
+    restorePlatform = server.restorePlatform;
     const context: SsrRenderContext<TComponent> = {
       window,
       document,
@@ -208,6 +220,7 @@ async function renderAureliaCore<TComponent extends object>(
     }
 
     if (globalStrategy === 'install-and-restore') {
+      restorePlatform();
       restoreGlobals();
     }
   }
