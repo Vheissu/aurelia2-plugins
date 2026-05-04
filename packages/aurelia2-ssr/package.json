@@ -2,10 +2,17 @@
   "name": "aurelia2-ssr",
   "version": "0.0.1",
   "description": "Server-side rendering, prerendering, SEO, preboot, and hydration utilities for Aurelia 2",
+  "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "repository": "https://github.com/Vheissu/aurelia2-plugins",
-  "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
+  "author": "Dwayne Charrington <dwaynecharrington@gmail.com>",
   "license": "MIT",
   "scripts": {
     "clean": "rimraf ./dist",

@@ -7,8 +7,8 @@ import {
   type ISSRScope,
 } from '@aurelia/runtime-html';
 import { BrowserPlatform } from '@aurelia/platform-browser';
-import { installDomGlobals } from './globals';
-import { serializeElementForSsr } from './shadow-dom';
+import { installDomGlobals } from './globals.js';
+import { serializeElementForSsr } from './shadow-dom.js';
 import type {
   SerializeHtmlOptions,
   SsrAppRenderResult,
@@ -17,7 +17,7 @@ import type {
   SsrRenderAureliaOptions,
   SsrRenderContext,
   SsrSiteConfig,
-} from './types';
+} from './types.js';
 
 export function createServerContainer(
   window: Window,

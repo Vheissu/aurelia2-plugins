@@ -1,4 +1,4 @@
-import { ensureHead, setElementAttributes, toRootRelativeUrl } from './html';
+import { ensureHead, setElementAttributes, toRootRelativeUrl } from './html.js';
 import type {
   SsrAssetManifest,
   SsrLinkDefinition,
@@ -7,7 +7,7 @@ import type {
   SsrScriptDefinition,
   SsrSiteConfig,
   SsrStyleDefinition,
-} from './types';
+} from './types.js';
 
 export interface CollectedManifestAssets {
   readonly scripts: readonly string[];

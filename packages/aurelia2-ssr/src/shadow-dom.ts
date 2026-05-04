@@ -1,5 +1,5 @@
-import { escapeAttribute, escapeText } from './html';
-import type { SerializeHtmlOptions, SsrShadowDomConfig } from './types';
+import { escapeAttribute, escapeText } from './html.js';
+import type { SerializeHtmlOptions, SsrShadowDomConfig } from './types.js';
 
 const voidElements = new Set([
   'area',

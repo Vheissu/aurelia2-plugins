@@ -5,7 +5,7 @@ import type {
   SsrDocumentResult,
   SsrRouteConfig,
   SsrSiteConfig,
-} from './types';
+} from './types.js';
 
 const defaultBudgets: Required<SsrDiagnosticsBudgets> = {
   renderMs: 1200,

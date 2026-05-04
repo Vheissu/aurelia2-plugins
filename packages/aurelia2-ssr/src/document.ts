@@ -4,8 +4,8 @@ import {
   injectScripts,
   injectStyles,
   appendUniqueLink,
-} from './assets';
-import { analyzeSsrDocument } from './diagnostics';
+} from './assets.js';
+import { analyzeSsrDocument } from './diagnostics.js';
 import {
   createDocumentFromHtml,
   ensureBody,
@@ -15,9 +15,9 @@ import {
   toAbsoluteUrl,
   upsertCanonical,
   upsertMeta,
-} from './html';
-import { injectPrebootScript } from './preboot';
-import { canonicalUrlForRoute } from './routes';
+} from './html.js';
+import { injectPrebootScript } from './preboot.js';
+import { canonicalUrlForRoute } from './routes.js';
 import type {
   SsrBuildDocumentOptions,
   SsrDiagnostic,
@@ -25,7 +25,7 @@ import type {
   SsrMetaDefinition,
   SsrRouteConfig,
   SsrSiteConfig,
-} from './types';
+} from './types.js';
 
 export function buildSsrDocument(options: SsrBuildDocumentOptions): SsrDocumentResult {
   const document = options.document ?? createDocumentFromHtml(options.template);

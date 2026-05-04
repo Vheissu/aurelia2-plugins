@@ -1,4 +1,4 @@
-import type { SsrSerializableAttributes } from './types';
+import type { SsrSerializableAttributes } from './types.js';
 
 export function escapeText(value: string): string {
   return value

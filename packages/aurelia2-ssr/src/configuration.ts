@@ -1,5 +1,5 @@
 import { DI, type IContainer, type IRegistry, Registration } from '@aurelia/kernel';
-import type { SsrConfigurationRegistrationOptions, SsrRouteConfig, SsrSiteConfig } from './types';
+import type { SsrConfigurationRegistrationOptions, SsrRouteConfig, SsrSiteConfig } from './types.js';
 
 export const ISsrSiteConfig = DI.createInterface<SsrSiteConfig>('ISsrSiteConfig');
 export type ISsrSiteConfig = SsrSiteConfig;

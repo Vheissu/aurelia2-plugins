@@ -1,16 +1,16 @@
-export * from './assets';
-export * from './client-takeover';
-export * from './configuration';
-export * from './diagnostics';
-export * from './document';
-export * from './globals';
-export * from './html';
-export * from './preboot';
-export * from './renderer';
-export * from './router';
-export * from './routes';
-export * from './shadow-dom';
-export * from './types';
+export * from './assets.js';
+export * from './client-takeover.js';
+export * from './configuration.js';
+export * from './diagnostics.js';
+export * from './document.js';
+export * from './globals.js';
+export * from './html.js';
+export * from './preboot.js';
+export * from './renderer.js';
+export * from './router.js';
+export * from './routes.js';
+export * from './shadow-dom.js';
+export * from './types.js';
 
 export {
   adoptSSRView,

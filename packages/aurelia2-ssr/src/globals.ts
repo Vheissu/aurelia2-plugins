@@ -1,4 +1,4 @@
-import type { SsrDomEnvironment, SsrDomEnvironmentOptions, SsrDomGlobalOptions } from './types';
+import type { SsrDomEnvironment, SsrDomEnvironmentOptions, SsrDomGlobalOptions } from './types.js';
 
 type GlobalRecord = typeof globalThis & Record<string, unknown>;
 type WindowRecord = Window & Record<string, unknown>;

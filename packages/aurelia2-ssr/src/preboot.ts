@@ -1,5 +1,5 @@
-import { safeJson } from './html';
-import type { SsrPrebootConfig } from './types';
+import { safeJson } from './html.js';
+import type { SsrPrebootConfig } from './types.js';
 
 export interface AureliaSsrPreboot {
   replay?: () => void;

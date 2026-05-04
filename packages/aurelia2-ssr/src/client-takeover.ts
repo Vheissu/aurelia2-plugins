@@ -1,8 +1,8 @@
 import { DI, Registration, type IContainer } from '@aurelia/kernel';
 import { Aurelia, hydrateSSRDefinition, IPlatform, StandardConfiguration } from '@aurelia/runtime-html';
 import { BrowserPlatform } from '@aurelia/platform-browser';
-import type { SsrHydrateOptions, SsrTakeoverMode } from './types';
-import type { AureliaSsrPreboot } from './preboot';
+import type { SsrHydrateOptions, SsrTakeoverMode } from './types.js';
+import type { AureliaSsrPreboot } from './preboot.js';
 
 declare global {
   interface Window {

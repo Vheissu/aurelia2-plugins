@@ -1,5 +1,5 @@
-import { escapeXml } from './html';
-import type { SsrRouteConfig, SsrSiteConfig, SsrValidationResult } from './types';
+import { escapeXml } from './html.js';
+import type { SsrRouteConfig, SsrSiteConfig, SsrValidationResult } from './types.js';
 
 export function normalizeSsrPath(value: string): string {
   if (!value) {
