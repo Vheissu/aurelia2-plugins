@@ -17,6 +17,14 @@ export interface PrepareSsrHostOptions {
   readonly clearAttribute?: string;
 }
 
+/**
+ * Prepares the app host for client takeover.
+ *
+ * In `remount` mode this clears prerendered children synchronously. Apps with
+ * async route data can keep a temporary, inert copy of the SSR markup visible
+ * beside the host, hide the real host while Aurelia starts, then remove the
+ * copy before calling `finishSsrTakeover()` to avoid a loading flash.
+ */
 export function prepareSsrHostForTakeover(options: PrepareSsrHostOptions | string = {}): Element | null {
   if (typeof document === 'undefined') {
     return null;

@@ -111,6 +111,73 @@ await Aurelia
 finishSsrTakeover();
 ```
 
+### Avoid Flicker in Remount Mode
+
+`mode: 'remount'` clears the server-rendered host before Aurelia starts. That is
+correct for avoiding duplicate markup and dead event handlers, but apps that
+refetch route data on startup can briefly show a blank or loading state. Keep an
+inert copy of the SSR markup visible while the real host remounts:
+
+```ts
+import Aurelia from 'aurelia';
+import { finishSsrTakeover, prepareSsrHostForTakeover } from 'aurelia2-ssr';
+import { MyApp } from './my-app';
+
+const ssrPrerendered = document.documentElement.hasAttribute('data-aurelia-ssr-prerendered');
+const existingHost = document.querySelector<HTMLElement>('my-app');
+const placeholder = ssrPrerendered && existingHost?.hasChildNodes()
+  ? document.createElement('div')
+  : null;
+let originalHostStyle = '';
+
+if (placeholder && existingHost) {
+  placeholder.setAttribute('data-aurelia-ssr-placeholder', '');
+  placeholder.setAttribute('aria-hidden', 'true');
+  placeholder.style.display = 'contents';
+  placeholder.innerHTML = existingHost.innerHTML;
+  existingHost.before(placeholder);
+
+  originalHostStyle = existingHost.getAttribute('style') ?? '';
+  existingHost.style.position = 'absolute';
+  existingHost.style.visibility = 'hidden';
+  existingHost.style.pointerEvents = 'none';
+  existingHost.style.inset = '0';
+  existingHost.style.width = '100%';
+}
+
+const host = prepareSsrHostForTakeover({
+  selector: 'my-app',
+  mode: 'remount',
+}) ?? existingHost;
+
+if (!host) {
+  throw new Error('App host was not found.');
+}
+
+function finishTakeover(): void {
+  placeholder?.remove();
+
+  if (existingHost) {
+    if (originalHostStyle) {
+      existingHost.setAttribute('style', originalHostStyle);
+    } else {
+      existingHost.removeAttribute('style');
+    }
+  }
+
+  finishSsrTakeover();
+}
+
+Aurelia
+  .app(MyApp)
+  .start()
+  .then(() => finishTakeover());
+```
+
+Use `visibility: hidden`, not `display: none`, on the real host so components
+that measure layout during startup still see a real box. Remove the placeholder
+before `finishSsrTakeover()` so preboot replays against the client DOM.
+
 Use `mode: 'hydrate'` with `hydrateAureliaSsr(...)` when you have a matching `ISSRScope` manifest and AOT-ready definitions.
 
 ## Vite Import Identity
@@ -281,7 +348,7 @@ export const ssrSite: SsrSiteConfig = {
 - CSS: global styles, inline critical CSS, linked stylesheets, CSS modules emitted in Vite manifests, Shadow DOM styles, and adopted stylesheets where the runtime exposes readable rules
 - Third-party scripts: head/body placement strategies, async/defer, integrity, referrer policy, nonce support, and preboot-safe ordering
 - Preboot: captures form input, checkbox state, selection, focus, submits, clicks, and optional keydown before Aurelia takes over
-- Takeover: remount fallback for prerendered HTML and true `Aurelia.hydrate(...)` support when a core-compatible manifest is available
+- Takeover: remount fallback for prerendered HTML, no-flicker remount guidance for async apps, and true `Aurelia.hydrate(...)` support when a core-compatible manifest is available
 - Shadow DOM: open shadow roots serialize to Declarative Shadow DOM templates
 - Browser values: request-scoped `window`, `document`, storage, animation frame, matchMedia, ResizeObserver, IntersectionObserver, and global restore helpers
 - Diagnostics: route validation, duplicate host detection, SEO budget checks, render/html byte budgets, and build-fail decisions

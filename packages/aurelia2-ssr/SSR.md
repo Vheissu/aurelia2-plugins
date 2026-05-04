@@ -68,6 +68,68 @@ MyApp })` can leave `<au-viewport>` inactive after remount. Use the returned
 host to verify/clear SSR markup, but let Aurelia keep its normal root-component
 startup path.
 
+#### Avoiding Remount Flicker
+
+Remount takeover clears the SSR host synchronously. In an app that fetches route
+data again during client startup, users can see the SSR page disappear and a
+loading state appear before the client route finishes. Keep an inert copy of the
+SSR HTML visible while Aurelia remounts into the real host:
+
+```ts
+const ssrPrerendered = document.documentElement.hasAttribute('data-aurelia-ssr-prerendered');
+const existingHost = document.querySelector<HTMLElement>('my-app');
+const placeholder = ssrPrerendered && existingHost?.hasChildNodes()
+  ? document.createElement('div')
+  : null;
+let originalHostStyle = '';
+
+if (placeholder && existingHost) {
+  placeholder.setAttribute('data-aurelia-ssr-placeholder', '');
+  placeholder.setAttribute('aria-hidden', 'true');
+  placeholder.style.display = 'contents';
+  placeholder.innerHTML = existingHost.innerHTML;
+  existingHost.before(placeholder);
+
+  originalHostStyle = existingHost.getAttribute('style') ?? '';
+  existingHost.style.position = 'absolute';
+  existingHost.style.visibility = 'hidden';
+  existingHost.style.pointerEvents = 'none';
+  existingHost.style.inset = '0';
+  existingHost.style.width = '100%';
+}
+
+const host = prepareSsrHostForTakeover({ selector: 'my-app', mode: 'remount' }) ?? existingHost;
+
+if (!host) {
+  throw new Error('App host was not found.');
+}
+
+function finishTakeover(): void {
+  placeholder?.remove();
+
+  if (existingHost) {
+    if (originalHostStyle) {
+      existingHost.setAttribute('style', originalHostStyle);
+    } else {
+      existingHost.removeAttribute('style');
+    }
+  }
+
+  finishSsrTakeover();
+}
+
+Aurelia
+  .app(MyApp)
+  .start()
+  .then(() => finishTakeover());
+```
+
+Use `aria-hidden` on the placeholder so assistive technology does not see two
+copies of the page. Hide the real host with `visibility: hidden` rather than
+`display: none` so browser-only widgets that measure layout during startup do
+not see zero-width containers. Remove the placeholder before calling
+`finishSsrTakeover()` so preboot replays against the client DOM.
+
 ### Manifest Hydration
 
 Use this when your build/server pipeline can provide:
@@ -366,6 +428,17 @@ Fix: use remount takeover if you do not have a manifest:
 prepareSsrHostForTakeover({ selector: 'my-app', mode: 'remount' });
 ```
 
+### SSR Page Flickers or Shows a Loader During Takeover
+
+Cause: remount takeover correctly clears the SSR host before Aurelia starts, but
+the client route refetches async data and renders its loading state before the
+data returns.
+
+Fix: preserve an inert copy of the SSR host beside the real host, hide the real
+host while it remounts, then remove the copy and restore the real host after
+`Aurelia.start()` resolves and before `finishSsrTakeover()` replays preboot. Test
+with delayed API responses in a real browser so the handoff is visible.
+
 ### Blank Viewport After Client Takeover
 
 Cause: the app changed its client bootstrap shape while adding SSR, commonly
@@ -393,6 +466,15 @@ Cause: server HTML exists, but Aurelia did not bind that DOM. In remount mode, c
 ### Code Reads `window` At Import Time
 
 Move browser reads behind lifecycle hooks or inject an adapter. If you cannot change the dependency, render with DOM globals installed before loading the server entry.
+
+### Browser-Only Widgets Log Errors During SSR
+
+Canvas, chart, map, editor, and media libraries often expect browser APIs that
+JSDOM does not implement. Do not instantiate those libraries while
+`window.__MY_APP_SSR_RENDERING__` or another app SSR flag is true. Server-render
+the surrounding HTML and useful data, then initialise the widget from
+`attached()` in the browser. This is usually an app integration issue, not an SSR
+package failure.
 
 ### `localStorage` During SSR
 
