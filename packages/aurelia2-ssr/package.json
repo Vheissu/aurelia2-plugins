@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-ssr",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Server-side rendering, prerendering, SEO, preboot, and hydration utilities for Aurelia 2",
   "type": "module",
   "sideEffects": false,

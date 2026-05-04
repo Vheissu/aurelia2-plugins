@@ -3,6 +3,7 @@
   "compilerOptions": {
     "outDir": "./dist",
     "declarationDir": "./dist/types",
+    "inlineSources": true,
     "tsBuildInfoFile": "./.tsbuildinfo"
   },
   "include": [
