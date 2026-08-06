@@ -74,6 +74,7 @@ export class AuthService implements IAuthService {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private idleCleanup: (() => void) | null = null;
   private tabSyncCleanup: (() => void) | null = null;
+  private initializationPromise: Promise<Readonly<IAuthSession>> | null = null;
   private initialized = false;
 
   public get session(): Readonly<IAuthSession> {
@@ -85,9 +86,27 @@ export class AuthService implements IAuthService {
     return this.auth.tokenInterceptor;
   }
 
-  public async initialize(): Promise<Readonly<IAuthSession>> {
-    if (this.initialized) return this.session;
-    this.initialized = true;
+  public initialize(): Promise<Readonly<IAuthSession>> {
+    if (this.initialized) return Promise.resolve(this.session);
+    if (this.initializationPromise) return this.initializationPromise;
+
+    this.initializationPromise = this.initializeSession()
+      .then(session => {
+        this.initialized = true;
+        return session;
+      })
+      .catch(error => {
+        this.stopIdleTracking();
+        this.stopTabSync();
+        throw error;
+      })
+      .finally(() => {
+        this.initializationPromise = null;
+      });
+    return this.initializationPromise;
+  }
+
+  private async initializeSession(): Promise<Readonly<IAuthSession>> {
     this.startTabSync();
     this.startIdleTracking();
 
