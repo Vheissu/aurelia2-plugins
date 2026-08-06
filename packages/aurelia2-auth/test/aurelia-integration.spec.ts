@@ -7,13 +7,18 @@ import { HttpClient, IHttpClient } from '@aurelia/fetch-client';
 import { IRouter, route, RouterConfiguration } from '@aurelia/router';
 import {
   AureliaAuthConfiguration,
+  AuthFilterValueConverter,
+  Authentication,
   IAuthService,
+  IAuthentication,
+  IAuthorizationService,
+  AuthorizationService,
   AuthEvents,
   anonymousOnly,
   authenticated,
   roles,
 } from '../src';
-import { createJwt } from './helpers';
+import { createJwt, createUnitContainer } from './helpers';
 
 @customElement({ name: 'home-page', template: '<h1>Home</h1>' })
 class HomePage {}
@@ -46,12 +51,18 @@ class RouterApp {
   public adminRule = { roles: ['admin'] };
 }
 
+class NavigationApp {
+  public authenticated = false;
+  public routes = createNavigationRoutes();
+}
+
 describe('Aurelia integration', () => {
   test('integrates guards, decorators and attributes with a real Aurelia application', async () => {
     const fixture = createFixture(
       `<au-viewport></au-viewport>
        <button id="member" if-authenticated>Member</button>
        <button id="guest" if-authenticated.bind="false">Guest</button>
+       <button id="admin-only" if-roles="admin">Admin only</button>
        <button id="admin-action" auth="value.bind: adminRule; mode: disable">Admin action</button>`,
       RouterApp,
       [
@@ -74,6 +85,7 @@ describe('Aurelia integration', () => {
       const auth = fixture.container.get(IAuthService);
       const member = fixture.appHost.querySelector('#member') as HTMLButtonElement;
       const guest = fixture.appHost.querySelector('#guest') as HTMLButtonElement;
+      const adminOnly = fixture.appHost.querySelector('#admin-only') as HTMLButtonElement;
       const adminAction = fixture.appHost.querySelector('#admin-action') as HTMLButtonElement;
       await flush();
 
@@ -81,6 +93,7 @@ describe('Aurelia integration', () => {
         .toContain('AuthorizeHook');
       expect(member.hidden).toBe(true);
       expect(guest.hidden).toBe(false);
+      expect(adminOnly.hidden).toBe(true);
       expect(adminAction.disabled).toBe(true);
 
       await router.load('/account');
@@ -97,6 +110,7 @@ describe('Aurelia integration', () => {
       expect(stateChanged).toHaveBeenCalledTimes(1);
       expect(member.hidden).toBe(false);
       expect(guest.hidden).toBe(true);
+      expect(adminOnly.hidden).toBe(true);
       expect(adminAction.disabled).toBe(true);
 
       await router.load('/account');
@@ -110,6 +124,7 @@ describe('Aurelia integration', () => {
       }));
       await tasksSettled();
       await flush();
+      expect(adminOnly.hidden).toBe(false);
       expect(adminAction.disabled).toBe(false);
       expect(adminAction.hasAttribute('aria-disabled')).toBe(false);
       await router.load('/admin');
@@ -121,9 +136,53 @@ describe('Aurelia integration', () => {
       await fixture.tearDown();
     }
   });
+
+  test('filters route navigation through the registered auth value converter', async () => {
+    const setup = createUnitContainer();
+    const auth = setup.container.invoke(Authentication);
+    setup.container.register(Registration.instance(IAuthentication, auth));
+    const authorization = setup.container.invoke(AuthorizationService);
+    const fixture = createFixture(
+      '<span class="route" repeat.for="item of routes | authFilter:authenticated">${item.label}</span>',
+      NavigationApp,
+      [
+        AuthFilterValueConverter,
+        Registration.instance(IAuthorizationService, authorization),
+      ],
+    );
+    await fixture.startPromise;
+    try {
+      expect(routeLabels(fixture.appHost)).toEqual(['Public', 'Guest']);
+
+      auth.setToken(createJwt({
+        exp: Math.floor(Date.now() / 1000) + 60,
+        roles: ['admin'],
+      }));
+      fixture.component.authenticated = true;
+      fixture.component.routes = createNavigationRoutes();
+      await tasksSettled();
+
+      expect(routeLabels(fixture.appHost)).toEqual(['Public', 'Member', 'Admin']);
+    } finally {
+      await fixture.tearDown();
+    }
+  });
 });
 
 async function flush(): Promise<void> {
   await Promise.resolve();
   await new Promise(resolve => setTimeout(resolve, 0));
+}
+
+function createNavigationRoutes() {
+  return [
+    { label: 'Public', data: {} },
+    { label: 'Guest', data: { auth: false } },
+    { label: 'Member', data: { auth: true } },
+    { label: 'Admin', data: { authorization: { roles: ['admin'] } } },
+  ];
+}
+
+function routeLabels(host: HTMLElement): string[] {
+  return [...host.querySelectorAll('.route')].map(element => element.textContent ?? '');
 }

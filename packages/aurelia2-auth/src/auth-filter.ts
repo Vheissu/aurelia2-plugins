@@ -7,7 +7,7 @@ interface IRouteLike {
   data?: Readonly<Record<string, unknown>>;
 }
 
-@valueConverter('auth-filter')
+@valueConverter({ name: 'authFilter', aliases: ['auth-filter'] })
 export class AuthFilterValueConverter {
   private readonly authorization = resolve(IAuthorizationService);
 
