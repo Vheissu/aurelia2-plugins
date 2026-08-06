@@ -19,7 +19,7 @@ export default defineConfig({
       'aurelia2-aurafall': aurafallDist,
     },
   },
-  esbuild: {
+  oxc: {
     target: 'es2022',
   },
   plugins: [

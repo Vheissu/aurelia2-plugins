@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-offline-sync",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Offline mutation queue and sync orchestration for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -20,9 +20,9 @@
     "test": "jest"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.1"
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.1"
+    "aurelia": ">=2.0.0-rc.2"
   }
 }

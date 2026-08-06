@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-google-places",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "A port of the Aurelia Google Places plugin",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -20,15 +20,15 @@
     "test": "jest"
   },
   "dependencies": {
-    "@googlemaps/js-api-loader": "^2.0.2"
+    "@googlemaps/js-api-loader": "^2.1.1"
   },
   "devDependencies": {
-    "@types/google.maps": "^3.58.1",
-    "aurelia": "^2.0.0-rc.1"
+    "@types/google.maps": "^3.65.4",
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
-    "@types/google.maps": ">=3.58.1",
-    "aurelia": ">=2.0.0-rc.1"
+    "@types/google.maps": ">=3.65.4",
+    "aurelia": ">=2.0.0-rc.2"
   },
   "peerDependenciesMeta": {
     "@types/google.maps": {

@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-head",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Document title, meta, link, and attribute management for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -20,9 +20,9 @@
     "test": "jest"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.1"
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.1"
+    "aurelia": ">=2.0.0-rc.2"
   }
 }

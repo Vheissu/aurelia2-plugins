@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-froala-editor",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "description": "A port of the Aurelia Froala Edittor",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -20,12 +20,12 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "froala-editor": "4.7.1"
+    "froala-editor": "5.3.1"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.1"
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.1"
+    "aurelia": ">=2.0.0-rc.2"
   }
 }

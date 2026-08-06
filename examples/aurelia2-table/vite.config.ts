@@ -7,7 +7,7 @@ export default defineConfig({
     open: !process.env.CI,
     port: 9000,
   },
-  esbuild: {
+  oxc: {
     target: 'es2022'
   },
   plugins: [

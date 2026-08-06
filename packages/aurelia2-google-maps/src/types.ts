@@ -32,12 +32,59 @@ export interface OverlayCompleteDetail {
   encode?: string;
 }
 
+/**
+ * The Maps JavaScript API deprecated the drawing library in 3.65, and
+ * @types/google.maps 3.65 stripped `DrawingManager` down to a bare `MVCObject`,
+ * dropping its options and event types. The runtime API is still shipped, so
+ * the shapes this plugin depends on are mirrored here.
+ */
+export interface DrawingControlOptions {
+  drawingModes?: google.maps.drawing.OverlayType[];
+  position?: google.maps.ControlPosition;
+}
+
+export interface DrawingManagerOptions {
+  circleOptions?: google.maps.CircleOptions;
+  drawingControl?: boolean;
+  drawingControlOptions?: DrawingControlOptions;
+  drawingMode?: google.maps.drawing.OverlayType | null;
+  map?: google.maps.Map | null;
+  markerOptions?: google.maps.MarkerOptions;
+  polygonOptions?: google.maps.PolygonOptions;
+  polylineOptions?: google.maps.PolylineOptions;
+  rectangleOptions?: google.maps.RectangleOptions;
+}
+
+export type DrawingOverlay =
+  | google.maps.Circle
+  | google.maps.Marker
+  | google.maps.Polygon
+  | google.maps.Polyline
+  | google.maps.Rectangle;
+
+export interface OverlayCompleteEvent {
+  overlay: DrawingOverlay;
+  type: google.maps.drawing.OverlayType;
+}
+
+export interface DrawingManager extends google.maps.MVCObject {
+  getDrawingMode(): google.maps.drawing.OverlayType | null;
+  getMap(): google.maps.Map | null;
+  setDrawingMode(drawingMode: google.maps.drawing.OverlayType | null): void;
+  setMap(map: google.maps.Map | null): void;
+  setOptions(options: DrawingManagerOptions): void;
+}
+
+export type DrawingManagerConstructor = new (
+  options?: DrawingManagerOptions
+) => DrawingManager;
+
 export type GoogleMapsEvent =
   | { type: "bounds-change"; bounds: google.maps.LatLngBounds }
   | { type: "map-click"; event: google.maps.MapMouseEvent }
   | {
       type: "map-overlay-complete";
-      event: google.maps.drawing.OverlayCompleteEvent & OverlayCompleteDetail;
+      event: OverlayCompleteEvent & OverlayCompleteDetail;
     }
   | {
       type: "marker-render";

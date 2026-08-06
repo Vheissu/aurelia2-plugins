@@ -2,6 +2,8 @@
     "extends": "../../tsconfig.json",
     "compilerOptions": {
       "outDir": "./dist",
+      "types": ["google.maps"],
+      "rootDir": "./src",
       "declarationDir": "./dist/types",
       "tsBuildInfoFile": "./dist/.tsbuildinfo"
     },

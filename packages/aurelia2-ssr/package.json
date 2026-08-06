@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-ssr",
-  "version": "0.0.3",
+  "version": "0.1.0",
   "description": "Server-side rendering, prerendering, SEO, preboot, and hydration utilities for Aurelia 2",
   "type": "module",
   "sideEffects": false,
@@ -111,18 +111,18 @@
     "test": "jest"
   },
   "devDependencies": {
-    "@aurelia/kernel": "^2.0.0-rc.1",
-    "@aurelia/platform-browser": "^2.0.0-rc.1",
-    "@aurelia/router": "^2.0.0-rc.1",
-    "@aurelia/runtime-html": "^2.0.0-rc.1",
-    "aurelia": "^2.0.0-rc.1"
+    "@aurelia/kernel": "^2.0.0-rc.2",
+    "@aurelia/platform-browser": "^2.0.0-rc.2",
+    "@aurelia/router": "^2.0.0-rc.2",
+    "@aurelia/runtime-html": "^2.0.0-rc.2",
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
-    "@aurelia/kernel": ">=2.0.0-rc.1",
-    "@aurelia/platform-browser": ">=2.0.0-rc.1",
-    "@aurelia/router": ">=2.0.0-rc.1",
-    "@aurelia/runtime-html": ">=2.0.0-rc.1",
-    "aurelia": ">=2.0.0-rc.1",
+    "@aurelia/kernel": ">=2.0.0-rc.2",
+    "@aurelia/platform-browser": ">=2.0.0-rc.2",
+    "@aurelia/router": ">=2.0.0-rc.2",
+    "@aurelia/runtime-html": ">=2.0.0-rc.2",
+    "aurelia": ">=2.0.0-rc.2",
     "jsdom": ">=24.0.0"
   },
   "peerDependenciesMeta": {

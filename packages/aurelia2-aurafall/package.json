@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-aurafall",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Virtual waterfall (masonry) plugin for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -21,9 +21,9 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.1"
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.1"
+    "aurelia": ">=2.0.0-rc.2"
   }
 }

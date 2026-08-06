@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-bootstrap",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "A port of the Aurelia Bootstrap plugin to v2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -24,11 +24,11 @@
     "velocity-animate": "^2.0.6"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.1",
+    "aurelia": "^2.0.0-rc.2",
     "bootstrap": "^5.3.8"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.1",
+    "aurelia": ">=2.0.0-rc.2",
     "bootstrap": "^5.3.8"
   }
 }

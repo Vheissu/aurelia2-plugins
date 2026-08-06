@@ -3,10 +3,13 @@
       "incremental": true,
       "target": "es2022",
       "module": "esnext",
+      // TypeScript 6 defaults `strict` to true; these packages were authored
+      // against the previous non-strict default, so keep it explicit.
+      "strict": false,
       "noImplicitAny": false,
       "isolatedModules": true,
       "lib": ["esnext", "DOM"],
-      "moduleResolution": "node",
+      "moduleResolution": "bundler",
       "resolveJsonModule": true,
       "declaration": true,
       "declarationMap": true,
@@ -14,11 +17,7 @@
       "esModuleInterop": true,
       "forceConsistentCasingInFileNames": true,
       "skipLibCheck": true,
-      "preserveConstEnums": true,
-      "typeRoots": [
-        "./types/",
-        "./node_modules/@types/",
-      ]
+      "preserveConstEnums": true
     },
     "files": [
         "./types/global.d.ts"

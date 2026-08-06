@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-chartjs",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Chart.js wrapper for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -20,11 +20,11 @@
     "test": "jest"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.1",
-    "chart.js": "^4.4.1"
+    "aurelia": "^2.0.0-rc.2",
+    "chart.js": "^4.5.1"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.1",
+    "aurelia": ">=2.0.0-rc.2",
     "chart.js": "^4.1.1"
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "aurelia2-table",
-  "version": "0.0.38",
+  "version": "0.1.0",
   "description": "A port of the Aurelia Table plugin to v2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
@@ -24,9 +24,9 @@
     "test": "jest --passWithNoTests"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.1"
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
-    "aurelia": ">=2.0.0-rc.1"
+    "aurelia": ">=2.0.0-rc.2"
   }
 }

@@ -13,9 +13,14 @@ import { IMarkerClustering } from "./marker-clustering";
 import { Events } from "./events";
 import { ILogger, inject } from "@aurelia/kernel";
 import type {
+  DrawingControlOptions,
+  DrawingManager,
+  DrawingManagerConstructor,
+  DrawingManagerOptions,
   GoogleMapsEvent,
   MarkerInput,
   OverlayCompleteDetail,
+  OverlayCompleteEvent,
   PolygonInput,
 } from "./types";
 
@@ -44,8 +49,7 @@ export class GoogleMaps implements ICustomElementViewModel {
   @bindable drawMode = "MARKER";
   @bindable polygons: Array<PolygonInput | string> = [];
   @bindable drawingControl = true;
-  @bindable drawingControlOptions: google.maps.drawing.DrawingControlOptions =
-    {};
+  @bindable drawingControlOptions: DrawingControlOptions = {};
 
   public map: google.maps.Map | null = null;
   public _renderedMarkers: google.maps.Marker[] = [];
@@ -53,7 +57,7 @@ export class GoogleMaps implements ICustomElementViewModel {
   public _scriptPromise: Promise<void> | null = null;
   public _mapPromise: Promise<void> | null = null;
   public _mapResolve: (() => void) | null = null;
-  public drawingManager: google.maps.drawing.DrawingManager | null = null;
+  public drawingManager: DrawingManager | null = null;
   public _renderedPolygons: google.maps.Polygon[] = [];
   public _polygonsSubscription: any = null;
 
@@ -710,7 +714,7 @@ export class GoogleMaps implements ICustomElementViewModel {
    * @param options - the option object passed into the drawing manager
    */
   async initDrawingManager(
-    options: google.maps.drawing.DrawingManagerOptions = {}
+    options: DrawingManagerOptions = {}
   ) {
     await this._mapPromise;
     await this.googleMapsApi.importLibrary("drawing");
@@ -727,10 +731,14 @@ export class GoogleMaps implements ICustomElementViewModel {
       },
       options
     );
-    this.drawingManager = new google.maps.drawing.DrawingManager(config);
+    // `DrawingManager` lost its typings in @types/google.maps 3.65; the
+    // constructor still accepts options at runtime.
+    const DrawingManagerCtor = google.maps.drawing
+      .DrawingManager as unknown as DrawingManagerConstructor;
+    this.drawingManager = new DrawingManagerCtor(config);
 
     this.drawingManager.addListener("overlaycomplete", (evt) => {
-      const overlayEvent = evt as google.maps.drawing.OverlayCompleteEvent &
+      const overlayEvent = evt as OverlayCompleteEvent &
         OverlayCompleteDetail;
       if (
         overlayEvent.type.toUpperCase() == "POLYGON" ||
@@ -844,12 +852,17 @@ export class GoogleMaps implements ICustomElementViewModel {
    * @param polygonObject - paths defining a polygon or a string
    */
   renderPolygon(polygonObject: PolygonInput, index = 0) {
-    let paths = polygonObject.paths;
+    const rawPaths = polygonObject.paths;
 
-    if (!paths) return;
+    if (!rawPaths) return;
 
-    if (Array.isArray(paths)) {
-      paths = paths.map((point: any) => {
+    // `PolygonPathInput` accepts the plugin's `{ latitude, longitude }` shape,
+    // which Google's own options type does not; normalising below produces a
+    // value the API accepts.
+    let paths = rawPaths as google.maps.PolygonOptions["paths"];
+
+    if (Array.isArray(rawPaths)) {
+      paths = rawPaths.map((point: any) => {
         if (typeof point?.lat === "function" && typeof point?.lng === "function") {
           return point;
         }

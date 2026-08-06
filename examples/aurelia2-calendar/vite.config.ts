@@ -19,7 +19,7 @@ export default defineConfig({
       'aurelia2-calendar': calendarDist,
     },
   },
-  esbuild: {
+  oxc: {
     target: 'es2022',
   },
   plugins: [
