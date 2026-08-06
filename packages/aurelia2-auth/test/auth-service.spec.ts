@@ -1,56 +1,93 @@
-import { DI, Registration } from '@aurelia/kernel';
+import { Registration } from '@aurelia/kernel';
 import { IHttpClient } from '@aurelia/fetch-client';
-import { IAuthOptions } from '../src/configuration';
+import { Authentication, IAuthentication } from '../src/authentication';
+import { AuthorizationService, IAuthorizationService } from '../src/authorization';
 import { AuthService } from '../src/auth-service';
-import { IAuthentication } from '../src/authentication';
 import { IOAuth1 } from '../src/oAuth1';
-import { IOAuth2 } from '../src/oAuth2';
-import { EventAggregator, IEventAggregator } from '@aurelia/kernel';
+import { IOAuthClient } from '../src/oauth-client';
+import { createUnitContainer } from './helpers';
 
-describe('AuthService', () => {
-  test('refreshToken posts refresh token and stores new tokens', async () => {
-    const httpClient = {
-      fetch: jest.fn(() =>
-        Promise.resolve({
-          status: 200,
-          json: async () => ({ access_token: 'new-token' }),
-        })
-      ),
-    } as unknown as IHttpClient;
-
-    const auth = {
-      tokenInterceptor: {},
-      getRefreshToken: () => 'refresh-token',
-      getRefreshUrl: () => '/auth/refresh',
-      setToken: jest.fn(),
-      clearTokens: jest.fn(),
-      isAuthenticated: () => true,
-      isTokenExpired: () => false,
-      getToken: () => 'token',
-    } as unknown as IAuthentication;
-
-    const eventAggregator = new EventAggregator();
-    const publishSpy = jest.spyOn(eventAggregator, 'publish');
-
-    const container = DI.createContainer();
-    container.register(
-      Registration.instance(IHttpClient, httpClient),
+describe('AuthService session flows', () => {
+  function create(options = {}) {
+    const http = { fetch: jest.fn() };
+    const oauth = { begin: jest.fn(), start: jest.fn(), complete: jest.fn() };
+    const oauth1 = { open: jest.fn() };
+    const setup = createUnitContainer(options, [
+      Registration.instance(IHttpClient, http as never),
+      Registration.instance(IOAuthClient, oauth),
+      Registration.instance(IOAuth1, oauth1),
+    ]);
+    const auth = setup.container.invoke(Authentication);
+    setup.container.register(
       Registration.instance(IAuthentication, auth),
-      Registration.instance(IOAuth1, {} as IOAuth1),
-      Registration.instance(IOAuth2, {} as IOAuth2),
-      Registration.instance(IAuthOptions, {
-        refreshTokenName: 'refresh_token',
-        withCredentials: false,
-      }),
-      Registration.instance(IEventAggregator, eventAggregator)
+      Registration.singleton(IAuthorizationService, AuthorizationService),
     );
+    return {
+      ...setup,
+      auth,
+      http,
+      oauth,
+      service: setup.container.invoke(AuthService),
+    };
+  }
 
-    const service = container.invoke(AuthService);
+  test('deduplicates simultaneous refreshes and keeps a rotating refresh token', async () => {
+    const { auth, http, service } = create({ refreshTokens: true });
+    auth.setToken({ access_token: 'old-access', refresh_token: 'refresh-1' });
+    let resolveResponse!: (response: Response) => void;
+    http.fetch.mockReturnValue(new Promise<Response>(resolve => { resolveResponse = resolve; }));
 
-    await service.refreshToken();
+    const first = service.refreshToken();
+    const second = service.refreshToken();
+    expect(first).toBe(second);
+    expect(http.fetch).toHaveBeenCalledTimes(1);
 
-    expect(httpClient.fetch).toHaveBeenCalled();
-    expect(auth.setToken).toHaveBeenCalledWith({ access_token: 'new-token' });
-    expect(publishSpy).toHaveBeenCalledWith('auth:refresh', { access_token: 'new-token' });
+    resolveResponse(jsonResponse({ access_token: 'new-access' }));
+    await expect(first).resolves.toMatchObject({ access_token: 'new-access' });
+    expect(auth.getToken()).toBe('new-access');
+    expect(auth.getRefreshToken()).toBe('refresh-1');
+
+    const request = http.fetch.mock.calls[0][0] as Request;
+    await expect(request.clone().json()).resolves.toEqual({ refresh_token: 'refresh-1' });
+  });
+
+  test('hydrates a cookie session without requiring a JavaScript token', async () => {
+    const { auth, http, service } = create({ mode: 'cookie', withCredentials: true });
+    http.fetch.mockResolvedValue(jsonResponse({ authenticated: true, user: { id: 'u1' } }));
+
+    await service.checkSession();
+
+    expect(auth.getToken()).toBeNull();
+    expect(service.session).toMatchObject({
+      status: 'authenticated',
+      user: { id: 'u1' },
+    });
+    const request = http.fetch.mock.calls[0][0] as Request;
+    expect(request.credentials).toBe('include');
+  });
+
+  test('clears local state even when the server-side logout request fails', async () => {
+    const { auth, http, service } = create({ logoutUrl: '/auth/logout' });
+    auth.setToken('opaque-access-token');
+    http.fetch.mockRejectedValue(new TypeError('offline'));
+
+    await expect(service.logout()).rejects.toThrow('offline');
+    expect(auth.isAuthenticated()).toBe(false);
+  });
+
+  test('fails refresh clearly when bearer mode has no refresh token', async () => {
+    const { service, http } = create({ refreshTokens: true });
+    await expect(service.refreshToken()).rejects.toMatchObject({
+      name: 'AuthError',
+      code: 'missing-refresh-token',
+    });
+    expect(http.fetch).not.toHaveBeenCalled();
   });
 });
+
+function jsonResponse(value: unknown, status = 200): Response {
+  return new Response(JSON.stringify(value), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}

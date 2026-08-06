@@ -1,101 +1,94 @@
-import { DI, Registration } from '@aurelia/kernel';
-import { IAuthOptions } from '../src/configuration';
 import { Authentication } from '../src/authentication';
-import { Storage } from '../src/storage';
-import { IStorage } from '../src/storage';
+import { decodeJwt } from '../src/jwt';
+import { createJwt, createUnitContainer } from './helpers';
 
-const encodeBase64Url = (value: string) => {
-  if (typeof btoa === 'function') {
-    return btoa(value)
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=+$/, '');
-  }
+describe('Authentication token state', () => {
+  afterEach(() => jest.restoreAllMocks());
 
-  // @ts-expect-error
-  return Buffer.from(value, 'utf8')
-    .toString('base64')
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=+$/, '');
-};
-
-const createJwt = (payload: Record<string, unknown>) => {
-  const header = encodeBase64Url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
-  const body = encodeBase64Url(JSON.stringify(payload));
-  return `${header}.${body}.signature`;
-};
-
-describe('Authentication', () => {
-  const config = {
-    tokenName: 'token',
-    idTokenName: 'id_token',
-    refreshTokenName: 'refresh_token',
-    tokenPrefix: 'test',
-    responseTokenProp: 'access_token',
-    responseIdTokenProp: 'id_token',
-    responseRefreshTokenProp: 'refresh_token',
-    loginRedirect: '',
-    logoutRedirect: '',
-    storage: 'memory',
-  };
-
-  test('stores access, id, and refresh tokens', () => {
-    const container = DI.createContainer();
-    container.register(Registration.instance(IAuthOptions, config));
-    const storage = container.invoke(Storage);
-    container.register(Registration.instance(IStorage, storage));
-
+  test('extracts nested token responses and preserves a rotating refresh token', () => {
+    const { container, storage } = createUnitContainer({ tokenRoot: 'payload' });
     const auth = container.invoke(Authentication);
 
-    auth.setToken({
-      access_token: 'access',
-      id_token: 'id',
-      refresh_token: 'refresh',
-    });
+    auth.setToken({ payload: { access_token: 'access-1' }, refresh_token: 'refresh-1' });
+    auth.setToken({ payload: { access_token: 'access-2' } });
 
-    expect(storage.get('test_token')).toBe('access');
-    expect(storage.get('test_id_token')).toBe('id');
-    expect(storage.get('test_refresh_token')).toBe('refresh');
+    expect(auth.getToken()).toBe('access-2');
+    expect(auth.getRefreshToken()).toBe('refresh-1');
+    expect(storage.values).toEqual(new Map([
+      ['aurelia-auth_access_token', 'access-2'],
+      ['aurelia-auth_refresh_token', 'refresh-1'],
+    ]));
   });
 
-  test('isAuthenticated respects token expiration', () => {
-    const container = DI.createContainer();
-    container.register(
-      Registration.instance(IAuthOptions, {
-        ...config,
-        tokenExpirationLeeway: 0,
-      })
-    );
-    const storage = container.invoke(Storage);
-    container.register(Registration.instance(IStorage, storage));
+  test('decodes UTF-8 JWT claims without presenting them as signature verification', () => {
+    const token = createJwt({ sub: '42', name: 'José 👋' });
+    expect(decodeJwt(token)).toMatchObject({ sub: '42', name: 'José 👋' });
+    expect(decodeJwt('not-a-jwt')).toBeNull();
+  });
 
+  test('enforces exp, nbf, issuer, audience and custom claim validation', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const { container } = createUnitContainer({
+      issuer: 'https://issuer.example',
+      audience: ['web', 'api'],
+      clockTolerance: 0,
+      validateJwt: claims => claims.kind === 'access',
+    });
     const auth = container.invoke(Authentication);
 
-    const future = Math.round(Date.now() / 1000) + 60;
-    storage.set('test_token', createJwt({ exp: future }));
+    auth.setToken(createJwt({
+      exp: 1_700_000_100,
+      nbf: 1_699_999_900,
+      iss: 'https://issuer.example',
+      aud: ['api'],
+      kind: 'access',
+    }));
     expect(auth.isAuthenticated()).toBe(true);
 
-    const past = Math.round(Date.now() / 1000) - 60;
-    storage.set('test_token', createJwt({ exp: past }));
+    auth.setToken(createJwt({
+      exp: 1_700_000_100,
+      iss: 'https://attacker.example',
+      aud: ['api'],
+      kind: 'access',
+    }));
     expect(auth.isAuthenticated()).toBe(false);
   });
 
-  test('isTokenExpired uses leeway', () => {
-    const container = DI.createContainer();
-    container.register(
-      Registration.instance(IAuthOptions, {
-        ...config,
-        tokenExpirationLeeway: 60,
-      })
-    );
-    const storage = container.invoke(Storage);
-    container.register(Registration.instance(IStorage, storage));
-
+  test('uses expires_in for opaque access tokens and supports early-expiry checks', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const { container } = createUnitContainer();
     const auth = container.invoke(Authentication);
-    const expSoon = Math.round(Date.now() / 1000) + 30;
-    storage.set('test_token', createJwt({ exp: expSoon }));
+    auth.setToken({ access_token: 'opaque', expires_in: 120 });
 
-    expect(auth.isTokenExpired()).toBe(true);
+    expect(auth.isTokenExpired()).toBe(false);
+    expect(auth.isTokenExpired(121)).toBe(true);
+    expect(auth.session.tokens.expiresAt).toBe(1_700_000_120);
+  });
+
+  test('does not apply an old opaque-token expiry to a replacement token', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000_000);
+    const { container } = createUnitContainer();
+    const auth = container.invoke(Authentication);
+    auth.setToken({ access_token: 'short-lived', expires_in: 30 });
+
+    auth.setToken({ access_token: 'replacement-with-server-managed-expiry' });
+
+    expect(auth.session.tokens.expiresAt).toBeUndefined();
+    expect(auth.isAuthenticated()).toBe(true);
+  });
+
+  test('supports cookie sessions without fabricating a browser-readable token', () => {
+    const { container } = createUnitContainer({ mode: 'cookie' });
+    const auth = container.invoke(Authentication);
+
+    expect(auth.isAuthenticated()).toBe(false);
+    auth.setSession({ id: 'user-1' });
+    expect(auth.session).toMatchObject({
+      status: 'authenticated',
+      user: { id: 'user-1' },
+      tokens: {},
+    });
+    auth.clearTokens();
+    expect(auth.isAuthenticated()).toBe(false);
   });
 });
