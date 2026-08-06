@@ -1,250 +1,326 @@
 # aurelia2-auth
-A comprehensive Aurelia 2 rewrite inspired by the Aurelia v1 `aurelia-auth` plugin (https://github.com/paulvanbladel/aurelia-auth). It preserves the original capabilities while adding modern best practices, refresh tokens, PKCE, and additional provider support.
+
+Authentication and client-side authorization for Aurelia 2. It handles bearer tokens, cookie sessions, API keys, OAuth/OIDC, refresh races, router guards and authorization-aware views without tying the app to one backend shape.
+
+Server checks still decide whether a request is allowed. The guards, decorators and attributes in this package keep the browser UI honest; they aren't a security boundary.
 
 ## Install
 
-```
+```sh
 npm install aurelia2-auth
 ```
 
-## Quick start
+`@aurelia/router` is an optional peer dependency. Install it when the app uses the router guard.
 
-Register the plugin:
+## Register the plugin
 
-```
+```ts
+import Aurelia from 'aurelia';
 import { AureliaAuthConfiguration } from 'aurelia2-auth';
 
-Aurelia.register(AureliaAuthConfiguration);
+Aurelia
+  .register(AureliaAuthConfiguration.configure({
+    baseUrl: 'https://api.example.com',
+    trustedOrigins: ['https://api.example.com'],
+  }))
+  .app(MyApp)
+  .start();
 ```
 
-Override defaults:
+The default mode is `bearer`. Tokens are kept in `sessionStorage`, the authorization header is `Bearer`, and redirects are opt-in. Requests only receive credentials when their origin appears in `trustedOrigins`.
 
-```
-import { AureliaAuthConfiguration } from 'aurelia2-auth';
+Resolve the service where it's needed:
 
-const configOptions = {
-  baseUrl: '/api',
-  loginRedirect: '#/dashboard'
-};
-
-Aurelia.register(AureliaAuthConfiguration.configure(configOptions));
-```
-
-Use the service:
-
-```
+```ts
+import { resolve } from 'aurelia';
 import { IAuthService } from 'aurelia2-auth';
-import { resolve } from '@aurelia/kernel';
 
-const auth = resolve(IAuthService);
-await auth.login({ email: 'user@site.com', password: 'secret' });
+export class LoginPage {
+  private readonly auth = resolve(IAuthService);
+
+  public login(email: string, password: string) {
+    return this.auth.login({ email, password });
+  }
+}
 ```
+
+## Authentication modes
+
+### Bearer tokens
+
+The login response can contain `access_token`, `id_token`, `refresh_token`, `expires_in` and `scope`. Property names and nested response roots are configurable.
+
+```ts
+AureliaAuthConfiguration.configure({
+  mode: 'bearer',
+  loginUrl: '/auth/login',
+  tokenRoot: 'tokens',
+  responseTokenProp: 'access_token',
+  refreshTokens: true,
+  refreshUrl: '/auth/refresh',
+});
+```
+
+Opaque access tokens work too. If the response includes `expires_in` or `expires_at`, the plugin uses it for expiry and automatic refresh.
+
+### Cookie sessions
+
+Use `cookie` mode for an HTTP-only session or a backend-for-frontend setup. The browser never needs to read the session cookie.
+
+```ts
+AureliaAuthConfiguration.configure({
+  mode: 'cookie',
+  withCredentials: true,
+  autoInitialize: true,
+  sessionUrl: '/auth/session',
+  loginUrl: '/auth/login',
+  logoutUrl: '/auth/logout',
+});
+```
+
+`autoInitialize` checks `sessionUrl` as the app starts. A successful login or session response can include a `user` or `profile` property.
+
+For browser-based OAuth apps, a backend-for-frontend is the strongest default when the deployment can support one. The IETF's browser app guidance explains the trade-offs between backend and browser-held tokens: [RFC 10017](https://www.rfc-editor.org/rfc/rfc10017.html).
+
+### API keys
+
+```ts
+AureliaAuthConfiguration.configure({
+  mode: 'api-key',
+  apiKey: () => currentApiKey,
+  apiKeyHeader: 'X-API-Key',
+  trustedOrigins: ['https://api.example.com'],
+});
+```
+
+### Custom request signing
+
+`custom` mode leaves the request format to the app. This is the extension point for DPoP proofs, vendor signatures or another request-bound credential.
+
+```ts
+AureliaAuthConfiguration.configure({
+  mode: 'custom',
+  trustedOrigins: ['https://api.example.com'],
+  async transformRequest({ request, accessToken, session }) {
+    request.headers.set('X-Custom-Auth', await signRequest(request, accessToken, session));
+    return request;
+  },
+});
+```
+
+## Refresh and request replay
+
+Refresh calls are single-flight. If five requests notice an expired token together, one refresh request runs and the other callers await it. A 401 response can refresh and replay its original request once, including a clone of a POST body.
+
+```ts
+AureliaAuthConfiguration.configure({
+  refreshTokens: true,
+  refreshOnUnauthorized: true,
+  autoRefresh: true,
+  autoRefreshBuffer: 60,
+});
+```
+
+Refresh endpoints are marked so they can't recursively trigger refresh. A rejected refresh with status 400, 401 or 403 clears the local session; a network failure doesn't.
+
+## OAuth 2.0 and OpenID Connect
+
+Authorization Code with S256 PKCE is the default. Every transaction gets cryptographic `state`; OpenID Connect providers also get a one-time `nonce`. Discovery documents are fetched once and cached by URL.
+
+Provider presets supply public endpoints and sensible scopes, but they don't supply a `clientId`. Override only what the app owns:
+
+```ts
+AureliaAuthConfiguration.configure({
+  baseUrl: 'https://api.example.com',
+  trustedOrigins: ['https://api.example.com'],
+  providers: {
+    google: {
+      name: 'google',
+      clientId: 'your-browser-client-id',
+      redirectUri: 'https://app.example.com/auth/callback',
+      url: '/auth/google',
+      display: 'redirect',
+      exchange: 'backend',
+    },
+  },
+});
+```
+
+Start the flow:
+
+```ts
+await auth.authenticate('google');
+```
+
+Complete it on the callback route:
+
+```ts
+await auth.completeOAuthCallback(window.location.href, 'google');
+```
+
+`exchange: 'backend'` posts the code, PKCE verifier and redirect URI to the configured provider `url`. Client secrets stay on the server. Public clients can use `exchange: 'direct'` with a CORS-enabled `tokenEndpoint`; the plugin sends form-encoded OAuth parameters and never accepts a client secret.
+
+Popup flows use the same transaction checks:
+
+```ts
+providers: {
+  google: {
+    name: 'google',
+    clientId: 'your-browser-client-id',
+    display: 'popup',
+  },
+}
+```
+
+The implicit flow remains available as `flow: 'implicit', exchange: 'none'` for an old provider that can't be moved yet. It isn't a preset. OAuth 1.0a is also explicit and server-assisted; signing secrets never enter the browser.
+
+These defaults follow the OAuth security BCP: code flow, PKCE S256, one-time state and no implicit grant by default. See [RFC 9700](https://www.rfc-editor.org/rfc/rfc9700.html).
 
 ## Router authorization
 
-Use the `AuthorizeHook` and mark routes with `data.auth`:
+The plugin registers its `@aurelia/router` lifecycle hook. Routes can use modern TC39 class decorators:
 
+```ts
+import {
+  authenticated,
+  authorize,
+  permissions,
+  roles,
+} from 'aurelia2-auth';
+
+@authenticated()
+export class AccountPage {}
+
+@roles('admin')
+@permissions('reports:read')
+export class ReportsPage {}
+
+@authorize({ policies: ['ownsInvoice'] })
+export class InvoicePage {}
 ```
-import { AuthorizeHook } from 'aurelia2-auth';
-import { route } from '@aurelia/router';
 
+The available decorators are `@authenticated()`, `@anonymousOnly()`, `@roles(...)`, `@permissions(...)`, `@policy(...)`, `@claims(...)` and the general `@authorize(...)`. Decorators compose, so a class can state each concern separately.
+
+Route data works when a shared route table is a better fit:
+
+```ts
 @route({
   routes: [
-    { path: '', component: 'home' },
-    { path: 'dashboard', component: 'dashboard', data: { auth: true } }
-  ]
+    {
+      path: 'billing',
+      component: import('./billing-page'),
+      data: {
+        authorization: {
+          authenticated: true,
+          roles: ['owner', 'billing'],
+          match: 'any',
+        },
+      },
+    },
+  ],
 })
-export class App {}
-
-Aurelia.register(AuthorizeHook);
+export class MyApp {}
 ```
 
-For nav filtering, the `auth-filter` value converter can be used with route lists:
+`data.auth: true`, `data.roles` and `data.permissions` are still understood for older route tables. Guards return router instructions rather than starting a nested navigation.
 
-```
-${routes | auth-filter:isAuthenticated}
-```
+Set these routes to control guard redirects:
 
-## AuthService API
-
-Common calls:
-
-```
-auth.login({ email, password })
-auth.signup({ email, password })
-auth.logout()
-auth.authenticate('google')
-auth.getMe()
-auth.isAuthenticated()
-auth.getTokenPayload()
-auth.setToken(token)
-auth.refreshToken()
+```ts
+AureliaAuthConfiguration.configure({
+  loginRoute: '/login',
+  unauthorizedRoute: '/forbidden',
+  authenticatedRoute: '/',
+  preserveReturnUrl: true,
+});
 ```
 
-## OAuth providers
+Stored return URLs must stay on the current origin. External redirect values are ignored.
 
-Default providers included: `apple`, `facebook`, `github`, `google`, `identSrv`, `instagram`, `linkedin`, `live`, `microsoft`, `x` (OAuth 2.0), and `yahoo`.
+## Policies and claims
 
-### OAuth 2.0 example (Google)
+Policies can be synchronous or asynchronous. They receive the current session, the requirement and the resource passed by the guard or caller.
 
-```
-Aurelia.register(
-  AureliaAuthConfiguration.configure({
-    providers: {
-      google: {
-        clientId: 'your-client-id',
-        redirectUri: 'https://app.example.com',
-        scope: ['profile', 'email'],
-        responseType: 'code',
-        pkce: true
-      }
-    }
-  })
+```ts
+AureliaAuthConfiguration.configure({
+  policies: {
+    paidAccount: ({ session }) => session.claims?.plan === 'paid',
+    ownsInvoice: async ({ session, resource }) => {
+      return invoices.isOwner(String(resource), String(session.claims?.sub));
+    },
+  },
+});
+
+const decision = await auth.authorize(
+  { policies: ['ownsInvoice'] },
+  invoiceId,
 );
 ```
 
-### OAuth 2.0 example (X with PKCE)
+Roles and permissions can be read from more than one claim path:
 
-```
-Aurelia.register(
-  AureliaAuthConfiguration.configure({
-    providers: {
-      x: {
-        clientId: 'your-client-id',
-        redirectUri: 'https://app.example.com',
-        scope: ['tweet.read', 'users.read'],
-        responseType: 'code',
-        pkce: true
-      }
-    }
-  })
-);
+```ts
+AureliaAuthConfiguration.configure({
+  rolesProperty: ['roles', 'realm.roles'],
+  permissionsProperty: ['permissions', 'scope'],
+});
 ```
 
-### OAuth 2.0 example (Apple)
+Space-delimited OAuth `scope` values are split into individual permissions.
 
-```
-Aurelia.register(
-  AureliaAuthConfiguration.configure({
-    providers: {
-      apple: {
-        clientId: 'com.example.web',
-        redirectUri: 'https://app.example.com',
-        scope: ['name', 'email'],
-        responseType: 'code'
-      }
-    }
-  })
-);
+## View attributes
+
+`if-authenticated` and `if-roles` are compatibility-friendly shortcuts:
+
+```html
+<a if-authenticated load="account">Account</a>
+<a if-authenticated.bind="false" load="login">Sign in</a>
+<button if-roles="admin">Manage users</button>
 ```
 
-### OAuth 2.0 example (Microsoft)
+The `auth` attribute accepts the same requirement object as the router. It can hide or disable an element:
 
-```
-Aurelia.register(
-  AureliaAuthConfiguration.configure({
-    providers: {
-      microsoft: {
-        clientId: 'your-client-id',
-        redirectUri: 'https://app.example.com',
-        scope: ['openid', 'profile', 'email'],
-        responseType: 'code'
-      }
-    }
-  })
-);
+```html
+<button auth="value.bind: invoiceRule; mode: disable">
+  Refund invoice
+</button>
 ```
 
-Provider overrides merge with defaults, so you can tweak only the fields you need. OAuth 1.0 providers can still be configured manually if required, but are not included by default.
+Hidden elements use the native `hidden` property and `aria-hidden`. Disabled controls use their `disabled` property and `aria-disabled`. Original state is restored when the attribute unbinds.
 
-## Token refresh
+## Session and events
 
-Enable refresh tokens and configure the refresh endpoint:
+```ts
+auth.session.status; // 'anonymous' | 'authenticated' | 'refreshing'
+auth.session.user;
+auth.session.claims;
+auth.session.tokens;
 
-```
-Aurelia.register(
-  AureliaAuthConfiguration.configure({
-    refreshTokens: true,
-    refreshUrl: '/auth/refresh',
-    refreshTokenName: 'refresh_token',
-    responseRefreshTokenProp: 'refresh_token'
-  })
-);
-```
-
-You can also trigger a refresh manually:
-
-```
-const auth = resolve(IAuthService);
-await auth.refreshToken();
+auth.isAuthenticated();
+auth.getTokenPayload();
+auth.getUserRoles();
+auth.hasPermission('posts:write');
 ```
 
-When `refreshTokens` is enabled, the HTTP interceptor attempts a refresh on token expiry and 401 responses, then retries the original request.
+The package publishes string channels through `IEventAggregator`, including `auth:state-changed`, `auth:login`, `auth:logout`, `auth:refresh`, `auth:unauthorized` and `auth:forbidden`. `AuthStateChangedEvent` is also published as a typed event.
 
-## PKCE (OAuth 2.0)
+## Storage and JWT claims
 
-PKCE is supported for authorization code flows. Enable it globally or per provider:
+Available storage values are `sessionStorage`, `localStorage`, `memory` and any object with `getItem`, `setItem` and `removeItem`. If browser storage is blocked, the default fallback is memory. Set `storageFallback: 'error'` when silent fallback would be misleading.
 
-```
-Aurelia.register(
-  AureliaAuthConfiguration.configure({
-    pkce: true,
-    pkceMethod: 'S256',
-    providers: {
-      google: {
-        pkce: true,
-        pkceMethod: 'S256'
-      }
-    }
-  })
-);
-```
+`decodeJwt()` and `getTokenPayload()` decode claims for browser UX. They do not verify the JWT signature. The resource server must validate the signature, issuer, audience, expiry and authorization rules. Browser-side issuer, audience, `nbf`, `exp` and custom claim checks are useful early rejection only. JWT implementation guidance is in [RFC 8725](https://www.rfc-editor.org/rfc/rfc8725.html).
 
-## Storage
+## Changes from the old port
 
-Supported storage values:
-- `localStorage`
-- `sessionStorage`
-- `memory`
-- a custom `Storage` implementation
+This is a breaking modernization of the Aurelia 1-era API.
 
-```
-Aurelia.register(
-  AureliaAuthConfiguration.configure({
-    storage: 'memory'
-  })
-);
-```
+- Storage defaults to `sessionStorage`, not `localStorage`.
+- Automatic location redirects are off until a redirect option is set.
+- Access tokens are never attached outside `trustedOrigins`.
+- OAuth defaults to code flow with S256 PKCE. Fixed state values and insecure randomness are gone.
+- The router hook is registered with the plugin and returns redirect instructions.
+- Authorization decorators use the current TC39 decorator proposal. There is no parameter-decorator DI.
+- `if-authenticated` and `if-roles` use `hidden` instead of rewriting inline display styles.
+- The global `Auth.container` escape hatch has been removed. Resolve `IAuthService` through Aurelia DI.
 
-## Events
-
-The plugin publishes events through Aurelia's `IEventAggregator`:
-
-- `auth:login`
-- `auth:signup`
-- `auth:logout`
-- `auth:authenticate`
-- `auth:unlink`
-- `auth:refresh`
-
-## Configuration reference (selected)
-
-- `baseUrl`: prefix for API calls
-- `loginUrl`, `signupUrl`, `profileUrl`, `refreshUrl`
-- `loginRedirect`, `logoutRedirect`, `signupRedirect`
-- `tokenName`, `idTokenName`, `refreshTokenName`
-- `responseTokenProp`, `responseIdTokenProp`, `responseRefreshTokenProp`
-- `tokenPrefix`, `tokenExpirationLeeway`
-- `authHeader`, `authToken`, `httpInterceptor`, `withCredentials`
-- `refreshTokens`, `refreshTokenPayload`
-- `pkce`, `pkceMethod`
-- `providers`
-
-## Differences from aurelia-auth v1
-
-- Router pipeline steps are replaced by an Aurelia 2 lifecycle hook (`AuthorizeHook`).
-- The package name is `aurelia2-auth`.
-
-## Security note
-
-Authentication and authorization decisions must be enforced on the server. Client-side checks are for UX only.
+The old `OAuth2`, `OAuth1`, `IFetchConfig`, `IAuthentication`, `if-authenticated`, `if-roles`, `data.auth`, role helpers and common endpoint options remain available where their behavior is still sound.
