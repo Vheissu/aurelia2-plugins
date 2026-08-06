@@ -1,71 +1,52 @@
-import { customAttribute, INode, bindable, resolve } from 'aurelia';
-import { IAuthService } from './auth-service';
-import { IEventAggregator, IDisposable } from '@aurelia/kernel';
+import { IEventAggregator, type IDisposable, resolve } from '@aurelia/kernel';
+import { bindable, customAttribute, INode } from 'aurelia';
+import { IAuthorizationService } from './authorization';
 import { AuthEvents } from './auth-events';
 
 @customAttribute('if-roles')
 export class IfRolesCustomAttribute {
-  @bindable() value: string | string[] = [];
-  @bindable() mode: 'any' | 'all' = 'any';
-
-  private subscriptions: IDisposable[] = [];
-
+  @bindable public value: string | readonly string[] = [];
+  @bindable public mode: 'any' | 'all' = 'any';
   private readonly element = resolve(INode) as HTMLElement;
-  private readonly authService = resolve(IAuthService);
-  private readonly ea = resolve(IEventAggregator);
-  private display: string = '';
+  private readonly authorization = resolve(IAuthorizationService);
+  private readonly events = resolve(IEventAggregator);
+  private subscription: IDisposable | null = null;
+  private initiallyHidden = false;
 
-  attached() {
-    this.display = this.element.style.display;
+  public binding(): void {
+    this.initiallyHidden = Boolean(this.element.hidden);
     this.update();
-
-    const events = [
-      AuthEvents.login,
-      AuthEvents.logout,
-      AuthEvents.authenticate,
-      AuthEvents.refresh,
-      AuthEvents.tabSync,
-    ];
-
-    for (const event of events) {
-      this.subscriptions.push(this.ea.subscribe(event, () => this.update()));
-    }
+    this.subscription = this.events.subscribe(AuthEvents.stateChanged, () => this.update());
   }
 
-  detaching() {
-    for (const sub of this.subscriptions) {
-      sub.dispose();
-    }
-    this.subscriptions = [];
+  public unbinding(): void {
+    this.subscription?.dispose();
+    this.subscription = null;
+    this.element.hidden = this.initiallyHidden;
+    this.element.removeAttribute('aria-hidden');
   }
 
-  valueChanged() {
+  public valueChanged(): void {
     this.update();
   }
 
-  modeChanged() {
+  public modeChanged(): void {
     this.update();
   }
 
-  private update() {
-    const roles = this.normalizeRoles(this.value);
-    if (roles.length === 0) {
-      this.element.style.display = this.display;
-      return;
-    }
-
-    const hasAccess = this.mode === 'all'
-      ? this.authService.hasAllRoles(roles)
-      : this.authService.hasAnyRole(roles);
-
-    this.element.style.display = hasAccess ? this.display : 'none';
+  private update(): void {
+    const roles = normalize(this.value);
+    const visible = roles.length === 0 || (this.mode === 'all'
+      ? this.authorization.hasAllRoles(roles)
+      : this.authorization.hasAnyRole(roles));
+    this.element.hidden = this.initiallyHidden || !visible;
+    if (!visible) this.element.setAttribute('aria-hidden', 'true');
+    else this.element.removeAttribute('aria-hidden');
   }
+}
 
-  private normalizeRoles(input: string | string[]): string[] {
-    if (Array.isArray(input)) return input;
-    if (typeof input === 'string' && input.length > 0) {
-      return input.split(',').map(r => r.trim()).filter(Boolean);
-    }
-    return [];
-  }
+function normalize(value: string | readonly string[]): readonly string[] {
+  return typeof value === 'string'
+    ? value.split(',').map(entry => entry.trim()).filter(Boolean)
+    : value;
 }

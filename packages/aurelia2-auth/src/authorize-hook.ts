@@ -1,64 +1,108 @@
-import { lifecycleHooks, ILifecycleHooks, IWindow } from '@aurelia/runtime-html';
-import { inject, optional, IEventAggregator } from '@aurelia/kernel';
-import { IRouter, IRouteViewModel, INavigationOptions, Params, RouteNode } from '@aurelia/router';
+import { IEventAggregator, resolve } from '@aurelia/kernel';
+import { lifecycleHooks, type ILifecycleHooks } from '@aurelia/runtime-html';
+import type {
+  INavigationOptions,
+  IRouteViewModel,
+  NavigationInstruction,
+  Params,
+  RouteNode,
+} from '@aurelia/router';
+import type { IAuthorizationRequirement } from './configuration';
+import { IAuthOptions } from './configuration';
 import { IAuthentication } from './authentication';
-import { IAuthService } from './auth-service';
-import { IAuthOptions, IAuthConfigOptions } from './configuration';
+import { IAuthorizationService } from './authorization';
 import { AuthEvents } from './auth-events';
+import {
+  getAuthorizationMetadata,
+  mergeRequirements,
+} from './decorators';
+
+export const authorizationRouteDataKey = 'authorization';
 
 @lifecycleHooks()
-@inject(IAuthentication, IAuthService, IRouter, IAuthOptions, IEventAggregator, optional(IWindow))
-export class AuthorizeHook implements ILifecycleHooks {
-  constructor(
-    readonly auth: IAuthentication,
-    private readonly authService: IAuthService,
-    private router: IRouter,
-    private config: IAuthConfigOptions,
-    private ea: IEventAggregator,
-    private window?: IWindow
-  ) {}
+export class AuthorizeHook implements ILifecycleHooks<IRouteViewModel, 'canLoad'> {
+  private readonly auth = resolve(IAuthentication);
+  private readonly authorization = resolve(IAuthorizationService);
+  private readonly config = resolve(IAuthOptions);
+  private readonly events = resolve(IEventAggregator);
 
-  canLoad(
-    _vm: IRouteViewModel,
+  public async canLoad(
+    viewModel: IRouteViewModel,
     _params: Params,
     next: RouteNode,
     _current: RouteNode | null,
-    _options: INavigationOptions
-  ) {
-    const isLoggedIn = this.auth.isAuthenticated();
-    const loginRoute = this.auth.getLoginRoute();
-    const requiresAuth = next?.data?.auth;
-    const requiredRoles = next?.data?.roles as string[] | undefined;
-    const requiredPermissions = next?.data?.permissions as string[] | undefined;
+    _options: INavigationOptions,
+  ): Promise<boolean | NavigationInstruction | NavigationInstruction[]> {
+    const requirement = mergeRequirements(
+      mergeRequirements(
+        getAuthorizationMetadata(next.component.Type),
+        getAuthorizationMetadata(viewModel),
+      ),
+      getRouteRequirement(next.data),
+    );
+    const decision = await this.authorization.evaluate(requirement, next);
+    if (decision.allowed) return true;
 
-    // Route requires authentication
-    if (requiresAuth) {
-      if (!isLoggedIn) {
-        if (this.window?.location) {
-          this.auth.setInitialUrl(this.window.location.href);
-        }
-        return this.router.load(loginRoute);
-      }
-
-      // Check roles if specified
-      if (requiredRoles && requiredRoles.length > 0) {
-        if (!this.authService.hasAnyRole(requiredRoles)) {
-          this.ea.publish(AuthEvents.forbidden, { requiredRoles, route: next });
-          const unauthorizedRoute = this.config.unauthorizedRoute ?? '/unauthorized';
-          return this.router.load(unauthorizedRoute);
-        }
-      }
-
-      // Check permissions if specified
-      if (requiredPermissions && requiredPermissions.length > 0) {
-        if (!this.authService.hasAnyPermission(requiredPermissions)) {
-          this.ea.publish(AuthEvents.forbidden, { requiredPermissions, route: next });
-          const unauthorizedRoute = this.config.unauthorizedRoute ?? '/unauthorized';
-          return this.router.load(unauthorizedRoute);
-        }
-      }
+    if (decision.reason === 'anonymous') {
+      this.auth.setInitialUrl(routeUrl(next));
+      this.events.publish(AuthEvents.unauthorized, { decision, route: next });
+      return navigationInstruction(requirement.redirectTo ?? this.auth.getLoginRoute());
     }
 
-    return true;
+    if (decision.reason === 'authenticated-only') {
+      return navigationInstruction(requirement.redirectTo ?? this.config.authenticatedRoute ?? '/');
+    }
+
+    this.events.publish(AuthEvents.forbidden, { decision, route: next });
+    return navigationInstruction(requirement.forbiddenRedirectTo
+      ?? this.config.unauthorizedRoute
+      ?? '/unauthorized');
   }
+}
+
+export function createAuthorizationRouteData(
+  requirement: Readonly<IAuthorizationRequirement>,
+): Readonly<Record<string, unknown>> {
+  return Object.freeze({ [authorizationRouteDataKey]: Object.freeze({ ...requirement }) });
+}
+
+export function getRouteRequirement(
+  data: Readonly<Record<string, unknown>> | null | undefined,
+): IAuthorizationRequirement {
+  if (!data) return {};
+  const modern = isRequirement(data[authorizationRouteDataKey])
+    ? data[authorizationRouteDataKey]
+    : isRequirement(data.auth) ? data.auth : undefined;
+  const legacy: IAuthorizationRequirement = {
+    authenticated: data.auth === true ? true : undefined,
+    roles: stringArray(data.roles),
+    permissions: stringArray(data.permissions),
+    policies: stringArray(data.policies),
+  };
+  return mergeRequirements(legacy, modern);
+}
+
+function routeUrl(node: RouteNode): string {
+  const path = node.finalPath.startsWith('/') ? node.finalPath : `/${node.finalPath}`;
+  const query = node.queryParams.toString();
+  const fragment = node.fragment ? `#${node.fragment}` : '';
+  return `${path}${query ? `?${query}` : ''}${fragment}`;
+}
+
+function isRequirement(value: unknown): value is IAuthorizationRequirement {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function stringArray(value: unknown): readonly string[] | undefined {
+  if (Array.isArray(value)) {
+    const values = value.filter((entry): entry is string => typeof entry === 'string');
+    return values.length ? values : undefined;
+  }
+  return typeof value === 'string'
+    ? value.split(',').map(entry => entry.trim()).filter(Boolean)
+    : undefined;
+}
+
+function navigationInstruction(value: string): string {
+  return value === '/' ? '' : value.replace(/^\/+/, '');
 }

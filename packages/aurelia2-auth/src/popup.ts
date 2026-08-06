@@ -1,176 +1,109 @@
-import { DI, inject, optional } from '@aurelia/kernel';
-import { IAuthConfigOptions, IAuthOptions } from './configuration';
-import { parseQueryString, extend, forEach } from './auth-utilities';
+import { DI, optional, resolve } from '@aurelia/kernel';
 import { IWindow } from '@aurelia/runtime-html';
+import type { IOAuthPopupOptions } from './configuration';
+import { IAuthOptions } from './configuration';
+import { AuthError } from './auth-error';
 
-export const IPopup = DI.createInterface<IPopup>(
-  "IPopup",
-  (x) => x.singleton(Popup)
-);
-export type IPopup = Popup;
+export interface IPopup {
+  readonly popupWindow: Window | null;
+  open(url: string, windowName: string, options?: IOAuthPopupOptions, redirectUri?: string): IPopup;
+  pollPopup(timeoutMs?: number): Promise<string>;
+  close(): void;
+}
 
-@inject(IAuthOptions, optional(IWindow))
-export class Popup {
-  protected popupWindow = null;
-  protected polling;
-  protected url;
+export const IPopup = DI.createInterface<IPopup>('IPopup', x => x.singleton(Popup));
 
-  constructor(readonly config: IAuthConfigOptions, private window?: IWindow) {
-    this.popupWindow = null;
-    this.polling = null;
-    this.url = '';
-  }
+export class Popup implements IPopup {
+  private readonly config = resolve(IAuthOptions);
+  private readonly window = resolve(optional(IWindow));
+  private redirectUri = '';
+  public popupWindow: Window | null = null;
 
-  open(url, windowName, options, redirectUri) {
-    this.url = url;
-    let optionsString = this.stringifyOptions(
-      this.prepareOptions(options || {})
-    );
-    if (!this.window) {
-      throw new Error('Popup requires a browser window instance.');
+  public open(
+    url: string,
+    windowName: string,
+    options: IOAuthPopupOptions = {},
+    redirectUri = '',
+  ): this {
+    if (!this.window) throw new Error('OAuth popups require a browser window.');
+    this.redirectUri = redirectUri;
+    const features = this.stringifyOptions(this.prepareOptions(options));
+    this.popupWindow = this.window.open(url, windowName, features);
+    if (!this.popupWindow) {
+      throw new AuthError('oauth-popup-blocked', `The ${windowName} sign-in popup was blocked.`);
     }
-    this.popupWindow = this.window.open(url, windowName, optionsString);
-    if (this.popupWindow && this.popupWindow.focus) {
-      this.popupWindow.focus();
-    }
-
+    this.popupWindow.focus();
     return this;
   }
 
-  eventListener(redirectUri) {
-    let promise = new Promise((resolve, reject) => {
-      this.popupWindow.addEventListener('loadstart', (event) => {
-        if (event.url.indexOf(redirectUri) !== 0) {
-          return;
-        }
-
-        if (!this.window) {
-          reject({
-            data: 'No window available',
-          });
-          return;
-        }
-
-        let parser = this.window.document.createElement('a');
-        parser.href = event.url;
-
-        if (parser.search || parser.hash) {
-          let queryParams = parser.search.substring(1).replace(/\/$/, '');
-          let hashParams = parser.hash.substring(1).replace(/\/$/, '');
-          let hash: Record<string, string | boolean> = parseQueryString(hashParams);
-          let qs: Record<string, string | boolean> = parseQueryString(queryParams);
-
-          extend(qs, hash);
-
-          if (qs.error) {
-            reject({
-              error: qs.error,
-            });
-          } else {
-            resolve(qs);
-          }
-
-          this.popupWindow.close();
-        }
-      });
-
-      this.popupWindow.addEventListener('exit', () => {
-        reject({
-          data: 'Provider Popup was closed',
-        });
-      });
-
-      this.popupWindow.addEventListener('loaderror', () => {
-        throw new Error('Authorization Failed');
-      });
-    });
-    return promise;
-  }
-
-  pollPopup() {
-    let promise = new Promise((resolve, reject) => {
-      this.polling = setInterval(() => {
-        try {
-          if (!this.window) {
-            clearInterval(this.polling);
-            reject({
-              data: 'No window available',
-            });
-            return;
-          }
-
-          let documentOrigin = this.window.location.host;
-          let popupWindowOrigin = this.popupWindow.location.host;
-
-          if (
-            popupWindowOrigin === documentOrigin &&
-            (this.popupWindow.location.search || this.popupWindow.location.hash)
-          ) {
-            let queryParams = this.popupWindow.location.search
-              .substring(1)
-              .replace(/\/$/, '');
-            let hashParams = this.popupWindow.location.hash
-              .substring(1)
-              .replace(/[\/$]/, '');
-            let hash = parseQueryString(hashParams);
-            let qs: { error?: string; } = parseQueryString(queryParams);
-
-            extend(qs, hash);
-
-            if (qs.error) {
-              reject({
-                error: qs.error,
-              });
-            } else {
-              resolve(qs);
-            }
-
-            this.popupWindow.close();
-            clearInterval(this.polling);
-          }
-        } catch (error) {
-          // no-op
-        }
-
-        if (!this.popupWindow) {
-          clearInterval(this.polling);
-          reject({
-            data: 'Provider Popup Blocked',
-          });
-        } else if (this.popupWindow.closed) {
-          clearInterval(this.polling);
-          reject({
-            data: 'Problem poll popup',
-          });
-        }
-      }, 35);
-    });
-    return promise;
-  }
-
-  prepareOptions(options: any) {
-    let width = options.width || 500;
-    let height = options.height || 500;
-    if (!this.window) {
-      return extend({ width, height }, options);
+  public pollPopup(timeoutMs = this.config.popupTimeout ?? 5 * 60 * 1000): Promise<string> {
+    const popup = this.popupWindow;
+    if (!popup) {
+      return Promise.reject(new AuthError('oauth-popup-blocked', 'The sign-in popup is not open.'));
     }
 
-    return extend(
-      {
-        width: width,
-        height: height,
-        left: this.window.screenX + (this.window.outerWidth - width) / 2,
-        top: this.window.screenY + (this.window.outerHeight - height) / 2.5,
-      },
-      options
-    );
+    const expected = this.redirectUri ? new URL(this.redirectUri, this.window?.location.href) : null;
+    const startedAt = Date.now();
+
+    return new Promise<string>((resolvePromise, reject) => {
+      const finish = (callback: () => void): void => {
+        clearInterval(interval);
+        this.close();
+        callback();
+      };
+
+      const interval = setInterval(() => {
+        if (popup.closed) {
+          finish(() => reject(new AuthError('oauth-cancelled', 'The sign-in popup was closed.')));
+          return;
+        }
+        if (Date.now() - startedAt >= timeoutMs) {
+          finish(() => reject(new AuthError('oauth-popup-timeout', 'The sign-in popup timed out.')));
+          return;
+        }
+
+        try {
+          const current = new URL(popup.location.href);
+          if (expected && (current.origin !== expected.origin || current.pathname !== expected.pathname)) {
+            return;
+          }
+          if (!current.search && !current.hash) return;
+          finish(() => resolvePromise(current.toString()));
+        } catch {
+          // Cross-origin access is expected until the provider returns to the callback URI.
+        }
+      }, 100);
+    });
   }
 
-  stringifyOptions(options) {
-    let parts = [];
-    forEach(options, function (value: string, key: string) {
-      parts.push(key + '=' + value);
-    });
-    return parts.join(',');
+  public close(): void {
+    if (this.popupWindow && !this.popupWindow.closed) this.popupWindow.close();
+    this.popupWindow = null;
+  }
+
+  /** @deprecated Mobile WebView adapters should provide their own OAuth transport. */
+  public eventListener(_redirectUri: string): Promise<never> {
+    return Promise.reject(new Error('Mobile WebView OAuth requires a custom provider transport.'));
+  }
+
+  public prepareOptions(options: IOAuthPopupOptions): IOAuthPopupOptions {
+    const width = options.width ?? 520;
+    const height = options.height ?? 640;
+    if (!this.window) return { width, height, ...options };
+    return {
+      popup: true,
+      width,
+      height,
+      left: Math.round(this.window.screenX + (this.window.outerWidth - width) / 2),
+      top: Math.round(this.window.screenY + (this.window.outerHeight - height) / 2),
+      ...options,
+    };
+  }
+
+  public stringifyOptions(options: IOAuthPopupOptions): string {
+    return Object.entries(options)
+      .filter((entry): entry is [string, string | number | boolean] => entry[1] !== undefined)
+      .map(([key, value]) => `${key}=${String(value)}`)
+      .join(',');
   }
 }

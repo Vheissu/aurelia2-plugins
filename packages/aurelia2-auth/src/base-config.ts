@@ -1,276 +1,217 @@
-import { IAuthConfigOptions } from './configuration';
+import type { IAuthConfigOptions, IAuthProviderConfig } from './configuration';
 
-export function createDefaultAuthConfigOptions(
-  window?: Window
-): IAuthConfigOptions {
-  const origin =
-    window?.location?.origin ||
-    (window?.location
-      ? `${window.location.protocol}//${window.location.host}`
-      : '');
-  const originWithSlash = origin ? `${origin}/` : '';
+const provider = (
+  name: string,
+  config: Omit<IAuthProviderConfig, 'name'>,
+): IAuthProviderConfig => ({ name, ...config });
+
+function getOrigin(window?: Window): string | undefined {
+  const origin = window?.location?.origin;
+  return origin && origin !== 'null' ? origin : undefined;
+}
+
+export function createDefaultAuthConfigOptions(window?: Window): IAuthConfigOptions {
+  const origin = getOrigin(window);
+  const callback = origin ? `${origin}/auth/callback` : '/auth/callback';
 
   return {
+    mode: 'bearer',
     httpInterceptor: true,
-    loginOnSignup: true,
     baseUrl: '/',
-    loginRedirect: '#/',
-    logoutRedirect: '#/',
-    signupRedirect: '#/login',
+    withCredentials: false,
+    trustedOrigins: origin ? [origin] : [],
+    authHeader: 'Authorization',
+    authToken: 'Bearer',
+    apiKeyHeader: 'X-API-Key',
+
+    loginOnSignup: true,
+    loginRedirect: null,
+    logoutRedirect: null,
+    signupRedirect: null,
     loginUrl: '/auth/login',
     signupUrl: '/auth/signup',
     profileUrl: '/auth/me',
+    sessionUrl: '/auth/session',
     refreshUrl: '/auth/refresh',
+    logoutUrl: '/auth/logout',
+    forgotPasswordUrl: '/auth/forgot-password',
+    resetPasswordUrl: '/auth/reset-password',
+    unlinkUrl: '/auth/unlink/',
+    unlinkMethod: 'delete',
+
     loginRoute: '/login',
     signupRoute: '/signup',
-    tokenRoot: undefined,
-    tokenName: 'token',
+    unauthorizedRoute: '/unauthorized',
+    authenticatedRoute: '/',
+    preserveReturnUrl: true,
+
+    storage: 'sessionStorage',
+    transactionStorage: 'sessionStorage',
+    storageFallback: 'memory',
+    tokenPrefix: 'aurelia-auth',
+    tokenName: 'access_token',
     idTokenName: 'id_token',
-    refreshTokenRoot: undefined,
     refreshTokenName: 'refresh_token',
-    tokenPrefix: 'aurelia',
     responseTokenProp: 'access_token',
     responseIdTokenProp: 'id_token',
     responseRefreshTokenProp: 'refresh_token',
-    unlinkUrl: '/auth/unlink/',
-    unlinkMethod: 'get',
-    authHeader: 'Authorization',
-    authToken: 'Bearer',
-    withCredentials: true,
-    platform: 'browser',
-    storage: 'localStorage',
+
     refreshTokens: false,
+    refreshOnUnauthorized: true,
     tokenExpirationLeeway: 0,
-    pkce: false,
+    clockTolerance: 30,
+    autoRefresh: false,
+    autoRefreshBuffer: 60,
+
+    oauthTransactionTtl: 10 * 60,
+    popupTimeout: 5 * 60 * 1000,
+    pkce: true,
     pkceMethod: 'S256',
 
-    // Role-based access control
-    rolesProperty: 'roles',
-    permissionsProperty: 'permissions',
+    rolesProperty: ['roles', 'role'],
+    permissionsProperty: ['permissions', 'scope'],
+    policies: {},
 
-    // Password reset
-    forgotPasswordUrl: '/auth/forgot-password',
-    resetPasswordUrl: '/auth/reset-password',
-
-    // Route for unauthorized (insufficient role) access
-    unauthorizedRoute: '/unauthorized',
-
-    // Auto-refresh
-    autoRefresh: false,
-    autoRefreshBuffer: 30,
-
-    // Idle timeout (0 = disabled, value in seconds)
     idleTimeout: 0,
-    idleEvents: ['mousemove', 'keydown', 'touchstart', 'scroll', 'click'],
-
-    // Multi-tab sync
-    tabSync: false,
+    idleEvents: ['pointerdown', 'keydown', 'touchstart', 'scroll'],
+    tabSync: true,
     tabSyncChannel: 'aurelia-auth-sync',
+    autoInitialize: false,
+    platform: 'browser',
 
     providers: {
-      identSrv: {
-        name: 'identSrv',
-        url: '/auth/identSrv',
-        //authorizationEndpoint: 'http://localhost:22530/connect/authorize',
-        redirectUri: origin,
-        scope: ['profile', 'openid'],
-        responseType: 'code',
-        scopePrefix: '',
-        scopeDelimiter: ' ',
-        requiredUrlParams: ['scope', 'nonce'],
-        optionalUrlParams: ['display', 'state'],
-        state: function () {
-          const rand = Math.random().toString(36).slice(2);
-          return encodeURIComponent(rand);
-        },
-        display: 'popup',
-        type: '2.0',
-        clientId: 'jsClient',
-        nonce: function () {
-          const val = ((Date.now() + Math.random()) * Math.random())
-            .toString()
-            .replace('.', '');
-          return encodeURIComponent(val);
-        },
-        popupOptions: { width: 452, height: 633 },
-      },
-      google: {
-        name: 'google',
+      google: provider('google', {
+        issuer: 'https://accounts.google.com',
+        discoveryUrl: 'https://accounts.google.com/.well-known/openid-configuration',
         url: '/auth/google',
-        authorizationEndpoint: 'https://accounts.google.com/o/oauth2/v2/auth',
-        redirectUri: origin,
-        scope: ['profile', 'email'],
-        scopePrefix: 'openid',
-        scopeDelimiter: ' ',
-        requiredUrlParams: ['scope'],
-        optionalUrlParams: ['display', 'state'],
-        display: 'popup',
-        type: '2.0',
-        state: function () {
-          const rand = Math.random().toString(36).slice(2);
-          return encodeURIComponent(rand);
-        },
-        popupOptions: {
-          width: 452,
-          height: 633,
-        },
-      },
-      apple: {
-        name: 'apple',
-        url: '/auth/apple',
-        authorizationEndpoint: 'https://appleid.apple.com/auth/authorize',
-        redirectUri: origin,
-        scope: ['name', 'email'],
-        scopePrefix: 'openid',
-        scopeDelimiter: ' ',
-        requiredUrlParams: ['scope'],
-        optionalUrlParams: ['state'],
-        responseType: 'code',
-        display: 'popup',
-        type: '2.0',
-        state: function () {
-          const rand = Math.random().toString(36).slice(2);
-          return encodeURIComponent(rand);
-        },
-        popupOptions: {
-          width: 452,
-          height: 633,
-        },
-      },
-      facebook: {
-        name: 'facebook',
-        url: '/auth/facebook',
-        authorizationEndpoint: 'https://www.facebook.com/v2.9/dialog/oauth',
-        redirectUri: originWithSlash,
-        scope: ['email'],
-        scopeDelimiter: ',',
-        nonce: function () {
-          return Math.random().toString(36).slice(2);
-        },
-        requiredUrlParams: ['nonce', 'display', 'scope'],
-        display: 'popup',
-        type: '2.0',
-        popupOptions: {
-          width: 580,
-          height: 400,
-        },
-      },
-      linkedin: {
-        name: 'linkedin',
-        url: '/auth/linkedin',
-        authorizationEndpoint:
-          'https://www.linkedin.com/oauth/v2/authorization',
-        redirectUri: origin,
-        requiredUrlParams: ['state'],
-        scope: ['r_emailaddress'],
-        scopeDelimiter: ' ',
-        state: 'STATE',
-        type: '2.0',
-        popupOptions: {
-          width: 527,
-          height: 582,
-        },
-      },
-      github: {
-        name: 'github',
-        url: '/auth/github',
-        authorizationEndpoint: 'https://github.com/login/oauth/authorize',
-        redirectUri: origin,
-        optionalUrlParams: ['scope'],
-        scope: ['user:email'],
-        scopeDelimiter: ' ',
-        type: '2.0',
-        popupOptions: {
-          width: 1020,
-          height: 618,
-        },
-      },
-      microsoft: {
-        name: 'microsoft',
-        url: '/auth/microsoft',
-        authorizationEndpoint:
-          'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-        redirectUri: origin,
+        redirectUri: callback,
         scope: ['openid', 'profile', 'email'],
-        scopeDelimiter: ' ',
-        requiredUrlParams: ['scope'],
-        optionalUrlParams: ['state'],
-        responseType: 'code',
-        type: '2.0',
-        state: function () {
-          const rand = Math.random().toString(36).slice(2);
-          return encodeURIComponent(rand);
-        },
-        popupOptions: {
-          width: 500,
-          height: 560,
-        },
-      },
-      x: {
-        name: 'x',
-        url: '/auth/x',
-        authorizationEndpoint: 'https://twitter.com/i/oauth2/authorize',
-        redirectUri: origin,
-        scope: ['tweet.read', 'users.read'],
-        scopeDelimiter: ' ',
-        requiredUrlParams: ['scope'],
-        optionalUrlParams: ['state'],
-        responseType: 'code',
+        flow: 'authorization-code',
+        display: 'redirect',
+        exchange: 'backend',
         pkce: true,
-        pkceMethod: 'S256',
-        state: function () {
-          const rand = Math.random().toString(36).slice(2);
-          return encodeURIComponent(rand);
-        },
-        popupOptions: {
-          width: 550,
-          height: 600,
-        },
-        type: '2.0',
-      },
-      yahoo: {
-        name: 'yahoo',
-        url: '/auth/yahoo',
-        authorizationEndpoint: 'https://api.login.yahoo.com/oauth2/request_auth',
-        redirectUri: origin,
-        scope: [],
-        scopeDelimiter: ',',
-        type: '2.0',
-        popupOptions: {
-          width: 559,
-          height: 519,
-        },
-      },
-      live: {
-        name: 'live',
-        url: '/auth/live',
-        authorizationEndpoint: 'https://login.live.com/oauth20_authorize.srf',
-        redirectUri: origin,
-        scope: ['wl.emails'],
-        scopeDelimiter: ' ',
-        requiredUrlParams: ['display', 'scope'],
-        display: 'popup',
-        type: '2.0',
-        popupOptions: {
-          width: 500,
-          height: 560,
-        },
-      },
-      instagram: {
-        name: 'instagram',
-        url: '/auth/instagram',
-        authorizationEndpoint: 'https://api.instagram.com/oauth/authorize',
-        redirectUri: origin,
-        requiredUrlParams: ['scope'],
-        scope: ['user_profile', 'user_media'],
-        scopeDelimiter: ',',
-        display: 'popup',
-        type: '2.0',
-        popupOptions: {
-          width: 550,
-          height: 369,
-        },
-      },
+        state: true,
+        nonce: true,
+        validateIssuer: true,
+      }),
+      microsoft: provider('microsoft', {
+        issuer: 'https://login.microsoftonline.com/common/v2.0',
+        discoveryUrl: 'https://login.microsoftonline.com/common/v2.0/.well-known/openid-configuration',
+        url: '/auth/microsoft',
+        redirectUri: callback,
+        scope: ['openid', 'profile', 'email'],
+        flow: 'authorization-code',
+        display: 'redirect',
+        exchange: 'backend',
+        pkce: true,
+        state: true,
+        nonce: true,
+      }),
+      apple: provider('apple', {
+        issuer: 'https://appleid.apple.com',
+        discoveryUrl: 'https://appleid.apple.com/.well-known/openid-configuration',
+        url: '/auth/apple',
+        redirectUri: callback,
+        scope: ['openid', 'name', 'email'],
+        responseMode: 'form_post',
+        flow: 'authorization-code',
+        display: 'redirect',
+        exchange: 'backend',
+        pkce: true,
+        state: true,
+        nonce: true,
+        validateIssuer: true,
+      }),
+      github: provider('github', {
+        authorizationEndpoint: 'https://github.com/login/oauth/authorize',
+        url: '/auth/github',
+        redirectUri: callback,
+        scope: ['read:user', 'user:email'],
+        flow: 'authorization-code',
+        display: 'redirect',
+        exchange: 'backend',
+        pkce: true,
+        state: true,
+      }),
+      facebook: provider('facebook', {
+        authorizationEndpoint: 'https://www.facebook.com/dialog/oauth',
+        url: '/auth/facebook',
+        redirectUri: callback,
+        scope: ['email'],
+        flow: 'authorization-code',
+        display: 'redirect',
+        exchange: 'backend',
+        pkce: true,
+        state: true,
+      }),
+      linkedin: provider('linkedin', {
+        authorizationEndpoint: 'https://www.linkedin.com/oauth/v2/authorization',
+        url: '/auth/linkedin',
+        redirectUri: callback,
+        scope: ['openid', 'profile', 'email'],
+        flow: 'authorization-code',
+        display: 'redirect',
+        exchange: 'backend',
+        pkce: true,
+        state: true,
+        nonce: true,
+      }),
+      x: provider('x', {
+        authorizationEndpoint: 'https://x.com/i/oauth2/authorize',
+        url: '/auth/x',
+        redirectUri: callback,
+        scope: ['tweet.read', 'users.read'],
+        flow: 'authorization-code',
+        display: 'redirect',
+        exchange: 'backend',
+        pkce: true,
+        state: true,
+      }),
     },
   };
+}
+
+function mergeProviderConfig(
+  base: IAuthProviderConfig | undefined,
+  override: IAuthProviderConfig,
+): IAuthProviderConfig {
+  return {
+    ...base,
+    ...override,
+    name: override.name || base?.name || '',
+    popupOptions: base?.popupOptions || override.popupOptions
+      ? { ...base?.popupOptions, ...override.popupOptions }
+      : undefined,
+    additionalParameters: base?.additionalParameters || override.additionalParameters
+      ? { ...base?.additionalParameters, ...override.additionalParameters }
+      : undefined,
+    tokenParameters: base?.tokenParameters || override.tokenParameters
+      ? { ...base?.tokenParameters, ...override.tokenParameters }
+      : undefined,
+  };
+}
+
+export function mergeAuthConfigOptions(
+  defaults: IAuthConfigOptions,
+  options: Partial<IAuthConfigOptions> = {},
+): Readonly<IAuthConfigOptions> {
+  const providers: Record<string, IAuthProviderConfig> = {
+    ...(defaults.providers ?? {}),
+  };
+
+  for (const [key, value] of Object.entries(options.providers ?? {})) {
+    providers[key] = mergeProviderConfig(providers[key], { ...value, name: value.name || key });
+  }
+
+  const mode = options.mode ?? defaults.mode ?? 'bearer';
+  const merged: IAuthConfigOptions = {
+    ...defaults,
+    ...options,
+    mode,
+    withCredentials: options.withCredentials ?? (mode === 'cookie'),
+    providers,
+    policies: { ...defaults.policies, ...options.policies },
+  };
+
+  return Object.freeze(merged);
 }

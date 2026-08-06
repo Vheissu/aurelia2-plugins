@@ -1,50 +1,39 @@
-import { customAttribute, INode, bindable, resolve } from 'aurelia';
-import { IAuthService } from './auth-service';
-import { IEventAggregator, IDisposable } from '@aurelia/kernel';
+import { IEventAggregator, type IDisposable, resolve } from '@aurelia/kernel';
+import { bindable, customAttribute, INode } from 'aurelia';
+import { IAuthentication } from './authentication';
 import { AuthEvents } from './auth-events';
 
 @customAttribute('if-authenticated')
 export class IfAuthenticatedCustomAttribute {
-  @bindable() value: boolean = true;
-
-  private subscriptions: IDisposable[] = [];
-
+  @bindable public value: boolean | string = true;
   private readonly element = resolve(INode) as HTMLElement;
-  private readonly authService = resolve(IAuthService);
-  private readonly ea = resolve(IEventAggregator);
-  private display: string = '';
+  private readonly auth = resolve(IAuthentication);
+  private readonly events = resolve(IEventAggregator);
+  private subscription: IDisposable | null = null;
+  private initiallyHidden = false;
 
-  attached() {
-    this.display = this.element.style.display;
+  public binding(): void {
+    this.initiallyHidden = Boolean(this.element.hidden);
     this.update();
-
-    const events = [
-      AuthEvents.login,
-      AuthEvents.logout,
-      AuthEvents.authenticate,
-      AuthEvents.refresh,
-      AuthEvents.tabSync,
-    ];
-
-    for (const event of events) {
-      this.subscriptions.push(this.ea.subscribe(event, () => this.update()));
-    }
+    this.subscription = this.events.subscribe(AuthEvents.stateChanged, () => this.update());
   }
 
-  detaching() {
-    for (const sub of this.subscriptions) {
-      sub.dispose();
-    }
-    this.subscriptions = [];
+  public unbinding(): void {
+    this.subscription?.dispose();
+    this.subscription = null;
+    this.element.hidden = this.initiallyHidden;
+    this.element.removeAttribute('aria-hidden');
   }
 
-  valueChanged() {
+  public valueChanged(): void {
     this.update();
   }
 
-  private update() {
-    const isAuth = this.authService.isAuthenticated();
-    const shouldShow = this.value ? isAuth : !isAuth;
-    this.element.style.display = shouldShow ? this.display : 'none';
+  private update(): void {
+    const showAuthenticated = this.value !== false && this.value !== 'false';
+    const visible = showAuthenticated ? this.auth.isAuthenticated() : !this.auth.isAuthenticated();
+    this.element.hidden = this.initiallyHidden || !visible;
+    if (!visible) this.element.setAttribute('aria-hidden', 'true');
+    else this.element.removeAttribute('aria-hidden');
   }
 }

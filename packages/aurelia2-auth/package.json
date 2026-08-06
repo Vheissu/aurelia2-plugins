@@ -1,11 +1,17 @@
 {
   "name": "aurelia2-auth",
   "version": "1.1.0",
-  "description": "A port of the Aurelia Auth plugin to v2",
+  "description": "Authentication, OAuth/OIDC and policy-based authorization for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "sideEffects": false,
   "repository": "https://github.com/Vheissu/aurelia2-plugins",
-  "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
+  "author": "Dwayne Charrington <dwaynecharrington@gmail.com>",
   "license": "MIT",
   "scripts": {
     "clean": "rimraf ./dist",
@@ -20,10 +26,16 @@
     "test": "jest --passWithNoTests"
   },
   "devDependencies": {
-    "aurelia": "^2.0.0-rc.2",
-    "@aurelia/router": "^2.0.0-rc.2"
+    "@aurelia/router": "^2.0.0-rc.2",
+    "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
+    "@aurelia/router": ">=2.0.0-rc.2",
     "aurelia": ">=2.0.0-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@aurelia/router": {
+      "optional": true
+    }
   }
 }
