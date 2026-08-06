@@ -28,17 +28,18 @@ export class TestStorage implements StorageContract {
 export function createUnitContainer(
   overrides: Partial<IAuthConfigOptions> = {},
   registrations: readonly IRegistry[] = [],
+  browserWindow: Window = window,
 ): { container: IContainer; storage: TestStorage; transactions: TestStorage } {
   const container = DI.createContainer();
   const storage = new TestStorage();
   const transactions = new TestStorage();
-  const options = mergeAuthConfigOptions(createDefaultAuthConfigOptions(window), {
+  const options = mergeAuthConfigOptions(createDefaultAuthConfigOptions(browserWindow), {
     storage: 'memory',
     transactionStorage: 'memory',
     ...overrides,
   });
   container.register(
-    Registration.instance(IWindow, window),
+    Registration.instance(IWindow, browserWindow),
     Registration.instance(IAuthOptions, options),
     Registration.instance(IStorage, storage),
     Registration.instance(ITransactionStorage, transactions),

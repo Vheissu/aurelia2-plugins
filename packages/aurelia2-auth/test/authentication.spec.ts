@@ -91,4 +91,37 @@ describe('Authentication token state', () => {
     auth.clearTokens();
     expect(auth.isAuthenticated()).toBe(false);
   });
+
+  test('preserves only same-origin return URLs', () => {
+    const { container } = createUnitContainer({ loginRedirect: '/dashboard' });
+    const auth = container.invoke(Authentication);
+
+    auth.setInitialUrl('https://attacker.example/phish');
+    expect(auth.getLoginRedirect()).toBe('/dashboard');
+
+    auth.setInitialUrl('javascript:alert(1)');
+    expect(auth.getLoginRedirect()).toBe('/dashboard');
+
+    auth.setInitialUrl('/account?tab=security#sessions');
+    expect(auth.getLoginRedirect()).toBe('/account?tab=security#sessions');
+  });
+
+  test('clears local state but refuses an external logout redirect', async () => {
+    const assign = jest.fn();
+    const browserWindow = {
+      location: { origin: 'https://app.example', assign },
+    } as unknown as Window;
+    const { container } = createUnitContainer({}, [], browserWindow);
+    const auth = container.invoke(Authentication);
+    auth.setToken('opaque-token');
+
+    await auth.logout('https://attacker.example/signed-out');
+
+    expect(auth.isAuthenticated()).toBe(false);
+    expect(assign).not.toHaveBeenCalled();
+
+    auth.setToken('second-token');
+    await auth.logout('/signed-out');
+    expect(assign).toHaveBeenCalledWith('/signed-out');
+  });
 });

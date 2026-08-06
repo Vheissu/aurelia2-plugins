@@ -23,7 +23,8 @@
     "watch:other": "cpx \"./src/**/*.{html,css}\" ./dist --watch",
     "test:debug": "cross-env DEBUG=true npm run test",
     "test:watch": "cross-env DEV=true npm run test",
-    "test": "jest --passWithNoTests"
+    "test": "jest --passWithNoTests",
+    "test:coverage": "jest --coverage --runInBand"
   },
   "devDependencies": {
     "@aurelia/router": "^2.0.0-rc.2",
