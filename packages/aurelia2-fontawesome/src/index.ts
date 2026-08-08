@@ -1,4 +1,5 @@
 ﻿import { IContainer, IRegistry } from '@aurelia/kernel';
+import { dom } from '@fortawesome/fontawesome-svg-core';
 import {
     faArrowDownShortWide,
     faArrowUpWideShort,
@@ -28,6 +29,10 @@ const defaultSortIcons = [
 ];
 
 function registerPlugin(container: IContainer, options: FontAwesomeConfigurationOptions): void {
+    if (options.injectStyles !== false) {
+        dom.insertCss();
+    }
+
     const resources: IRegistry[] = [
         FontAwesomeIconCustomElement as unknown as IRegistry
     ];

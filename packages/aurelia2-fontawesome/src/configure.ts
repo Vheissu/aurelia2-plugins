@@ -6,6 +6,7 @@ export type FontAwesomeIcons = IconDefinition[] | FontAwesomeIconMap;
 
 export interface FontAwesomeConfigurationOptions {
     icons?: FontAwesomeIcons;
+    injectStyles?: boolean;
     registerSortAttribute?: boolean;
     registerDefaultSortIcons?: boolean;
 }
@@ -20,6 +21,7 @@ export const IFontAwesomeConfiguration = DI.createInterface<IFontAwesomeConfigur
 export class Configure {
     protected _config: FontAwesomeConfigurationOptions = {
         icons: [],
+        injectStyles: true,
         registerSortAttribute: true,
         registerDefaultSortIcons: true
     };

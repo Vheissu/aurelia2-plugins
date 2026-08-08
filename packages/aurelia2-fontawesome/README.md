@@ -13,7 +13,39 @@ This plugin lets an Aurelia app:
 
 ## Installation
 
-npm install aurelia2-fontawesome @fortawesome/fontawesome-svg-core @fortawesome/free-solid-svg-icons
+```shell
+npm install aurelia2-fontawesome
+```
+
+The plugin includes Font Awesome's free solid icon package as a runtime dependency. Import individual icons from the plugin's `icons` entry:
+
+```typescript
+import { faGear, faPlus } from 'aurelia2-fontawesome/icons';
+```
+
+This entry uses native ES module re-exports, so Vite includes only the named icons that the app imports. Avoid namespace imports such as `import * as icons`, because using the resulting object can include the entire icon set in the bundle.
+
+## Font Awesome core CSS
+
+By default, this plugin injects Font Awesome core CSS once at runtime. This provides sizing, spin utility classes, and baseline SVG styles without requiring a stylesheet import in the consuming app.
+
+To manage the styles yourself, disable automatic injection:
+
+```typescript
+FontAwesomeConfiguration.configure({
+  icons: [faGear, faPlus],
+  injectStyles: false
+});
+```
+
+Then import Font Awesome core CSS in your app stylesheet:
+
+
+```scss
+@import '@fortawesome/fontawesome-svg-core/styles.css';
+```
+
+When importing that stylesheet directly, install `@fortawesome/fontawesome-svg-core` as a direct dependency of the consuming app. Alternatively, provide custom CSS for the Font Awesome classes your app uses.
 
 ## Recommended usage: simple mode
 
@@ -23,10 +55,12 @@ It lets the app register only the imported icons while continuing to use normal 
 
 ### Register the plugin
 
+Register it during application bootstrap, typically in `src/main.ts`, before calling `.app(...).start()`.
+
 ```typescript
 import { Aurelia } from 'aurelia';
 import { FontAwesomeConfiguration } from 'aurelia2-fontawesome';
-import { faGear, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faPlus, faTrash } from 'aurelia2-fontawesome/icons';
 
 new Aurelia().register(
   FontAwesomeConfiguration.configure({
@@ -51,7 +85,7 @@ new Aurelia().register(
 
 That is normal Font Awesome behavior:
 
-- `faGear` is the JavaScript export name from `@fortawesome/free-solid-svg-icons`
+- `faGear` is the JavaScript export name re-exported by `aurelia2-fontawesome/icons`
 - `"gear"` is the icon's Font Awesome `iconName`
 
 The plugin reads `faGear.iconName` internally, registers it, and makes `<font-awesome-icon icon="gear">` work.
@@ -62,7 +96,7 @@ Alias mode is useful when an app wants a central icon manifest or wants custom n
 
 ```typescript
 import { defineIcons } from 'aurelia2-fontawesome';
-import { faGear, faPlus, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faGear, faPlus, faTrash } from 'aurelia2-fontawesome/icons';
 
 export const icons = defineIcons({
   settings: faGear,
@@ -139,6 +173,7 @@ By default, the plugin also registers the required sort icons automatically.
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `icons` | `IconDefinition[] \| Record<string, IconDefinition>` | `[]` | Icons to register with Font Awesome |
+| `injectStyles` | `boolean` | `true` | Injects Font Awesome core CSS at runtime |
 | `registerSortAttribute` | `boolean` | `true` | Registers `aut-sort-icon` |
 | `registerDefaultSortIcons` | `boolean` | `true` | Registers `sort`, `arrow-down-short-wide`, and `arrow-up-wide-short` |
 
@@ -187,7 +222,7 @@ import {
   faPlus,
   faSpinner,
   faTrash
-} from '@fortawesome/free-solid-svg-icons';
+} from 'aurelia2-fontawesome/icons';
 
 new Aurelia().register(
   FontAwesomeConfiguration.configure({
@@ -220,6 +255,7 @@ When replacing a local setup, remove:
 - the direct `library.add(...)` call
 - local registration of `FontAwesomeIconCustomElement`
 - local registration of `AutSortIconCustomAttribute`
+- the direct Font Awesome core stylesheet import, unless using `injectStyles: false`
 
 Replace that with a single plugin registration:
 

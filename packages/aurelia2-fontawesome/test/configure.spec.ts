@@ -1,4 +1,5 @@
 ﻿import { DI, Registration } from '@aurelia/kernel';
+import { dom } from '@fortawesome/fontawesome-svg-core';
 import {
   faArrowDownShortWide,
   faArrowUpWideShort,
@@ -13,6 +14,31 @@ import {
 } from './../src';
 
 describe('fontawesome configuration', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test('injects Font Awesome core styles by default', () => {
+    const insertCss = jest.spyOn(dom, 'insertCss').mockReturnValue('');
+    const container = createContainerWithRegistry();
+
+    FontAwesomeConfiguration.configure({ icons: [faGear] }).register(container);
+
+    expect(insertCss).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not inject styles when injectStyles is false', () => {
+    const insertCss = jest.spyOn(dom, 'insertCss').mockReturnValue('');
+    const container = createContainerWithRegistry();
+
+    FontAwesomeConfiguration.configure({
+      icons: [faGear],
+      injectStyles: false,
+    }).register(container);
+
+    expect(insertCss).not.toHaveBeenCalled();
+  });
+
   test('merges icon arrays across options calls', () => {
     const sut = new Configure();
 
@@ -86,3 +112,16 @@ describe('fontawesome configuration', () => {
     expect(iconNames).toEqual([faGear.iconName]);
   });
 });
+
+function createContainerWithRegistry() {
+  const container = DI.createContainer();
+
+  container.register(
+    Registration.instance(IFontAwesomeIconRegistry, {
+      register: jest.fn(),
+      resolve: jest.fn(),
+    } as any)
+  );
+
+  return container;
+}
