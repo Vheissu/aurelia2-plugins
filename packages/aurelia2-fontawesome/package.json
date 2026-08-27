@@ -1,0 +1,50 @@
+{
+  "name": "aurelia2-fontawesome",
+  "version": "1.0.2",
+  "description": "Selective Font Awesome integration for Aurelia 2",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "src"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./icons": {
+      "types": "./dist/types/icons.d.ts",
+      "import": "./dist/icons.js"
+    }
+  },
+  "repository": "https://github.com/Vheissu/aurelia2-plugins",
+  "author": "Dwayne Charrington <dwaynecharrington@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "prebuild": "npm run clean",
+    "build:ts": "tsc",
+    "build:other": "cpx \"./src/**/*.{html,css}\" ./dist",
+    "build": "npm run build:ts && npm run build:other",
+    "watch:ts": "tsc --watch --preserveWatchOutput",
+    "watch:other": "cpx \"./src/**/*.{html,css}\" ./dist --watch",
+    "test:debug": "cross-env DEBUG=true npm run test",
+    "test:watch": "cross-env DEV=true npm run test",
+    "test": "jest"
+  },
+  "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.3.1",
+    "@fortawesome/free-solid-svg-icons": "^7.3.1"
+  },
+  "devDependencies": {
+    "@aurelia/kernel": "^2.0.0-rc.2",
+    "@aurelia/runtime-html": "^2.0.0-rc.2"
+  },
+  "peerDependencies": {
+    "@aurelia/kernel": ">=2.0.0-rc.2",
+    "@aurelia/runtime-html": ">=2.0.0-rc.2"
+  }
+}
