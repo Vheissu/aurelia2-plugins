@@ -101,7 +101,24 @@ export function analyzeSsrDocument(
     diagnostics.push(createDiagnostic('warning', 'app_html_budget_exceeded', `App HTML is ${appHtmlBytes} bytes; budget is ${budgets.appHtmlBytes}.`, route.path, appHtmlBytes));
   }
 
-  return diagnostics;
+  return dedupeDiagnostics(diagnostics);
+}
+
+/** Removes repeated diagnostics (same severity, code, path, and message), keeping order. */
+export function dedupeDiagnostics(diagnostics: readonly SsrDiagnostic[]): SsrDiagnostic[] {
+  const seen = new Set<string>();
+  const unique: SsrDiagnostic[] = [];
+
+  for (const diagnostic of diagnostics) {
+    const key = `${diagnostic.severity}|${diagnostic.code}|${diagnostic.path ?? ''}|${diagnostic.message}`;
+    if (seen.has(key)) {
+      continue;
+    }
+    seen.add(key);
+    unique.push(diagnostic);
+  }
+
+  return unique;
 }
 
 export function createRouteReport(

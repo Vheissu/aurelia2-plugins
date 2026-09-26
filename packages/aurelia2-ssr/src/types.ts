@@ -1,6 +1,9 @@
 import type { IContainer, IRegistry } from '@aurelia/kernel';
-import type { Aurelia } from '@aurelia/runtime-html';
+import type { Aurelia, IAppRoot } from '@aurelia/runtime-html';
 import type { ISSRDefinition, ISSRScope } from '@aurelia/runtime-html';
+import type { RecordSsrManifestOptions } from './manifest.js';
+import type { SsrHeadSnapshot } from './head.js';
+import type { SsrStateStore } from './state.js';
 
 export type SsrRouteMode = 'prerender' | 'server' | 'client';
 export type SsrRoutePriority = 'critical' | 'high' | 'normal' | 'low';
@@ -146,7 +149,37 @@ export interface SsrRouteRenderConfig {
   readonly takeoverMode?: SsrTakeoverMode;
   readonly stripAureliaMarkers?: boolean;
   readonly preserveMarkers?: boolean;
+  /** Re-hydrate the serialized output on the server and report adoption problems as diagnostics. */
+  readonly verifyHydration?: boolean;
 }
+
+export interface SsrCacheConfig {
+  /** `max-age` in seconds for browsers. */
+  readonly maxAge?: number;
+  /** `s-maxage` in seconds for shared caches and CDNs. */
+  readonly sMaxAge?: number;
+  /** `stale-while-revalidate` in seconds. */
+  readonly staleWhileRevalidate?: number;
+  /** Emit `private` instead of `public`. */
+  readonly private?: boolean;
+  /** Emit `no-store` and skip the server-side response cache. */
+  readonly noStore?: boolean;
+  /** Time to keep a rendered response in the in-memory server cache, in milliseconds. */
+  readonly ttlMs?: number;
+}
+
+/**
+ * A single expansion of a dynamic route. Strings are treated as the concrete
+ * path; objects can override any route field and/or supply `params` that are
+ * substituted into the route's path pattern (`/blog/:slug`).
+ */
+export type SsrRouteExpansion = string | (Partial<Omit<SsrRouteConfig, 'expand' | 'path' | 'seo'>> & {
+  readonly path?: string;
+  readonly params?: Readonly<Record<string, string | number>>;
+  readonly seo?: Partial<SsrSeoConfig>;
+});
+
+export type SsrRouteExpander = (route: SsrRouteConfig) => readonly SsrRouteExpansion[] | Promise<readonly SsrRouteExpansion[]>;
 
 export interface SsrRouteConfig {
   readonly path: string;
@@ -157,7 +190,35 @@ export interface SsrRouteConfig {
   readonly priority?: SsrRoutePriorityConfig;
   readonly assets?: SsrRouteAssets;
   readonly render?: SsrRouteRenderConfig;
+  readonly cache?: SsrCacheConfig;
   readonly data?: Record<string, unknown>;
+  /**
+   * Expands a dynamic route pattern (`/blog/:slug`) into concrete routes at
+   * prerender time. Routes with `:params` and no expander are skipped with a
+   * diagnostic.
+   */
+  readonly expand?: SsrRouteExpander;
+  /** Route parameters, populated on expanded and request-matched routes. */
+  readonly params?: Readonly<Record<string, string>>;
+}
+
+export type SsrRedirectPlatform = 'netlify' | 'cloudflare' | 'vercel' | 'nginx' | 'apache' | 'json';
+
+export interface SsrOutputConfig {
+  /** Write `about/index.html` instead of `about.html`. */
+  readonly cleanUrls?: boolean;
+  readonly sitemap?: boolean;
+  readonly robots?: boolean;
+  /** Write the JSON build report. Uses `diagnostics.outputFile` or `ssr-report.json`. */
+  readonly report?: boolean;
+  /** File name for the 404 page (routes with `status: 404`). Defaults to `404.html`. */
+  readonly notFoundFile?: string;
+  /** Static-host redirect files to emit from routes that set `redirectTo`. */
+  readonly redirects?: readonly SsrRedirectPlatform[];
+  /** Also write an HTML page with a meta refresh for each redirect route. */
+  readonly redirectPages?: boolean;
+  /** Add a catch-all rule that serves the SPA shell for unknown paths (Netlify/Cloudflare/Vercel). */
+  readonly spaFallback?: boolean;
 }
 
 export interface SsrOrganizationConfig {
@@ -213,6 +274,8 @@ export interface SsrRenderingConfig {
   readonly stripAureliaMarkers?: boolean;
   readonly takeoverMode?: SsrTakeoverMode;
   readonly globalStrategy?: SsrGlobalStrategy;
+  /** Re-hydrate every route's output on the server and report adoption problems as diagnostics. */
+  readonly verifyHydration?: boolean;
 }
 
 export interface SsrDiagnosticsBudgets {
@@ -255,6 +318,9 @@ export interface SsrSiteConfig {
   readonly preboot?: SsrPrebootConfig;
   readonly diagnostics?: SsrDiagnosticsConfig;
   readonly security?: SsrSecurityConfig;
+  readonly output?: SsrOutputConfig;
+  /** Default cache policy for request-time rendering; routes can override with `route.cache`. */
+  readonly cache?: SsrCacheConfig;
   readonly routes?: readonly SsrRouteConfig[];
 }
 
@@ -283,6 +349,10 @@ export interface SsrAppRenderResult {
   readonly timings?: Record<string, number>;
   readonly diagnostics?: readonly SsrDiagnostic[];
   readonly data?: Record<string, unknown>;
+  /** Serializable state collected through `ISsrState` during the render. */
+  readonly state?: Record<string, unknown>;
+  /** Head data components set through `ISsrHead` during the render. */
+  readonly head?: SsrHeadSnapshot;
 }
 
 export interface SsrDocumentResult {
@@ -334,6 +404,34 @@ export interface SsrRenderAureliaOptions<TComponent extends object = object> {
   readonly timeoutMs?: number;
   readonly serialize?: SerializeHtmlOptions;
   readonly globalStrategy?: SsrGlobalStrategy;
+  /**
+   * Manifest recording options, or `false` to skip recording. Recording is on
+   * by default; the manifest is only embedded in the document when the route
+   * hydrates.
+   */
+  readonly manifest?: RecordSsrManifestOptions | false;
+  /** Overrides `route.render.verifyHydration` and `site.rendering.verifyHydration`. */
+  readonly verifyHydration?: boolean;
+  /**
+   * Store registered as `ISsrState` for the render. A fresh store is created
+   * by default; pass `false` to leave `ISsrState` unregistered.
+   */
+  readonly state?: SsrStateStore | false;
+  /** Register `ISsrHead` so components can set title, meta, status, and redirects. Defaults to `true`. */
+  readonly head?: boolean;
+  /**
+   * Register `@aurelia/router`'s `ServerLocationManager` for the rendered path
+   * so routed apps resolve the right route. `'auto'` (default) registers it
+   * when `@aurelia/router` can be loaded; `true` warns when it cannot;
+   * `false` skips it. Pass an object to override the path or base href.
+   */
+  readonly router?: boolean | 'auto' | SsrRouterRenderConfig;
+}
+
+export interface SsrRouterRenderConfig {
+  /** Path handed to `ServerLocationManager`. Defaults to the route path plus the window's query string. */
+  readonly path?: string;
+  readonly baseHref?: string;
 }
 
 export interface SerializeHtmlOptions {
@@ -350,9 +448,19 @@ export interface SsrBuildDocumentOptions {
   readonly render: SsrAppRenderResult;
   readonly manifest?: SsrAssetManifest | null;
   readonly document?: Document;
+  /**
+   * DOM implementation used to parse `template` when no global `document`
+   * exists (plain Node without installed globals). Usually the render
+   * environment's `document`.
+   */
+  readonly baseDocument?: Document;
   readonly now?: Date;
   readonly prebootScript?: string;
   readonly clientEntrySelector?: string;
+  /** Embed the manifest and definition scripts. Defaults to `true` when the route's takeover mode is `hydrate`. */
+  readonly includeManifest?: boolean;
+  /** Embed `render.state` as a JSON script for `ISsrState` on the client. Defaults to `true` when state is present. */
+  readonly includeState?: boolean;
 }
 
 export interface SsrDomGlobalOptions {
@@ -380,11 +488,28 @@ export interface SsrHydrateOptions<TComponent extends object = object> {
   readonly component: new (...args: never[]) => TComponent;
   readonly host?: HTMLElement;
   readonly hostSelector?: string;
+  /** Manifest to hydrate with. Defaults to the manifest script `buildSsrDocument` embeds. */
   readonly ssrScope?: ISSRScope;
+  /** Serialized AOT definition. Defaults to the definition script `buildSsrDocument` embeds, when present. */
   readonly ssrDefinition?: ISSRDefinition;
+  /** Reuse an existing `Aurelia` instance (for example `new Aurelia()` from the `aurelia` package). */
+  readonly aurelia?: Aurelia;
   readonly container?: IContainer;
   readonly registrations?: readonly unknown[];
   readonly configureAurelia?: (aurelia: Aurelia) => void | Promise<void>;
+  readonly manifestScriptId?: string;
+  readonly definitionScriptId?: string;
+  /** Register `ISsrState` from the embedded state script. Defaults to `true`. */
+  readonly registerState?: boolean;
+}
+
+export interface SsrHydrationResult<TComponent extends object = object> {
+  readonly aurelia: Aurelia;
+  readonly root: IAppRoot<TComponent>;
+  readonly host: HTMLElement;
+  readonly ssrScope: ISSRScope;
+  /** Deactivates and disposes the hydrated app root. */
+  readonly stop: () => Promise<void>;
 }
 
 export interface SsrConfigurationRegistrationOptions {

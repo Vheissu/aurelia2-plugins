@@ -65,7 +65,17 @@ export function serializeAttributes(attrs: SsrSerializableAttributes): string {
   return entries.length ? ` ${entries.join(' ')}` : '';
 }
 
-export function createDocumentFromHtml(template: string, baseDocument: Document = document): Document {
+export function createDocumentFromHtml(
+  template: string,
+  baseDocument: Document | undefined = typeof document === 'undefined' ? undefined : document,
+): Document {
+  if (!baseDocument) {
+    throw new Error(
+      'createDocumentFromHtml needs a DOM. Pass baseDocument (for example the render environment\'s document) '
+      + 'or install DOM globals before building the document.',
+    );
+  }
+
   const nextDocument = baseDocument.implementation.createHTMLDocument('');
   nextDocument.open();
   nextDocument.write(template);

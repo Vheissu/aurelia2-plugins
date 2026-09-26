@@ -6,6 +6,7 @@ import {
   appendUniqueLink,
 } from './assets.js';
 import { analyzeSsrDocument } from './diagnostics.js';
+import { applyHeadSnapshot } from './head.js';
 import {
   createDocumentFromHtml,
   ensureBody,
@@ -18,6 +19,7 @@ import {
 } from './html.js';
 import { injectPrebootScript } from './preboot.js';
 import { canonicalUrlForRoute } from './routes.js';
+import { SSR_STATE_SCRIPT_ID } from './state.js';
 import type {
   SsrBuildDocumentOptions,
   SsrDiagnostic,
@@ -28,7 +30,7 @@ import type {
 } from './types.js';
 
 export function buildSsrDocument(options: SsrBuildDocumentOptions): SsrDocumentResult {
-  const document = options.document ?? createDocumentFromHtml(options.template);
+  const document = options.document ?? createDocumentFromHtml(options.template, options.baseDocument);
   const site = options.site;
   const route = options.route;
   const render = options.render;
@@ -38,6 +40,7 @@ export function buildSsrDocument(options: SsrBuildDocumentOptions): SsrDocumentR
   ensureHead(document);
   ensureBody(document);
   applySeo(document, route, site, canonicalUrl);
+  applyHeadSnapshot(document, render.head);
   replaceAppHost(document, render.appHtml, site, diagnostics, route.path);
   injectScripts(document, site, route, 'head-start', options.clientEntrySelector);
   injectResourceHints(document, site, route);
@@ -48,8 +51,9 @@ export function buildSsrDocument(options: SsrBuildDocumentOptions): SsrDocumentR
   injectPreboot(document, site, options.prebootScript);
   injectScripts(document, site, route, 'before-client', options.clientEntrySelector);
   injectScripts(document, site, route, 'after-client', options.clientEntrySelector);
-  injectStructuredData(document, route, site, canonicalUrl);
-  injectSsrContext(document, route, site, canonicalUrl, options.now ?? new Date(), render);
+  injectStructuredData(document, route, site, canonicalUrl, render.head?.jsonLd);
+  injectSsrContext(document, route, site, canonicalUrl, options.now ?? new Date(), render, options.includeManifest);
+  injectSsrState(document, render.state, options.includeState, site.security?.nonce);
   injectScripts(document, site, route, 'body-end', options.clientEntrySelector);
 
   const html = `<!DOCTYPE html>\n${document.documentElement.outerHTML}\n`;
@@ -176,6 +180,7 @@ function injectStructuredData(
   route: SsrRouteConfig,
   site: SsrSiteConfig,
   canonicalUrl: string,
+  componentJsonLd: readonly Record<string, unknown>[] = [],
 ): void {
   const graph: Record<string, unknown>[] = [];
   const organization = site.organization;
@@ -219,7 +224,7 @@ function injectStructuredData(
   }
   script.textContent = safeJson({
     '@context': 'https://schema.org',
-    '@graph': [...graph, ...(route.seo.jsonLd ?? [])],
+    '@graph': [...graph, ...(route.seo.jsonLd ?? []), ...componentJsonLd],
   });
   document.head.append(script);
 }
@@ -230,8 +235,11 @@ function injectSsrContext(
   site: SsrSiteConfig,
   canonicalUrl: string,
   now: Date,
-  render: { ssrScope?: unknown; ssrDefinition?: unknown; status?: number; data?: Record<string, unknown> },
+  render: { ssrScope?: unknown; ssrDefinition?: unknown; status?: number; redirectTo?: string; data?: Record<string, unknown> },
+  includeManifest?: boolean,
 ): void {
+  const takeoverMode = route.render?.takeoverMode ?? site.rendering?.takeoverMode ?? 'remount';
+  const embedManifest = includeManifest ?? takeoverMode === 'hydrate';
   const script = document.createElement('script');
   script.type = 'application/json';
   script.id = 'aurelia-ssr-context';
@@ -240,11 +248,17 @@ function injectSsrContext(
     canonicalUrl,
     priority: route.priority?.level ?? 'normal',
     renderedAt: now.toISOString(),
-    takeoverMode: route.render?.takeoverMode ?? site.rendering?.takeoverMode ?? 'remount',
+    takeoverMode,
     status: render.status ?? route.status ?? 200,
+    ...(render.redirectTo ?? route.redirectTo ? { redirectTo: render.redirectTo ?? route.redirectTo } : {}),
+    ...(route.params && Object.keys(route.params).length ? { params: route.params } : {}),
     data: render.data ?? route.data ?? {},
   });
   document.body.append(script);
+
+  if (!embedManifest) {
+    return;
+  }
 
   if (render.ssrScope) {
     const manifest = document.createElement('script');
@@ -261,6 +275,27 @@ function injectSsrContext(
     definition.textContent = safeJson(render.ssrDefinition);
     document.body.append(definition);
   }
+}
+
+function injectSsrState(
+  document: Document,
+  state: Record<string, unknown> | undefined,
+  includeState: boolean | undefined,
+  nonce?: string,
+): void {
+  const embed = includeState ?? (state !== undefined && Object.keys(state).length > 0);
+  if (!embed || !state) {
+    return;
+  }
+
+  const script = document.createElement('script');
+  script.type = 'application/json';
+  script.id = SSR_STATE_SCRIPT_ID;
+  if (nonce) {
+    script.setAttribute('nonce', nonce);
+  }
+  script.textContent = safeJson(state);
+  document.body.append(script);
 }
 
 function appendMeta(document: Document, meta: SsrMetaDefinition): void {

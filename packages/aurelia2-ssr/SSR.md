@@ -10,13 +10,15 @@ This guide explains how `aurelia2-ssr` is intended to be used by application tea
 2. Preserve enough DOM structure for the client to take over safely.
 3. Make SEO configuration explicit and testable per route.
 4. Capture user input that happens before the client bundle has loaded.
-5. Support a proper hydration path using Aurelia core APIs when a manifest is available.
-6. Provide a safe remount fallback for current apps that do not yet have a public manifest recorder.
-7. Document the edge cases that usually make SSR packages hard to adopt.
+5. Record the hydration manifest Aurelia core needs and hydrate through the public `Aurelia.hydrate(...)` API.
+6. Verify on the server that the output actually hydrates, and keep a safe remount fallback for apps that prefer it.
+7. Ship the surrounding pipeline: a prerender orchestrator with dynamic route expansion and static-host output (redirects, 404), a request-time handler with caching, a Vite plugin, and a CLI.
+8. Transfer server data and component-set head data (title, meta, status, redirects) to the client instead of refetching or hard-coding them per route.
+9. Document the edge cases that usually make SSR packages hard to adopt.
 
 ## Public Aurelia Core APIs Used
 
-The local Aurelia core checkout contains several hydration pieces. In the published `2.0.0-rc.1` packages, the usable public surface includes:
+The published `2.0.0-rc.2` packages expose the hydration consumer side:
 
 - `Aurelia.hydrate(...)`
 - `ISSRContext`
@@ -24,10 +26,52 @@ The local Aurelia core checkout contains several hydration pieces. In the publis
 - `adoptSSRView(...)` and `adoptSSRViews(...)`
 - `hydrateSSRDefinition(...)`
 - `ServerLocationManager` from `@aurelia/router`
+- `IRendering.compile(...)`, `CustomElement.for(...)`, and the public controller
+  tree (`children`, `viewModel`, `nodes`, `location`, `parent`)
+- `ITemplateElementFactory` from `@aurelia/template-compiler`, re-implemented
+  with a per-document cache (see "First Render Works, Later SSR Requests Fail")
 
-The package uses those exported APIs directly. It does not rely on private source-only functions. Manifest recording is still treated as an adapter point because the core comments reference `recordManifest()`, but that recorder is not shipped as a stable public API in the installed packages used by this monorepo.
+The package uses those exported APIs directly and does not rely on private
+source-only functions. Core's own comments say manifest *recording* lives in
+external tooling, which is what `recordSsrManifest(...)` provides: it walks the
+controller tree after `aurelia.start()` and emits the structure that
+`Rendering.render`, the `if`/`repeat`/`with`/`switch` template controllers, and
+the router's `RouteContext` read during hydration.
+
+### How the manifest is recorded
+
+For every custom element or synthetic view controller the recorder emits an
+`ISSRScope`:
+
+- `children` lists, in template-instruction order, each child custom element
+  and template controller found in `controller.children`. Plain custom
+  attributes are skipped because the renderer does not ask the manifest for
+  them.
+- Each template controller becomes `{ type, state?, views }`. Views are the
+  controller's active `view`/`views`, each recorded as a scope with `nodeCount`
+  equal to the number of sibling DOM nodes it owns between its `au-start` and
+  `au-end` markers. `if` records `{ value }` so the client picks the same
+  branch; `else` records an empty `views` list because the `if` owns its view.
+- Containerless custom elements get a `nodeCount` as well.
+- Controllers that were composed outside of template instructions, such as a
+  routed component inside `<au-viewport>` or an `au-compose` result, are found
+  through the DOM (`CustomElement.for(...)` with `parent` pointing at the
+  owner) and appended by name, which is how the router locates them.
+
+The recorder compares the number of recorded children with the compiled
+template's child-creating instructions and reports `manifest_child_mismatch`
+when they disagree. It also reports `manifest_empty_text_node` and
+`manifest_adjacent_text_nodes` for view content that a browser would parse into
+a different number of nodes than the server rendered, and `manifest_node_drift`
+when the app mutated server DOM after render.
 
 ## Rendering Modes
+
+Both modes below describe what happens for one route. `prerenderSite(...)`, the
+`aurelia2-ssr` CLI, and the `aureliaSsr()` Vite plugin run the same steps for
+every route and write the output; see "Prerender Pipeline" further down.
+`createSsrRequestHandler(...)` runs them per request; see "Request-Time
+Handler".
 
 ### Prerender With Remount Takeover
 
@@ -132,42 +176,94 @@ not see zero-width containers. Remove the placeholder before calling
 
 ### Manifest Hydration
 
-Use this when your build/server pipeline can provide:
+Use this when you want the server DOM adopted in place: no flash, no duplicated
+content, and the same node identities the user already sees.
 
-- Server HTML that preserved Aurelia marker comments
-- An `ISSRScope` tree that matches the rendered controller tree
-- AOT-ready component definitions, or a serialized SSR definition hydrated with `hydrateSSRDefinition(...)`
+Server:
+
+```ts
+const render = await renderAureliaToString({
+  window,
+  component: MyApp,
+  site: ssrSite,
+  route: {
+    ...route,
+    render: { takeoverMode: 'hydrate', verifyHydration: true },
+  },
+});
+
+const documentResult = buildSsrDocument({ template, site: ssrSite, route, render });
+```
+
+`takeoverMode: 'hydrate'` keeps Aurelia's marker comments (`stripAureliaMarkers`
+must stay off; the renderer reports `hydrate_requires_markers` otherwise),
+records the manifest into `render.ssrScope`, and makes `buildSsrDocument(...)`
+embed it as `<script type="application/json" id="aurelia-ssr-manifest">`. The
+manifest is only embedded for hydrating routes; remount routes do not pay for
+it. Set `includeManifest` on `buildSsrDocument(...)` to override.
 
 Client:
 
 ```ts
-await hydrateAureliaSsr({
-  host: document.querySelector('my-app')!,
+import { hydrateAureliaSsr } from 'aurelia2-ssr';
+
+const { root, aurelia } = await hydrateAureliaSsr({
   component: MyApp,
-  ssrScope: window.__AURELIA_SSR_MANIFEST__,
+  hostSelector: 'my-app',
+  registrations: [RouterConfiguration.customize({ useUrlFragmentHash: false })],
 });
 ```
 
-Server rendering should preserve Aurelia markers:
+`hydrateAureliaSsr(...)` reads the embedded manifest (or
+`window.__AURELIA_SSR_MANIFEST__`), reads a serialized AOT definition from
+`#aurelia-ssr-definition` when one is present, calls `Aurelia.hydrate(...)`,
+and runs `finishSsrTakeover()`. Pass `ssrScope` explicitly to use a manifest
+from another source, or `aurelia` to reuse an instance you created with the
+`aurelia` package.
+
+Aurelia core's `hydrate()` activates the app root itself and returns it. It does
+not register a composition root, so calling `aurelia.start()` afterwards throws
+AUR0770. Keep the returned `root`, and call `stop()` (which deactivates and
+disposes it) when the app should go away. Runtime-compiled definitions hydrate
+fine as long as the client compiles the same templates the server did.
+
+Hydration is stricter than remounting. The HTML, marker comments, compiled
+definition, and manifest must agree, or Aurelia binds the wrong nodes or falls
+back to a fresh render. Run `verifySsrHydration(...)` (or set `verifyHydration`)
+in prerender scripts and CI:
 
 ```ts
-createServerContainer(window, registrations, true);
-```
-
-or through `renderAureliaToString(...)`:
-
-```ts
-await renderAureliaToString({
+const verification = await verifySsrHydration({
   window,
   component: MyApp,
-  route: {
-    ...route,
-    render: { preserveMarkers: true, takeoverMode: 'hydrate' },
-  },
+  appHtml: render.appHtml,
+  ssrScope: render.ssrScope!,
+  registrations,
 });
+
+if (!verification.ok) {
+  console.error(verification.diagnostics);
+}
 ```
 
-Hydration is stricter than remounting. The HTML, marker comments, compiled definition, and manifest must agree. If they do not, Aurelia should fail loudly rather than silently binding the wrong node.
+It hydrates the serialized HTML in a scratch element with the real
+`Aurelia.hydrate()` path and reports:
+
+- `hydration_nodes_replaced`: server nodes were detached, so Aurelia re-rendered
+  instead of adopting
+- `hydration_nodes_added`: a template controller fell back to a fresh render,
+  which the user would see as duplicated content
+- `hydration_manifest_mismatch`: the hydrated controller tree differs from the
+  manifest
+- `hydration_html_changed` (warning): server and client state produced
+  different HTML
+
+Not every template controller hydrates in core yet. `promise` views are
+re-rendered on the client (core documents this), `portal` moves its view out of
+the host and is reported as `manifest_portal_unsupported`, and `au-slot`
+projections are rendered fresh. Shadow DOM hosts serialize as Declarative
+Shadow DOM but `Aurelia.hydrate()` adopts light DOM only, so use remount for
+shadow-rooted roots.
 
 ## Router SSR
 
@@ -193,6 +289,32 @@ await renderAureliaToString({
 ```
 
 This keeps browser-only `history`, `location`, and `popstate` behavior out of server rendering while allowing the router to resolve the current path.
+
+`renderAureliaToString(...)` does this for you when `@aurelia/router` can be
+loaded (`router: 'auto'`, the default): it registers a `ServerLocationManager`
+for the route path plus the window's query string. Set `router: false` to opt
+out, `router: true` to get a `router_unavailable` warning when the package is
+missing, or `router: { path, baseHref }` to override the values. Explicit
+registrations passed in `registrations` still win because they are registered
+after the automatic one.
+
+`aurelia.start()` awaits the initial navigation, but `canLoad` redirects and
+`router.load()` calls made during startup queue another transition. Use
+`createRouterSettle()` as the `settle` function (or call
+`waitForRouterIdle(container)` from your own settle function) so the serialized
+HTML and manifest reflect the final route:
+
+```ts
+await renderAureliaToString({
+  window,
+  component: MyApp,
+  registrations: [RouterConfiguration.customize({ useUrlFragmentHash: false }), ...routerRegistrations],
+  settle: createRouterSettle(),
+});
+```
+
+Routed components are recorded under their `<au-viewport>` scope by name, which
+is what the router's `RouteContext` looks up when hydrating.
 
 ## SEO Model
 
@@ -405,18 +527,25 @@ top-level `aurelia` imports.
 
 ### First Render Works, Later SSR Requests Fail
 
-Cause: a long-running request-time SSR server is reusing one Vite-built module
-graph for many routed renders. Some routed app shapes can leave compiled route
-module or resource-definition state behind after `aurelia.stop(true)`.
+Symptom: the first route renders, every later route (in a fresh jsdom window)
+fails with `AUR0757` (`rendering_mismatch_length`, "0 targets"), or a routed
+page renders empty.
 
-Fix: run the app render in an isolated worker thread or short-lived process, and
-cache only static assets such as `index.html`, the Vite manifest, and the server
-entry URL in the parent server. Treat a worker timeout or render diagnostic as a
-soft failure and return the SPA shell.
+Cause: `@aurelia/template-compiler`'s `TemplateElementFactory` caches parsed
+template elements in a module-level map keyed by the markup string. The second
+window receives template nodes owned by the first window's document; they fail
+the `instanceof p.Node` check in `Rendering.createNodes`, are treated as a
+string, and produce a template with no targets.
 
-This is usually unnecessary for static prerender scripts, but request-time SSR
-should include a smoke test that renders several public routes sequentially from
-the built server bundle.
+Fix: `createServerContainer(...)` registers `SsrTemplateElementFactory`, whose
+cache is scoped per `document`, so one jsdom per route or per request works.
+`renderAureliaToString`, `prerenderSite`, and `createSsrRequestHandler` all go
+through it. If you build your own container, register
+`createSsrTemplateFactoryRegistration()` before `StandardConfiguration`.
+
+Request-time renders are still serialized by `createSsrRequestHandler(...)`
+because DOM globals and the Aurelia platform are process-wide; scale with
+processes or worker threads rather than concurrent renders in one process.
 
 ### Duplicate Page After SSR
 
@@ -459,6 +588,27 @@ serve `index.html` through the static plugin and reserve the fallback for
 non-file app routes. Keep missing asset requests as real 404s so stale hashed
 assets do not return app HTML.
 
+### Hydration Throws AUR0770 (No Composition Root)
+
+Cause: the client called `aurelia.start()` after `aurelia.hydrate(...)`.
+`hydrate()` activates the root directly and returns it; there is nothing for
+`start()` to start.
+
+Fix: use `hydrateAureliaSsr(...)` or keep the `IAppRoot` that `hydrate()`
+returns, and tear it down with `root.deactivate()` and `root.dispose()`.
+
+### Hydration Duplicates a List or Binds the Wrong Element
+
+Cause: the number of DOM nodes the browser parsed differs from what the server
+rendered. Empty text interpolations (`${maybeEmpty}`) and adjacent text nodes at
+the top level of a template controller view are the usual culprits: the
+browser drops or merges them, so `nodeCount` no longer matches.
+
+Fix: wrap the interpolation in an element, or render a non-empty placeholder.
+The recorder reports `manifest_empty_text_node` and
+`manifest_adjacent_text_nodes`, and `verifySsrHydration(...)` catches the
+resulting `hydration_nodes_added` before the page ships.
+
 ### Hamburger or Other Event Handlers Do Not Work
 
 Cause: server HTML exists, but Aurelia did not bind that DOM. In remount mode, clear the SSR host before starting Aurelia. In hydrate mode, ensure marker comments and manifest scopes match.
@@ -488,37 +638,170 @@ Open shadow roots can be serialized. Closed roots cannot. Constructable styleshe
 
 SSR should wait for route data explicitly. Use a route-level `settle` function or pass `settleMs` as a fallback. Prefer explicit app-level data readiness over arbitrary sleeps.
 
-## Minimal Prerender Script Shape
+## Prerender Pipeline
+
+`prerenderSite(...)` is the one-call version of the per-route steps above:
+
+1. validate the config (`validateSsrConfig`) and expand dynamic routes
+   (`expandSsrRoutes`), reporting `route_needs_expansion` for `:param` routes
+   without an `expand()` hook;
+2. for every prerender route: create a DOM (`createJSDOMEnvironment` by
+   default), `renderAureliaToString`, `buildSsrDocument`, `createRouteReport`;
+3. write the page (`about.html`, or `about/index.html` with
+   `output.cleanUrls`), copy routes with `status: 404` to `404.html`, and emit
+   redirect pages plus platform files (`_redirects`, `vercel.json`, nginx,
+   `.htaccess`, JSON) for routes with `redirectTo` or components that called
+   `head.redirect(...)`;
+4. write `sitemap.xml`, `robots.txt`, and `ssr-report.json`, then return the
+   files, per-route results, report, diagnostics, and `failed` per
+   `shouldFailSsrBuild`.
 
 ```ts
 import fs from 'node:fs/promises';
-import { createJSDOMEnvironment, buildSsrDocument, renderAureliaToString } from 'aurelia2-ssr';
+import { createRouterSettle, formatSsrReport, prerenderSite } from 'aurelia2-ssr';
+import site from './ssr.config';
 import { MyApp } from './src/my-app';
-import { ssrSite } from './src/ssr.config';
 
-const template = await fs.readFile('dist/index.html', 'utf8');
-const manifest = JSON.parse(await fs.readFile('dist/.vite/manifest.json', 'utf8'));
+const result = await prerenderSite({
+  site,
+  component: MyApp,
+  template: await fs.readFile('dist/index.html', 'utf8'),
+  manifest: JSON.parse(await fs.readFile('dist/.vite/manifest.json', 'utf8')),
+  outDir: 'dist',
+  only: process.argv.slice(2),          // optional subset of paths
+  render: { settle: createRouterSettle() },
+  onRoute: route => console.log(route.ok ? '✔' : '✖', route.path, `${route.durationMs}ms`),
+});
 
-for (const route of ssrSite.routes ?? []) {
-  const env = await createJSDOMEnvironment({
-    html: '<!doctype html><html><head><base href="/"></head><body><my-app></my-app></body></html>',
-    url: new URL(route.path, ssrSite.origin).toString(),
-  });
+console.log(formatSsrReport(result.report));
+process.exitCode = result.failed ? 1 : 0;
+```
 
-  try {
-    const render = await renderAureliaToString({
-      window: env.window,
-      component: MyApp,
-      site: ssrSite,
-      route,
-    });
-    const page = buildSsrDocument({ template, site: ssrSite, route, render, manifest });
-    await fs.writeFile(`dist/${route.path === '/' ? 'index' : route.path.slice(1)}.html`, page.html);
-  } finally {
-    env.close();
-  }
+Pass `write` to redirect output (S3, a zip, an in-memory map in tests), and
+`createEnvironment` to supply your own DOM. Keep `concurrency` at `1` unless
+`globalStrategy` is `'none'`; the orchestrator warns otherwise.
+
+### Dynamic routes
+
+```ts
+{
+  path: '/blog/:slug',
+  seo: { title: 'Blog', description: '...' },
+  expand: async () => {
+    const posts = await cms.posts();
+    return posts.map(post => ({
+      params: { slug: post.slug },
+      seo: { title: post.title, description: post.excerpt, sitemap: { include: true, lastmod: post.updatedAt } },
+      data: { postId: post.id },
+    }));
+  },
 }
 ```
+
+Expansions can be plain paths (`'/blog/hello'`), `params` filled into the
+pattern, or partial route overrides. Expanded routes carry `params`, which
+components read through `ISsrRoute`.
+
+### CLI
+
+```bash
+aurelia2-ssr prerender --config ssr.config.ts --entry src/ssr-entry.ts --out dist
+aurelia2-ssr check --config ssr.config.ts --entry src/ssr-entry.ts --out dist --format github
+aurelia2-ssr report dist/ssr-report.json --format markdown >> "$GITHUB_STEP_SUMMARY"
+```
+
+The entry module exports `component` (or a default export) plus optional
+`registrations`, `settle`, `configureAurelia`, `beforeStart`, and `afterStart`.
+`check` turns on `verifyHydration` for every route and writes nothing. Node
+22.18+ loads `.ts` files natively; older versions need `node --import tsx`.
+
+### Vite plugin
+
+```ts
+import { aureliaSsr } from 'aurelia2-ssr/vite';
+
+plugins: [
+  aurelia(),
+  aureliaSsr({
+    entry: 'src/ssr-entry.ts',
+    config: 'ssr.config.ts',
+    dev: { fallback: 'render' },        // vite dev renders every HTML request
+    prerender: { only: ['/'] },          // options forwarded to prerenderSite
+  }),
+],
+```
+
+In `vite dev` the plugin adds a post middleware that loads the entry and config
+through `ssrLoadModule` on every request (so edits apply), renders the route,
+and serves the document through `transformIndexHtml`. After `vite build` it
+starts a nested Vite server in middleware mode to load the entry, then runs
+`prerenderSite` against the built `index.html` and `.vite/manifest.json` in
+`build.outDir`, prints the report, and fails the build when diagnostics exceed
+the thresholds. Enable `build.manifest` to get modulepreload and CSS injection.
+
+## Request-Time Handler
+
+```ts
+const handler = createSsrRequestHandler({
+  site,
+  component: MyApp,
+  template,
+  manifest,
+  fallback: 'spa',           // or 'render' | 'not-found'
+  onRenderError: 'spa',      // or 'error' (500 with the diagnostics)
+  render: request => ({ registrations: [/* per-request services */], settle: createRouterSettle() }),
+});
+
+const response = await handler({ url: '/products/1?tab=specs', headers: request.headers });
+// { status, headers, body, source: 'render' | 'cache' | 'redirect' | 'spa' | 'not-modified' | 'error', route, render, diagnostics }
+```
+
+Behaviour per request:
+
+- `matchSsrRoute` picks the route (static beats `:param` beats `*`) and passes
+  `params` to the render; unmatched paths follow `fallback`.
+- `redirectTo` routes answer with `Location` (query string preserved);
+  components can do the same with `head.redirect(to, status)`.
+- `render.status` (from `head.setStatus(404)` or the route) becomes the HTTP
+  status.
+- `Cache-Control` comes from `site.cache` merged with `route.cache`
+  (`maxAge`, `sMaxAge`, `staleWhileRevalidate`, `private`, `noStore`), and
+  `cache.ttlMs` stores 200 responses in memory (`createMemorySsrCache`, or pass
+  your own `SsrResponseCache`). `handler.invalidate(path?)` clears it.
+- Weak ETags ignore the `renderedAt` timestamp, so repeated renders of the same
+  content answer `304` to `If-None-Match`.
+- Adapters: `createNodeSsrMiddleware(handler)` for `http`, Connect, and
+  Express; `sendNodeResponse(res, response)` for Fastify/Koa raw responses; and
+  `handleWebRequest(handler, request)` / `toWebResponse(response)` for Web
+  runtimes.
+
+## State Transfer and Component Head Data
+
+`ISsrState` is a JSON-serializable key/value store. On the server
+`renderAureliaToString` registers a fresh store per render and returns its
+contents as `render.state`; `buildSsrDocument` embeds it as
+`<script type="application/json" id="aurelia-ssr-state">`. On the client the
+default resolver reads that script, `hydrateAureliaSsr` registers it, and
+`registerClientSsrState(container)` does the same for remount bootstraps.
+
+```ts
+this.products = await ssrData(this.state, 'products', () => this.api.list());
+```
+
+`ssrData` runs the loader on the server and stores the result; in the browser it
+returns the embedded value (set `consume: true` to drop it after the first read,
+or `refresh: true` to bypass it). `createSsrFetchInterceptor(state)` does the
+same for `@aurelia/fetch-client`: GET responses are recorded on the server and
+replayed from the store on the client.
+
+`ISsrHead` lets components set `title`, `description`, `canonical`, `robots`,
+`lang`, meta, links, JSON-LD, `<html>`/`<body>` attributes, the HTTP status, and
+redirects. The server render returns a snapshot in `render.head`, which
+`buildSsrDocument` layers over the route's SEO config. On the client the same
+service edits the live document immediately, so it doubles as a head manager
+for SPA navigation. `ISsrRoute` resolves to the route being rendered (with
+`params`, `data`, `status`) on the server and is rebuilt from the embedded
+context script on the client.
 
 ## Testing Recommendations
 
@@ -533,4 +816,12 @@ At minimum, test:
 - a real Aurelia server render for your root shell
 - hydration/remount client startup path
 
-This package uses Jest coverage for those areas in `test/ssr.spec.ts`.
+`aurelia2-ssr/testing` covers the last two with `renderSsrForTest`,
+`expectSsrHydration`, `assertSsrHydrates`, and `manifestSnapshot`, and works in
+Jest and Vitest jsdom environments. Because Jest's jsdom lacks `TextEncoder`,
+end-to-end checks that create additional jsdom windows (multi-route prerenders)
+belong in a Node smoke test against the built package, for example
+`aurelia2-ssr check` in CI.
+
+This package's own coverage lives in `test/ssr.spec.ts`,
+`test/hydration.spec.ts`, and `test/pipeline.spec.ts`.

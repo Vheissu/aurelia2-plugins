@@ -7,8 +7,15 @@ import {
   type ISSRScope,
 } from '@aurelia/runtime-html';
 import { BrowserPlatform } from '@aurelia/platform-browser';
+import { ISsrRoute } from './configuration.js';
 import { installDomGlobals } from './globals.js';
+import { ISsrHead, SsrHead } from './head.js';
+import { recordSsrManifest } from './manifest.js';
+import { createSsrRouterRegistrations } from './router.js';
+import { createSsrStateRegistration, SsrState } from './state.js';
+import { createSsrTemplateFactoryRegistration } from './template-factory.js';
 import { serializeElementForSsr } from './shadow-dom.js';
+import { verifySsrHydration } from './verify.js';
 import type {
   SerializeHtmlOptions,
   SsrAppRenderResult,
@@ -17,6 +24,7 @@ import type {
   SsrRenderAureliaOptions,
   SsrRenderContext,
   SsrSiteConfig,
+  SsrTakeoverMode,
 } from './types.js';
 
 export function createServerContainer(
@@ -34,6 +42,7 @@ export function createServerContainer(
   container.register(
     Registration.instance(IPlatform, platform),
     Registration.instance(ISSRContext, { preserveMarkers }),
+    createSsrTemplateFactoryRegistration(),
     StandardConfiguration,
     ...registrations,
   );
@@ -131,12 +140,18 @@ async function renderAureliaCore<TComponent extends object>(
   const document = window.document;
   const site = options.site;
   const route = options.route;
+  const path = route?.path ?? window.location.pathname;
+  const takeoverMode: SsrTakeoverMode = route?.render?.takeoverMode
+    ?? site?.rendering?.takeoverMode
+    ?? 'remount';
   const globalStrategy: SsrGlobalStrategy = options.globalStrategy
     ?? site?.rendering?.globalStrategy
     ?? 'install-and-restore';
   const restoreGlobals = globalStrategy === 'none'
     ? () => undefined
     : installDomGlobals(window);
+  const diagnostics: SsrDiagnostic[] = [];
+  const timings: Record<string, number> = {};
 
   let aurelia: Aurelia | null = null;
   let restorePlatform = () => undefined;
@@ -151,9 +166,30 @@ async function renderAureliaCore<TComponent extends object>(
     const serializeOptions = normalizeSerializeOptions(options.serialize, site);
     const preserveMarkers = route?.render?.preserveMarkers
       ?? !serializeOptions.stripAureliaMarkers;
+
+    if (takeoverMode === 'hydrate') {
+      if (!preserveMarkers || serializeOptions.stripAureliaMarkers) {
+        diagnostics.push(diagnostic('error', 'hydrate_requires_markers',
+          'takeoverMode "hydrate" needs Aurelia marker comments in the HTML. Remove stripAureliaMarkers or set render.preserveMarkers to true.', path));
+      }
+      if (serializeOptions.preserveComments === false) {
+        diagnostics.push(diagnostic('error', 'hydrate_requires_comments',
+          'takeoverMode "hydrate" needs comments preserved in the serialized HTML.', path));
+      }
+    }
+
+    const state = options.state === false ? null : (options.state ?? SsrState.forServer());
+    const head = options.head === false ? null : SsrHead.forServer();
+    const routerRegistrations = await resolveRouterRegistrations(options, path, window, diagnostics);
     const server = createServerContainer(
       window,
-      options.registrations ?? [],
+      [
+        ...routerRegistrations,
+        ...(state ? [createSsrStateRegistration(state)] : []),
+        ...(head ? [Registration.instance(ISsrHead, head)] : []),
+        Registration.instance(ISsrRoute, route ?? null),
+        ...(options.registrations ?? []),
+      ],
       preserveMarkers,
       options.container,
     );
@@ -177,42 +213,110 @@ async function renderAureliaCore<TComponent extends object>(
       host,
       component: options.component,
     });
+
+    let phase = now();
     await aurelia.start();
+    timings.startMs = elapsed(phase);
+
+    phase = now();
     await settleSsr(window, options.settle, context, site);
     await options.afterStart?.(context);
+    timings.settleMs = elapsed(phase);
 
+    phase = now();
     const appHtml = serializeElementForSsr(host, serializeOptions);
-    const ssrScope = getControllerSsrScope(aurelia);
+    timings.serializeMs = elapsed(phase);
+
+    let ssrScope: ISSRScope | undefined;
+    if (options.manifest !== false) {
+      phase = now();
+      const recording = recordSsrManifest(aurelia.root.controller, {
+        path,
+        ...(options.manifest ?? {}),
+      });
+      ssrScope = recording.scope;
+      diagnostics.push(...recording.diagnostics);
+      timings.manifestMs = elapsed(phase);
+    }
 
     await options.beforeStop?.(context);
 
+    const verifyHydration = options.verifyHydration
+      ?? route?.render?.verifyHydration
+      ?? site?.rendering?.verifyHydration
+      ?? false;
+
+    if (verifyHydration) {
+      if (ssrScope == null) {
+        diagnostics.push(diagnostic('warning', 'verify_requires_manifest',
+          'verifyHydration was requested but manifest recording is disabled.', path));
+      } else if (typeof options.component !== 'function') {
+        diagnostics.push(diagnostic('warning', 'verify_requires_component_class',
+          'verifyHydration needs the root component class, not an instance.', path));
+      } else {
+        // Stop the server app first so the verification tree is the only
+        // Aurelia instance touching this document.
+        await aurelia.stop(true);
+        aurelia = null;
+
+        phase = now();
+        const configureAurelia = options.configureAurelia;
+        // Mirror the client: same route, the embedded state as a client store,
+        // a live-document head, and the server location manager for routers.
+        const verification = await verifySsrHydration({
+          window,
+          component: options.component,
+          appHtml,
+          ssrScope,
+          registrations: [
+            ...routerRegistrations,
+            ...(state ? [createSsrStateRegistration(new SsrState(state.toJSON(), false))] : []),
+            ...(head ? [Registration.instance(ISsrHead, new SsrHead(false, null))] : []),
+            Registration.instance(ISsrRoute, route ?? null),
+            ...(options.registrations ?? []),
+          ],
+          path,
+          configureAurelia: configureAurelia
+            ? instance => configureAurelia(instance, { ...context, container: instance.container })
+            : undefined,
+        });
+        diagnostics.push(...verification.diagnostics);
+        timings.verifyMs = elapsed(phase);
+      }
+    }
+
+    const headSnapshot = head?.snapshot();
+
     return {
       appHtml,
-      documentTitle: document.title,
+      documentTitle: headSnapshot?.title ?? document.title,
       path: window.location.pathname,
-      status: route?.status,
-      redirectTo: route?.redirectTo,
+      status: headSnapshot?.status ?? route?.status,
+      redirectTo: headSnapshot?.redirectTo ?? route?.redirectTo,
       ssrScope,
       timings: {
-        renderMs: Math.round(now() - startedAt),
+        ...timings,
+        renderMs: elapsed(startedAt),
       },
-      diagnostics: [],
+      diagnostics,
       data: route?.data,
+      state: state && state.size > 0 ? state.toJSON() : undefined,
+      head: headSnapshot,
     };
   } catch (error) {
-    const diagnostic: SsrDiagnostic = {
-      severity: 'error',
-      code: 'render_failed',
-      message: error instanceof Error ? error.message : String(error),
-      path: route?.path ?? window.location.pathname,
-    };
+    diagnostics.push(diagnostic('error', 'render_failed',
+      error instanceof Error ? error.message : String(error), path));
 
     return {
       appHtml: '',
       documentTitle: document.title,
       path: window.location.pathname,
       status: 500,
-      diagnostics: [diagnostic],
+      timings: {
+        ...timings,
+        renderMs: elapsed(startedAt),
+      },
+      diagnostics,
     };
   } finally {
     if (aurelia?.isRunning) {
@@ -223,6 +327,32 @@ async function renderAureliaCore<TComponent extends object>(
       restorePlatform();
       restoreGlobals();
     }
+  }
+}
+
+async function resolveRouterRegistrations(
+  options: SsrRenderAureliaOptions<object>,
+  path: string,
+  window: Window,
+  diagnostics: SsrDiagnostic[],
+): Promise<readonly unknown[]> {
+  const router = options.router ?? 'auto';
+  if (router === false) {
+    return [];
+  }
+
+  const config = typeof router === 'object' ? router : {};
+  const search = window.location?.search ?? '';
+  const routerPath = config.path ?? `${path}${path.includes('?') ? '' : search}`;
+
+  try {
+    return await createSsrRouterRegistrations({ path: routerPath, baseHref: config.baseHref });
+  } catch (error) {
+    if (router === true) {
+      diagnostics.push(diagnostic('warning', 'router_unavailable',
+        `router: true was set but @aurelia/router could not be loaded: ${error instanceof Error ? error.message : String(error)}`, path));
+    }
+    return [];
   }
 }
 
@@ -246,11 +376,20 @@ function normalizeSerializeOptions(
   };
 }
 
-function getControllerSsrScope(aurelia: Aurelia): ISSRScope | undefined {
-  const controller = (aurelia.root as unknown as { controller?: { ssrScope?: ISSRScope } }).controller;
-  return controller?.ssrScope;
+function diagnostic(
+  severity: SsrDiagnostic['severity'],
+  code: string,
+  message: string,
+  path: string,
+  value?: unknown,
+): SsrDiagnostic {
+  return { severity, code, message, path, value };
 }
 
 function now(): number {
   return typeof performance !== 'undefined' ? performance.now() : Date.now();
+}
+
+function elapsed(since: number): number {
+  return Math.round(now() - since);
 }

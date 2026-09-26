@@ -20,6 +20,10 @@
       "types": "./dist/types/assets.d.ts",
       "import": "./dist/assets.js"
     },
+    "./cli": {
+      "types": "./dist/types/cli.d.ts",
+      "import": "./dist/cli.js"
+    },
     "./client": {
       "types": "./dist/types/client-takeover.d.ts",
       "import": "./dist/client-takeover.js"
@@ -27,6 +31,10 @@
     "./client-takeover": {
       "types": "./dist/types/client-takeover.d.ts",
       "import": "./dist/client-takeover.js"
+    },
+    "./config": {
+      "types": "./dist/types/config.d.ts",
+      "import": "./dist/config.js"
     },
     "./configuration": {
       "types": "./dist/types/configuration.d.ts",
@@ -44,17 +52,37 @@
       "types": "./dist/types/globals.d.ts",
       "import": "./dist/globals.js"
     },
+    "./head": {
+      "types": "./dist/types/head.d.ts",
+      "import": "./dist/head.js"
+    },
     "./html": {
       "types": "./dist/types/html.d.ts",
       "import": "./dist/html.js"
+    },
+    "./manifest": {
+      "types": "./dist/types/manifest.d.ts",
+      "import": "./dist/manifest.js"
     },
     "./preboot": {
       "types": "./dist/types/preboot.d.ts",
       "import": "./dist/preboot.js"
     },
+    "./prerender": {
+      "types": "./dist/types/prerender.d.ts",
+      "import": "./dist/prerender.js"
+    },
+    "./redirects": {
+      "types": "./dist/types/redirects.d.ts",
+      "import": "./dist/redirects.js"
+    },
     "./renderer": {
       "types": "./dist/types/renderer.d.ts",
       "import": "./dist/renderer.js"
+    },
+    "./report": {
+      "types": "./dist/types/report.d.ts",
+      "import": "./dist/report.js"
     },
     "./router": {
       "types": "./dist/types/router.d.ts",
@@ -64,31 +92,63 @@
       "types": "./dist/types/routes.d.ts",
       "import": "./dist/routes.js"
     },
+    "./server": {
+      "types": "./dist/types/server.d.ts",
+      "import": "./dist/server.js"
+    },
     "./shadow-dom": {
       "types": "./dist/types/shadow-dom.d.ts",
       "import": "./dist/shadow-dom.js"
     },
+    "./state": {
+      "types": "./dist/types/state.d.ts",
+      "import": "./dist/state.js"
+    },
+    "./testing": {
+      "types": "./dist/types/testing.d.ts",
+      "import": "./dist/testing.js"
+    },
     "./types": {
       "types": "./dist/types/types.d.ts",
       "import": "./dist/types.js"
+    },
+    "./verify": {
+      "types": "./dist/types/verify.d.ts",
+      "import": "./dist/verify.js"
+    },
+    "./vite": {
+      "types": "./dist/types/vite.d.ts",
+      "import": "./dist/vite.js"
     }
   },
   "typesVersions": {
     "*": {
       "assets": ["dist/types/assets.d.ts"],
+      "cli": ["dist/types/cli.d.ts"],
       "client": ["dist/types/client-takeover.d.ts"],
       "client-takeover": ["dist/types/client-takeover.d.ts"],
+      "config": ["dist/types/config.d.ts"],
       "configuration": ["dist/types/configuration.d.ts"],
       "diagnostics": ["dist/types/diagnostics.d.ts"],
       "document": ["dist/types/document.d.ts"],
       "globals": ["dist/types/globals.d.ts"],
+      "head": ["dist/types/head.d.ts"],
       "html": ["dist/types/html.d.ts"],
+      "manifest": ["dist/types/manifest.d.ts"],
       "preboot": ["dist/types/preboot.d.ts"],
+      "prerender": ["dist/types/prerender.d.ts"],
+      "redirects": ["dist/types/redirects.d.ts"],
       "renderer": ["dist/types/renderer.d.ts"],
+      "report": ["dist/types/report.d.ts"],
       "router": ["dist/types/router.d.ts"],
       "routes": ["dist/types/routes.d.ts"],
+      "server": ["dist/types/server.d.ts"],
       "shadow-dom": ["dist/types/shadow-dom.d.ts"],
-      "types": ["dist/types/types.d.ts"]
+      "state": ["dist/types/state.d.ts"],
+      "testing": ["dist/types/testing.d.ts"],
+      "types": ["dist/types/types.d.ts"],
+      "verify": ["dist/types/verify.d.ts"],
+      "vite": ["dist/types/vite.d.ts"]
     }
   },
   "repository": {
@@ -115,6 +175,7 @@
     "@aurelia/platform-browser": "^2.0.0-rc.2",
     "@aurelia/router": "^2.0.0-rc.2",
     "@aurelia/runtime-html": "^2.0.0-rc.2",
+    "@aurelia/template-compiler": "^2.0.0-rc.2",
     "aurelia": "^2.0.0-rc.2"
   },
   "peerDependencies": {
@@ -122,8 +183,10 @@
     "@aurelia/platform-browser": ">=2.0.0-rc.2",
     "@aurelia/router": ">=2.0.0-rc.2",
     "@aurelia/runtime-html": ">=2.0.0-rc.2",
+    "@aurelia/template-compiler": ">=2.0.0-rc.2",
     "aurelia": ">=2.0.0-rc.2",
-    "jsdom": ">=24.0.0"
+    "jsdom": ">=24.0.0",
+    "vite": ">=5.0.0"
   },
   "peerDependenciesMeta": {
     "@aurelia/router": {
@@ -131,6 +194,12 @@
     },
     "jsdom": {
       "optional": true
+    },
+    "vite": {
+      "optional": true
     }
+  },
+  "bin": {
+    "aurelia2-ssr": "./dist/cli.js"
   }
 }
