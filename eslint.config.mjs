@@ -1,5 +1,5 @@
 import tseslint from 'typescript-eslint';
-import eslintPluginImport from 'eslint-plugin-import';
+import eslintPluginImportX from 'eslint-plugin-import-x';
 
 export default tseslint.config(
   {
@@ -15,7 +15,7 @@ export default tseslint.config(
   ...tseslint.configs.recommended,
   {
     plugins: {
-      import: eslintPluginImport,
+      'import-x': eslintPluginImportX,
     },
     rules: {
       '@typescript-eslint/no-explicit-any': 'warn',
