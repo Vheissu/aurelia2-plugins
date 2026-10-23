@@ -20,7 +20,7 @@
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
-    "froala-editor": "5.3.1"
+    "froala-editor": "5.5.0"
   },
   "devDependencies": {
     "aurelia": "^2.0.0-rc.2"

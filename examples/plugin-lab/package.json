@@ -1,0 +1,29 @@
+{
+  "name": "aurelia2-plugin-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "aurelia": "^2.0.0-rc.2",
+    "aurelia2-remote-template": "file:../../packages/aurelia2-remote-template",
+    "aurelia2-schema-form": "file:../../packages/aurelia2-schema-form",
+    "aurelia2-undo-redo": "file:../../packages/aurelia2-undo-redo",
+    "aurelia2-state-machine": "file:../../packages/aurelia2-state-machine",
+    "aurelia2-async-task": "file:../../packages/aurelia2-async-task",
+    "aurelia2-tree": "file:../../packages/aurelia2-tree",
+    "aurelia2-sortable": "file:../../packages/aurelia2-sortable",
+    "aurelia2-autosave": "file:../../packages/aurelia2-autosave",
+    "aurelia2-pan-zoom": "file:../../packages/aurelia2-pan-zoom",
+    "aurelia2-split-pane": "file:../../packages/aurelia2-split-pane"
+  },
+  "devDependencies": {
+    "@aurelia/vite-plugin": "^2.0.0-rc.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5"
+  }
+}

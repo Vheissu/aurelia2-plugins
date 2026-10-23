@@ -41,6 +41,25 @@ A monorepo of Aurelia 2 plugins maintained and published as individual packages.
 
 Each package README explains API, usage patterns, and configuration.
 
+## Workflow and editor plugins
+
+These packages use Aurelia composition, observation, DI, and lifecycle APIs to manage application behavior. All require Aurelia `^2.0.0-rc.2`.
+
+| Package | Use case |
+| --- | --- |
+| [aurelia2-remote-template](packages/aurelia2-remote-template/README.md) | Trusted server templates with LRU caching, cancellation, and explicit binding contexts |
+| [aurelia2-schema-form](packages/aurelia2-schema-form/README.md) | Schema-driven forms using registered Aurelia field templates |
+| [aurelia2-undo-redo](packages/aurelia2-undo-redo/README.md) | Bounded document histories, grouped transactions, and editor keyboard shortcuts |
+| [aurelia2-state-machine](packages/aurelia2-state-machine/README.md) | Guarded workflow transitions and observable context |
+| [aurelia2-async-task](packages/aurelia2-async-task/README.md) | Restart, drop, or queue concurrent actions with lifecycle cancellation |
+| [aurelia2-tree](packages/aurelia2-tree/README.md) | Lazy trees with keyboard navigation, selection, and accessible row metadata |
+| [aurelia2-sortable](packages/aurelia2-sortable/README.md) | Keyboard/native drag reordering with previews and cancellable commits |
+| [aurelia2-autosave](packages/aurelia2-autosave/README.md) | Observed drafts, bounded debounce, serialized writes, and manual retry |
+| [aurelia2-pan-zoom](packages/aurelia2-pan-zoom/README.md) | Bounded canvas transforms, pointer pan, pinch, and keyboard zoom |
+| [aurelia2-split-pane](packages/aurelia2-split-pane/README.md) | Constrained, accessible two-pane resizing with RTL support |
+
+The [plugin lab](examples/plugin-lab/README.md) runs all ten together using their built package exports. See the [verification record](docs/plugin-verification.md) for test coverage, browser checks, and package checks.
+
 ## Using a plugin
 
 Install the package you want and register its configuration:
@@ -56,7 +75,10 @@ Refer to the package README in `packages/<name>/README.md` for concrete examples
 ## Local development
 
 ```bash
-npm install
-npm test --workspaces --if-present
-npm run build --workspaces
+npm ci
+npm test -- --runInBand
+npm run build
 ```
+
+
+See [dependency compatibility](docs/dependency-compatibility.md) for the current toolchain pins and unresolved upstream advisories.

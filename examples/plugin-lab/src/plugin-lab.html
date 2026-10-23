@@ -1,0 +1,31 @@
+<main>
+  <header><p class="eyebrow">Aurelia 2 · Plugin lab</p><h1>Ten plugins. Working together.</h1><p>Edit a profile, load a server template, reorder work, and resize the workspace.</p></header>
+  <section class="profile" history-keys="history.bind: history; apply.bind: applyHistory">
+    <div><p class="eyebrow">Schema forms + autosave + undo / redo</p><h2>Profile editor</h2>
+      <div autosave="model.bind: draft; save.bind: save; session.from-view: autosave">
+        <au-schema-form schema.bind="schema" model.bind="draft" schema-submit.trigger="submitted = 'Valid profile submitted'"></au-schema-form>
+      </div>
+      <div class="actions"><button click.trigger="checkpoint()">Save checkpoint</button><button disabled.bind="!history.canUndo" click.trigger="undo()">Undo</button><button disabled.bind="!history.canRedo" click.trigger="redo()">Redo</button></div>
+      <p role="status">${submitted}</p><p>Autosave: <strong>${autosave.status}</strong> · Writes: ${saveCount}</p><pre>${saved}</pre>
+    </div>
+    <div><p class="eyebrow">Remote templates</p><h2>Remote fragment</h2>
+      <au-remote-template src="/welcome.html" context.bind="remote"><p au-slot="loading">Loading template…</p><p au-slot="error">Template unavailable.</p></au-remote-template>
+    </div>
+  </section>
+  <div class="grid">
+    <section><p class="eyebrow">State machine</p><h2>Publishing workflow</h2><p>State: <strong data-workflow>${machine.state}</strong></p>
+      <div class="actions"><button machine-send="machine.bind: machine; event.bind: reviewEvent" disabled.bind="!machine.can(reviewEvent)">Request review</button><button machine-send="machine.bind: machine; event.bind: approveEvent" disabled.bind="!machine.can(approveEvent)">Approve</button><button machine-send="machine.bind: machine; event.bind: editEvent" disabled.bind="!machine.can(editEvent)">Edit again</button></div>
+    </section>
+    <section><p class="eyebrow">Async task</p><h2>Restartable search</h2><label>Query <input value.bind="query"></label><button task-run="task.bind: task; args.bind: query">Search</button><p aria-live="polite">${task.status}: ${task.value}</p></section>
+    <section><p class="eyebrow">Lazy tree</p><h2>Project navigation</h2><au-tree nodes.bind="nodes" load-children.bind="loadChildren" selected.two-way="selected" label="Projects"></au-tree><p>Selected: ${selected}</p></section>
+    <section><p class="eyebrow">Sortable list</p><h2>Delivery stages</h2><au-sortable controls items.two-way="stages" label="Delivery stages"></au-sortable></section>
+  </div>
+  <section><p class="eyebrow">Split panes + pan / zoom</p><h2>Workspace</h2><p>Drag the divider or use its arrow keys. Pan the canvas by dragging; use Ctrl + wheel or + / − to zoom.</p>
+    <div class="workspace"><au-split-pane ratio.two-way="ratio" min-first.bind="180" min-second.bind="180">
+      <div au-slot="first" class="notes"><h3>Review notes</h3><p>The divider keeps both panes above their minimum widths.</p><button click.trigger="pan.fit()">Fit canvas</button><p>Zoom: ${transform.scale.toFixed(2)}</p></div>
+      <au-pan-zoom au-slot="second" component.ref="pan" transform.two-way="transform" content-width.bind="1000" content-height.bind="700" label="Project canvas">
+        <div class="canvas"><div class="card one">Research</div><div class="card two">Design</div><div class="card three">Build</div></div>
+      </au-pan-zoom>
+    </au-split-pane></div>
+  </section>
+</main>

@@ -21,7 +21,7 @@
   },
   "devDependencies": {
     "aurelia": "^2.0.0-rc.2",
-    "chart.js": "^4.5.1"
+    "chart.js": "^4.6.1"
   },
   "peerDependencies": {
     "aurelia": ">=2.0.0-rc.2",
