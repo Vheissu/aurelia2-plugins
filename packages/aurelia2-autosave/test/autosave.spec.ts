@@ -347,3 +347,24 @@ it('supports explicit initial saves for newly created drafts', async () => {
     await f.tearDown();
   }
 });
+
+it('clears a serialization error when a flush returns to the acknowledged model', async () => {
+  const f = await setup();
+  const model: { n: number; cycle?: unknown } = { n: 0 };
+  const save = jest.fn();
+  const session = f.container.get(AutosaveFactory).create(model, save);
+  try {
+    model.cycle = model;
+    expect(await session.flush()).toBe(false);
+    expect(session.status).toBe('error');
+    delete model.cycle;
+    expect(await session.flush()).toBe(true);
+    expect(session.status).toBe('idle');
+    expect(session.error).toBeNull();
+    expect(session.dirty).toBe(false);
+    expect(save).not.toHaveBeenCalled();
+  } finally {
+    session.dispose();
+    await f.tearDown();
+  }
+});

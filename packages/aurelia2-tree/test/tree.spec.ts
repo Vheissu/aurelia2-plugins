@@ -340,3 +340,51 @@ it('expands with one disclosure click and clears removed external selection', as
     await f.tearDown();
   }
 });
+
+it('blocks expansions launched by abort callbacks during root replacement', async () => {
+  let reentrant!: Promise<boolean>;
+  let tree: TreeModel;
+  const load = jest.fn((_node, signal: AbortSignal) => {
+    signal.addEventListener('abort', () => { reentrant = tree.expand('b'); });
+    return new Promise<never>(() => {});
+  });
+  tree = new TreeModel([
+    { id: 'a', label: 'A', hasChildren: true },
+    { id: 'b', label: 'B', hasChildren: true },
+  ], load);
+  const pending = tree.expand('a');
+  await tick();
+  tree.replace([{ id: 'new', label: 'New' }]);
+  expect(await pending).toBe(false);
+  expect(await reentrant).toBe(false);
+  expect(load).toHaveBeenCalledTimes(1);
+  tree.dispose();
+});
+
+it('does not revive a disposed tree when replacement occurs in an abort callback', async () => {
+  let tree: TreeModel;
+  tree = new TreeModel([{ id: 'a', label: 'A', hasChildren: true }], (_node, signal) => {
+    signal.addEventListener('abort', () => tree.replace(nodes()));
+    return new Promise<never>(() => {});
+  });
+  const pending = tree.expand('a');
+  await tick();
+  tree.dispose();
+  expect(await pending).toBe(false);
+  expect(await tree.expand('a')).toBe(false);
+});
+
+it('respects disposal triggered by an abort callback while replacing roots', async () => {
+  let tree: TreeModel;
+  tree = new TreeModel([{ id: 'a', label: 'A', hasChildren: true }], (_node, signal) => {
+    signal.addEventListener('abort', () => tree.dispose());
+    return new Promise<never>(() => {});
+  });
+  const pending = tree.expand('a');
+  await tick();
+  tree.replace(nodes());
+  expect(await pending).toBe(false);
+  expect(await tree.expand('a')).toBe(false);
+  tree.replace(nodes());
+  expect(await tree.expand('a')).toBe(false);
+});

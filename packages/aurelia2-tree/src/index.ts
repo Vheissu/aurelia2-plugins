@@ -47,9 +47,10 @@ export class TreeModel {
     this.replace(nodes);
   }
   replace(nodes: readonly TreeNode[]): void {
+    if (this.disposed) return;
     const { index, parents } = this.scan(nodes, new Map());
     this.cancel();
-    this.disposed = false;
+    if (this.disposed) return;
     this.roots = nodes;
     this.loaded.clear();
     this.errors.clear();

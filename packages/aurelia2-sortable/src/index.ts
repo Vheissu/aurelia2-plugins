@@ -6,6 +6,7 @@ import {
   IEffect,
   INode,
   IObservation,
+  queueTask,
   resolve,
 } from 'aurelia';
 
@@ -101,12 +102,27 @@ export class AuSortable {
   }
   private rebuild(): void {
     const keys = new Set<string>();
+    this.retainFocus();
     this.rows = this.items.map((item) => {
       const key = this.getKey(item);
       if (!key || key === 'undefined' || keys.has(key))
         throw new Error(`Sortable keys must be unique: ${key}`);
       keys.add(key);
       return { key, label: this.getLabel(item), item };
+    });
+  }
+  private retainFocus(): void {
+    const document = this.host.ownerDocument;
+    const focused = document.activeElement as HTMLElement | null;
+    if (!focused || !this.host.contains(focused)) return;
+    queueTask(() => {
+      if (
+        this.active &&
+        focused.isConnected &&
+        this.host.contains(focused) &&
+        (document.activeElement === focused || document.activeElement === document.body)
+      )
+        focused.focus();
     });
   }
   private pick(index: number): void {
@@ -150,7 +166,11 @@ export class AuSortable {
     const detail: SortableChange = { from, to, item, items };
     if (
       !this.host.dispatchEvent(
-        new CustomEvent('sortable-before-change', { bubbles: true, cancelable: true, detail }),
+        new CustomEvent('sortable-before-change', {
+          bubbles: true,
+          cancelable: true,
+          detail: { ...detail, items: [...items] },
+        }),
       )
     ) {
       this.cancel();
@@ -215,6 +235,7 @@ export class AuSortable {
               0,
               Math.min(this.rows.length - 1, this.grabbed + (event.key === 'ArrowDown' ? 1 : -1)),
             );
+    this.retainFocus();
     this.rows = moveItem(this.rows, this.grabbed, to);
     this.grabbed = to;
     this.announcement = `Position ${to + 1} of ${this.rows.length}`;
@@ -233,6 +254,7 @@ export class AuSortable {
       return false;
     this.cancel();
     this.pick(index);
+    this.retainFocus();
     this.rows = moveItem(this.rows, index, to);
     this.grabbed = to;
     return this.commit();

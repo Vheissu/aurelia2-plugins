@@ -168,3 +168,19 @@ it('does not enqueue a restart behind work launched reentrantly by an abort list
   expect(result).toEqual({ status: 'completed', value: 3 });
   expect(calls).not.toContain(2);
 });
+
+it('does not start replacement work if an abort listener disposes the task', async () => {
+  let task: AsyncTask<number, number>;
+  const action = jest.fn((n: number, signal: AbortSignal) => {
+    signal.addEventListener('abort', () => task.dispose(), { once: true });
+    return n === 1 ? new Promise<number>(() => {}) : n;
+  });
+  task = new AsyncTask(action, { policy: 'restart', maxQueued: 1 });
+  const first = task.run(1);
+  await tick();
+  const second = task.run(2);
+  expect(await first).toEqual({ status: 'cancelled' });
+  expect(await second).toEqual({ status: 'cancelled' });
+  expect(action).toHaveBeenCalledTimes(1);
+  expect(task.running).toBe(false);
+});

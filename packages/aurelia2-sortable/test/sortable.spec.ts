@@ -234,3 +234,69 @@ it('preserves same-turn in-place edits made by a before-change handler', async (
     await f.tearDown();
   }
 });
+
+it('isolates the proposed event payload from the committed order and metadata', async () => {
+  const f = await setup();
+  const changed = jest.fn();
+  f.appHost.addEventListener('sortable-change', changed);
+  f.appHost.addEventListener('sortable-before-change', (event: CustomEvent) => {
+    event.detail.items.splice(0);
+    event.detail.from = 99;
+  });
+  try {
+    expect(f.component.view.move(0, 1)).toBe(true);
+    runTasks();
+    expect(f.component.items).toEqual(['B', 'A', 'C']);
+    expect(changed.mock.calls[0][0].detail).toEqual({
+      items: ['B', 'A', 'C'], item: 'A', from: 0, to: 1,
+    });
+  } finally {
+    await f.tearDown();
+  }
+});
+
+it('retains focus on the grabbed item when keyboard previews move its DOM node', async () => {
+  const f = await setup();
+  const grabbed = f.appHost.querySelectorAll('button')[1];
+  try {
+    grabbed.focus();
+    key(grabbed, ' ');
+    key(grabbed, 'ArrowUp');
+    runTasks();
+    expect(document.activeElement).toBe(grabbed);
+    key(document.activeElement!, 'End');
+    runTasks();
+    expect(document.activeElement).toBe(grabbed);
+    key(document.activeElement!, 'Enter');
+    runTasks();
+    expect(f.component.items).toEqual(['A', 'C', 'B']);
+    expect(document.activeElement).toBe(grabbed);
+  } finally {
+    await f.tearDown();
+  }
+});
+
+it('restores focus after cancelling a preview without reclaiming focus moved elsewhere', async () => {
+  const f = await setup();
+  const grabbed = f.appHost.querySelectorAll('button')[1];
+  const outside = document.createElement('button');
+  document.body.append(outside);
+  try {
+    grabbed.focus();
+    key(grabbed, ' ');
+    key(grabbed, 'ArrowUp');
+    runTasks();
+    key(grabbed, 'Escape');
+    runTasks();
+    expect(document.activeElement).toBe(grabbed);
+    expect(f.component.items).toEqual(['A', 'B', 'C']);
+    key(grabbed, ' ');
+    key(grabbed, 'End');
+    outside.focus();
+    runTasks();
+    expect(document.activeElement).toBe(outside);
+  } finally {
+    outside.remove();
+    await f.tearDown();
+  }
+});

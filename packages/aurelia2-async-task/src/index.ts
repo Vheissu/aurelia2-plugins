@@ -47,6 +47,8 @@ export class AsyncTask<A, R> {
     )
       return Promise.resolve({ status: 'dropped' });
     if (this.options.policy === 'restart') this.cancel();
+    // Abort listeners can dispose the task synchronously during cancellation.
+    if (this.disposed) return Promise.resolve({ status: 'cancelled' });
     return new Promise((resolve) => {
       const job: Job<A, R> = { args, abort: new AbortController(), settle: resolve };
       if (this.current) {

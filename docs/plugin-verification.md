@@ -1,8 +1,22 @@
 # Plugin verification and production review
 
-Reviewed on 24 October 2026 using Node 26.5.0 and Aurelia 2.0.0-rc.2. All changes remain uncommitted.
+Initial review completed on 24 October 2026 using Node 26.5.0 and Aurelia 2.0.0-rc.2. That work was committed as `28f9d32`. The follow-up below used Node 25.2.1 with the same Aurelia version.
 
-## Review findings and fixes
+## Follow-up fixes
+
+The second pass added eight tests across four packages. Five tests failed against the previous implementation before the fixes:
+
+- Sortable keyboard previews lost browser focus when Aurelia moved the focused DOM node. Subsequent keys went to the page instead of the list. Focus now follows the same element through preview, commit, and cancellation, without taking focus back from another control.
+- Mutating `sortable-before-change` event data could empty the array being committed or corrupt its indices. The proposal now has its own array and metadata object.
+- An async task's abort listener could dispose the task during restart, yet the replacement action still ran. Restart now checks disposal after cancellation callbacks finish.
+- A tree's abort callback could call `replace` and revive a disposed model. Disposal is now permanent, including when it occurs during replacement.
+- Recovering from an autosave serialization failure by reverting to the acknowledged model returned success while retaining the error status. A successful flush with no outstanding changes now clears that error.
+
+The additional tests cover focus moving outside the list, cancellation-triggered expansion, and disposal during root replacement. The complete suite passes **65 suites and 412 tests**, with no skipped tests; the ten new plugins account for **132 tests**. Their source lint passes with zero errors and zero warnings. All 45 workspace packages and the production demo build successfully, and all ten package entrypoints import in Node.
+
+The rebuilt production demo also passed a WebKit keyboard check: pick up Design, move it with ArrowUp and End, commit with Enter, then preview another move and cancel with Escape. Focus remained on Design throughout, and cancellation restored the committed order.
+
+## Initial review findings and fixes
 
 | Plugin | Defects fixed and functionality added |
 | --- | --- |
@@ -25,7 +39,7 @@ The review also adds component stop/start checks, rendered disabled/style assert
 
 The ten packages increased from **83 to 124 tests** during this review: **41 additional tests**.
 
-## Verification results
+## Initial review verification results
 
 - Root Jest suite: **65 suites, 404 tests passed**, with no skipped tests. The review baseline was 363 tests.
 - Reviewed packages: **10 suites, 124 tests passed**.
@@ -35,7 +49,7 @@ The ten packages increased from **83 to 124 tests** during this review: **41 add
 - All ten pass dry-run package-content checks and Node ESM import checks. Tarballs contain JS, declarations, maps, README and source; tests and build caches are excluded.
 - `git diff --check` passes. No commits or releases were made.
 
-## Coverage
+## Initial review coverage
 
 Coverage is reported by Jest's configured transformer and is not a guarantee about every possible application integration.
 
@@ -54,7 +68,7 @@ Coverage is reported by Jest's configured transformer and is not a guarantee abo
 
 Combined: **96.6% lines**, **87.41% branches**, 90.31% statements, and 71.63% functions.
 
-## Browser verification
+## Initial review browser verification
 
 The production example was exercised in WebKit through Playwright. Form errors cleared while typing; the actual `aria-invalid` attribute changed to false. The fetched HTML fragment reflected profile edits, and autosave completed. A disclosure click loaded tree children without selecting the parent. Touch-friendly reorder controls updated the list and announced its new position.
 

@@ -122,7 +122,11 @@ export class AutosaveSession<T extends object> {
       return Promise.resolve(false);
     }
     if (this.inflight) return this.inflight;
-    if (!this.dirty) return Promise.resolve(true);
+    if (!this.dirty) {
+      this.error = null;
+      this.status = 'idle';
+      return Promise.resolve(true);
+    }
     // Defer the drain so synchronous throws cannot leave a stale inflight promise.
     const disposal = new Promise<boolean>((resolve) => {
       this.settleDisposed = resolve;

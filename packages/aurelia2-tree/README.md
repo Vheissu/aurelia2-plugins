@@ -54,6 +54,6 @@ Click selects; a disclosure button toggles expansion with one click or tap. Doub
 
 Resolve `TreeFactory` to create an independent `TreeModel` for a custom view. Its `rows` contain `{ id, node, level, position, size, expanded, branch, busy, error }`; `activeId` and `selectedId` hold navigation state. Methods include `expand`, `collapse`, `toggle`, `navigate`, `search`, `select`, `replace`, and `dispose`.
 
-`expand` and `toggle` resolve a boolean; loader failures become row errors. `dispose` aborts requests. A custom loader must honour its signal to stop underlying work.
+`expand` and `toggle` resolve a boolean; loader failures become row errors. `dispose` aborts requests and permanently stops expansion. Calling `replace` on a disposed model does nothing; create a new model to start again. Disposal from an abort callback also takes precedence over an ongoing replacement. A custom loader must honour its signal to stop underlying work.
 
 Requires Aurelia `^2.0.0-rc.2`. Build with `npm run build -w aurelia2-tree`; test with `npm test -w aurelia2-tree -- --runInBand`.
