@@ -388,3 +388,65 @@ it('respects disposal triggered by an abort callback while replacing roots', asy
   tree.replace(nodes());
   expect(await tree.expand('a')).toBe(false);
 });
+
+it('continues keyboard navigation from the branch whose disclosure was clicked', async () => {
+  const f = createFixture('<au-tree nodes.bind="nodes" component.ref="view"></au-tree>', {
+    nodes: [{id: 'a', label: 'A'}, {id: 'b', label: 'B', children: [{id:'c',label:'C'}]}], view: undefined as any,
+  }, [AureliaTreeConfiguration]);
+  await f.startPromise;
+  try {
+    const disclosure = f.appHost.querySelector('button')!;
+    disclosure.focus();
+    disclosure.click();
+    runTasks();
+    disclosure.dispatchEvent(new KeyboardEvent('keydown', {key:'ArrowDown', bubbles:true, cancelable:true}));
+    await Promise.resolve();
+    runTasks();
+    expect(f.component.view.tree.activeId).toBe('c');
+  } finally { await f.tearDown(); }
+});
+
+it('preserves a selection when its node is supplied in the same turn', async () => {
+  const f = createFixture('<au-tree nodes.bind="nodes" selected.two-way="selected"></au-tree>', {
+    nodes: [{id:'a',label:'A'}], selected: null as string | null,
+  }, [AureliaTreeConfiguration]);
+  await f.startPromise;
+  try {
+    f.component.selected = 'b';
+    f.component.nodes = [{id:'a',label:'A'}, {id:'b',label:'B'}];
+    runTasks();
+    await Promise.resolve();
+    runTasks();
+    expect(f.component.selected).toBe('b');
+    expect(f.appHost.querySelector('[data-tree-id="b"]')!.getAttribute('aria-selected')).toBe('true');
+  } finally { await f.tearDown(); }
+});
+
+it('keeps a current prefix match when typeahead is extended', () => {
+  const tree = new TreeModel([{id:'a',label:'Ab'}, {id:'b',label:'Abc'}, {id:'z',label:'Zed'}]);
+  tree.activeId = 'z';
+  tree.search('a');
+  expect(tree.activeId).toBe('a');
+  tree.search('ab');
+  expect(tree.activeId).toBe('a');
+});
+
+
+it('does not revive an unknown selection after its turn and rejects disabled IDs', async () => {
+  const f = createFixture('<au-tree nodes.bind="nodes" selected.two-way="selected"></au-tree>', {
+    nodes: [{id:'a',label:'A',disabled:false}], selected: null as string | null,
+  }, [AureliaTreeConfiguration]);
+  await f.startPromise;
+  try {
+    f.component.selected = 'missing'; runTasks();
+    expect(f.component.selected).toBeNull();
+    f.component.nodes = [{id:'missing',label:'Missing',disabled:false}, {id:'locked',label:'Locked',disabled:true}];
+    runTasks();
+    expect(f.component.selected).toBeNull();
+    f.component.selected = 'locked';
+    expect(f.component.selected).toBeNull();
+    f.component.selected = 'another';
+    f.component.selected = 'missing'; runTasks();
+    expect(f.component.selected).toBe('missing');
+  } finally { await f.tearDown(); }
+});

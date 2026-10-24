@@ -1,3 +1,4 @@
+import { CustomElement, resolve } from 'aurelia';
 import { createFixture } from '@aurelia/testing';
 import { runTasks } from 'aurelia';
 import { AureliaAutosaveConfiguration, AutosaveFactory } from '../src/index';
@@ -367,4 +368,24 @@ it('clears a serialization error when a flush returns to the acknowledged model'
     session.dispose();
     await f.tearDown();
   }
+});
+
+it('keeps the documented factory example saving after cached view reactivation', async () => {
+  const saves: string[] = [];
+  const Editor = CustomElement.define({name:'example-editor',template:'<input value.bind="draft.title">'}, class {
+    factory = resolve(AutosaveFactory);
+    draft = {title:''};
+    session: ReturnType<AutosaveFactory['create']>;
+    binding() { this.session = this.factory.create(this.draft, snapshot => { saves.push(snapshot.title); }); }
+    unbinding() { this.session.dispose(); }
+  });
+  const f = createFixture('<example-editor if.bind="show" component.ref="editor"></example-editor>', {show:true,editor:undefined as any}, [AureliaAutosaveConfiguration,Editor]);
+  await f.startPromise;
+  try {
+    f.component.show = false; runTasks();
+    f.component.show = true; runTasks();
+    f.component.editor.draft.title = 'edited after reopening'; runTasks();
+    expect(await f.component.editor.session.flush()).toBe(true);
+    expect(saves).toEqual(['edited after reopening']);
+  } finally { await f.tearDown(); }
 });

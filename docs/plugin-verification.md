@@ -2,6 +2,19 @@
 
 Initial review completed on 24 October 2026 using Node 26.5.0 and Aurelia 2.0.0-rc.2. That work was committed as `28f9d32`. The follow-up below used Node 25.2.1 with the same Aurelia version.
 
+## Claude peer review fixes
+
+The peer review produced seven actionable areas after checking the reported behavior against the public contracts. The fixes add 16 permanent regressions; the repository suite now passes 428 tests across 65 suites. Changed package builds and zero-warning source lint pass. The rebuilt production demo passes a WebKit check for keyboard focus, cancellation after leaving a sortable list, and tree navigation after clicking a disclosure button.
+
+- Factory examples recreate autosave sessions on binding and cancel reusable tasks on unbinding. Permanent task disposal belongs in `dispose()`. Cached-view fixtures exercise both examples.
+- Sortable cancels keyboard previews when focus leaves or a key arrives on a different item. Native drag starts reset any old preview before capturing their source item.
+- Empty numeric model values render blank through a to-view converter. Zero, required validation, numeric entry, and clearing remain covered.
+- Tree selection reconciliation waits until the end of the turn for nodes supplied in the same update. Disabled IDs clear immediately; removed or unknown IDs still clear, and stale checks cannot replace newer selections.
+- Tree disclosure focus updates the active row, including browsers that do not focus clicked buttons. Extended typeahead starts at the current matching row.
+- Pan/zoom batches scale-limit notifications so replacing a valid range does not fail on a temporary half-updated range. Final bounds still go through strict validation.
+
+Split-pane preference restoration, tolerant handling of missing canvas dimensions, and retaining unknown lazy-node selections were excluded because they would change the documented contracts.
+
 ## Follow-up fixes
 
 The second pass added eight tests across four packages. Five tests failed against the previous implementation before the fixes:

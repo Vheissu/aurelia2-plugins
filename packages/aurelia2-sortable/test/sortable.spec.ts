@@ -300,3 +300,52 @@ it('restores focus after cancelling a preview without reclaiming focus moved els
     await f.tearDown();
   }
 });
+
+it('cancels a keyboard preview after focus leaves the sortable list', async () => {
+  const f = createFixture('<button id="outside">Outside</button><au-sortable items.two-way="items" component.ref="view"></au-sortable>', {
+    items:['A','B','C'], view: undefined as any,
+  }, [AureliaSortableConfiguration]);
+  await f.startPromise;
+  const key = (element: Element, key: string) => element.dispatchEvent(new KeyboardEvent('keydown', {key,bubbles:true,cancelable:true}));
+  try {
+    const first = f.appHost.querySelector<HTMLButtonElement>('[data-sort-key="A"]')!;
+    first.focus(); key(first,' '); key(first,'End'); runTasks();
+    f.appHost.querySelector<HTMLButtonElement>('#outside')!.focus(); runTasks();
+    expect(f.component.view.grabbed).toBe(-1);
+    expect(f.component.items).toEqual(['A','B','C']);
+  } finally { await f.tearDown(); }
+});
+
+it('never commits a preview from a key received on a different item', async () => {
+  const f = await setup();
+  const changed = jest.fn();
+  f.appHost.addEventListener('sortable-change', changed);
+  try {
+    const a = f.appHost.querySelector<HTMLButtonElement>('[data-sort-key="A"]')!;
+    a.focus(); key(a, ' '); key(a, 'End'); runTasks();
+    const b = f.appHost.querySelector<HTMLButtonElement>('[data-sort-key="B"]')!;
+    b.focus(); key(b, 'Enter'); runTasks();
+    expect(f.component.items).toEqual(['A', 'B', 'C']);
+    expect(changed).not.toHaveBeenCalled();
+    expect(f.component.view.grabbed).toBe(-1);
+  } finally { await f.tearDown(); }
+});
+
+it('cancels keyboard preview on pointer down before starting a native drag', async () => {
+  const f = await setup();
+  try {
+    const a = f.appHost.querySelector<HTMLButtonElement>('[data-sort-key="A"]')!;
+    a.focus(); key(a, ' '); key(a, 'End'); runTasks();
+    const b = f.appHost.querySelector<HTMLButtonElement>('[data-sort-key="B"]')!;
+    b.dispatchEvent(new Event('pointerdown', {bubbles:true})); runTasks();
+    expect(f.component.view.grabbed).toBe(-1);
+    const data = new Map();
+    const transfer = {setData:(key,value)=>data.set(key,value),getData:key=>data.get(key)};
+    const start = new Event('dragstart', {bubbles:true,cancelable:true});
+    Object.defineProperty(start,'dataTransfer',{value:transfer}); b.dispatchEvent(start);
+    const drop = new Event('drop', {bubbles:true,cancelable:true});
+    Object.defineProperty(drop,'dataTransfer',{value:transfer});
+    f.appHost.querySelectorAll('li')[2].dispatchEvent(drop); runTasks();
+    expect(f.component.items).toEqual(['A','C','B']);
+  } finally { await f.tearDown(); }
+});

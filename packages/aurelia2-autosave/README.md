@@ -52,21 +52,26 @@ Aurelia observes properties read by serialization, including nested edits. Initi
 
 ```ts
 import { resolve } from 'aurelia';
-import { AutosaveFactory } from 'aurelia2-autosave';
+import { AutosaveFactory, type AutosaveSession } from 'aurelia2-autosave';
 
 export class Editor {
   private readonly factory = resolve(AutosaveFactory);
   draft = { title: '' };
-  session = this.factory.create(this.draft, async (snapshot, signal) => {
-    const response = await fetch('/api/draft', {
-      method: 'PUT', signal, headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(snapshot),
+  session?: AutosaveSession<typeof this.draft>;
+  binding() {
+    this.session = this.factory.create(this.draft, async (snapshot, signal) => {
+      const response = await fetch('/api/draft', {
+        method: 'PUT', signal, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(snapshot),
+      });
+      if (!response.ok) throw new Error(`Save failed: ${response.status}`);
     });
-    if (!response.ok) throw new Error(`Save failed: ${response.status}`);
-  });
-  unbinding() { this.session.dispose(); }
+  }
+  unbinding() { this.session?.dispose(); }
 }
 ```
+
+Create factory sessions on each binding because Aurelia can reuse a component after unbinding, including cached `if` views. A disposed session remains stopped.
 
 The attribute disposes sessions when its model, save callback, or options are replaced, and on unbinding. Replacing the callback or options carries unsaved edits into the replacement session. Replacing the model starts a new document baseline; flush the previous session before switching documents if its edits must be saved. Disposal stops observation, clears timers, aborts the request, and resolves a pending flush as false even if the save callback ignores its signal. It does not flush. Before a deliberate navigation, await `session.flush()` and decide how to handle false. Unload handlers cannot guarantee delivery.
 

@@ -274,3 +274,31 @@ it('isolates renderer registrations from caller mutation and other app container
     await g.tearDown();
   }
 });
+
+it.each([null, undefined])('renders an empty numeric model value as blank: %s', async value => {
+  const f = createFixture('<au-schema-form schema.bind="schema" model.bind="model"></au-schema-form>', {
+    schema: [{key:'count',type:'number',label:'Count'}], model: {count:value},
+  }, [AureliaSchemaFormConfiguration]);
+  await f.startPromise;
+  try {
+    expect(f.appHost.querySelector('input')!.value).toBe('');
+  } finally { await f.tearDown(); }
+});
+
+it('preserves zero and two-way numeric clearing with the empty-value converter', async () => {
+  const f = createFixture('<au-schema-form schema.bind="schema" model.bind="model" component.ref="form"></au-schema-form>', {
+    schema: [{key:'n',type:'number',label:'Number',required:true}], model: {n:0}, form:undefined as any,
+  }, [AureliaSchemaFormConfiguration]);
+  await f.startPromise;
+  try {
+    const input = f.appHost.querySelector('input')!;
+    expect(input.value).toBe('0');
+    expect(f.component.form.validate()).toBe(true);
+    input.value = ''; input.dispatchEvent(new Event('input')); runTasks();
+    expect(Number.isNaN(f.component.model.n)).toBe(true);
+    expect(f.component.form.validate()).toBe(false);
+    input.value = '12'; input.dispatchEvent(new Event('input')); runTasks();
+    expect(f.component.model.n).toBe(12);
+    expect(f.component.form.validate()).toBe(true);
+  } finally { await f.tearDown(); }
+});

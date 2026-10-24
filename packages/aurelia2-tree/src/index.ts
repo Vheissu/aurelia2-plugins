@@ -203,6 +203,9 @@ export class TreeModel {
     this.activeId = id;
     return true;
   }
+  has(id: string): boolean {
+    return this.index.has(id);
+  }
   async navigate(key: string): Promise<boolean> {
     const index = this.rows.findIndex((row) => row.node.id === this.activeId);
     const row = this.rows[index];
@@ -224,7 +227,8 @@ export class TreeModel {
   }
   search(prefix: string): void {
     const index = this.rows.findIndex((row) => row.node.id === this.activeId);
-    const ordered = [...this.rows.slice(index + 1), ...this.rows.slice(0, index + 1)];
+    const start = prefix.length > 1 ? Math.max(0, index) : index + 1;
+    const ordered = [...this.rows.slice(start), ...this.rows.slice(0, start)];
     const match = ordered.find((row) =>
       row.node.label.toLocaleLowerCase().startsWith(prefix.toLocaleLowerCase()),
     );
@@ -252,7 +256,7 @@ export class TreeFactory {
     tabindex.bind="tree.activeId === row.node.id ? 0 : -1" aria-level.bind="row.level" aria-posinset.bind="row.position" aria-setsize.bind="row.size"
     aria-expanded.bind="row.branch ? (row.expanded ? 'true' : 'false') : null" aria-selected.bind="selected === row.node.id ? 'true' : 'false'"
     aria-disabled.bind="row.node.disabled ? 'true' : null" aria-busy.bind="row.busy ? 'true' : null"
-    padding-inline-start.style="((row.level - 1) * 20) + 'px'" focus.trigger="tree.activeId = row.node.id"
+    padding-inline-start.style="((row.level - 1) * 20) + 'px'" focusin.trigger="tree.activeId = row.node.id"
     click.trigger="select(row.node.id)" dblclick.trigger="toggle(row.node.id, $event)">
     <button if.bind="row.branch" type="button" tabindex="-1" aria-label.bind="(row.expanded ? 'Collapse ' : 'Expand ') + row.node.label" click.trigger="toggle(row.node.id, $event)">\${row.expanded ? '▾' : '▸'}</button> \${row.node.label}
     <span if.bind="row.error" role="alert">Unable to load children</span>
@@ -270,6 +274,7 @@ export class AuTree {
   private prefix = '';
   private typedAt = 0;
   private focusRequest = 0;
+  private selectionRequest = 0;
   binding(): void {
     this.active = true;
     this.reset();
@@ -281,9 +286,17 @@ export class AuTree {
     if (this.active) this.reset();
   }
   selectedChanged(): void {
-    if (this.tree) {
-      if (this.selected === null) this.tree.selectedId = null;
-      else if (!this.tree.select(this.selected)) this.selected = null;
+    if (!this.active || !this.tree) return;
+    const request = ++this.selectionRequest;
+    const selected = this.selected;
+    if (selected === null) this.tree.selectedId = null;
+    else if (!this.tree.select(selected)) {
+      this.tree.selectedId = null;
+      if (this.tree.has(selected)) this.selected = null;
+      else queueTask(() => {
+        if (this.active && request === this.selectionRequest && !this.tree.select(selected))
+          this.selected = null;
+      });
     }
   }
   private reset(): void {
@@ -295,6 +308,7 @@ export class AuTree {
     event.stopPropagation();
     event.preventDefault();
     if (event.type === 'dblclick' && (event.target as Element).closest('button')) return;
+    this.tree.activeId = id;
     void this.tree.toggle(id);
   }
   select(id: string): void {

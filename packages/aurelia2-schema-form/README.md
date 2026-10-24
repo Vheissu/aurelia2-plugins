@@ -41,7 +41,7 @@ The default slot replaces the submit button. The component owns its `<form>`; do
 
 Keys are literal top-level model properties. Empty, duplicate, and prototype-mutating keys are rejected. Use a flat model or a registered renderer to adapt nested structures. Initialize the model's expected properties before binding; replace the model when its shape changes.
 
-Built-in types are `text`, `email`, `number`, `textarea`, `checkbox`, and `select`. Number inputs bind `valueAsNumber`; an empty number input produces `NaN` and is valid for an optional field. Required number fields reject it. Boolean and whitespace values are not accepted as numbers. Select fields use `options: [{ label, value }]` with string values. Labels are text bindings, so schema text is never interpolated into template source.
+Built-in types are `text`, `email`, `number`, `textarea`, `checkbox`, and `select`. Number inputs bind `valueAsNumber`; `null` and `undefined` render blank while zero stays visible; an empty number input produces `NaN` and is valid for an optional field. Required number fields reject it. Boolean and whitespace values are not accepted as numbers. Select fields use `options: [{ label, value }]` with string values. Labels are text bindings, so schema text is never interpolated into template source.
 
 Fields accept `required`, `disabled`, `visible(model)`, and a synchronous `validate(value, model)` callback returning an error string or `undefined`. Hidden and disabled fields are excluded from validation and keep their values. Visibility predicates use Aurelia's computed-method observation and can depend on initialized model properties. Keep them pure.
 

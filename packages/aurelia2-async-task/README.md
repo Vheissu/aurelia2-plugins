@@ -19,7 +19,8 @@ export class SearchPage {
     if (!response.ok) throw new Error(`Search failed: ${response.status}`);
     return response.json();
   });
-  unbinding() { this.search.dispose(); }
+  unbinding() { this.search.cancel(); }
+  dispose() { this.search.dispose(); }
 }
 ```
 
@@ -31,6 +32,8 @@ export class SearchPage {
 <p if.bind="search.running">Searching…</p>
 <p if.bind="search.error">Search failed. Try again.</p>
 ```
+
+Cancel on unbinding so a cached view can reuse the task. Dispose it when the component is permanently destroyed.
 
 ## Policies and outcomes
 

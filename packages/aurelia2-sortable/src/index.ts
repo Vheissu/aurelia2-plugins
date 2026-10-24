@@ -34,12 +34,12 @@ export interface SortableChange<T = unknown> {
 let nextId = 0;
 @customElement({
   name: 'au-sortable',
-  template: `<div>
+  template: `<div focusout.trigger="focusout()">
   <p id.bind="helpId">Use Space to pick up an item, arrow keys to move it, Enter to drop, or Escape to cancel.</p>
   <ol aria-label.bind="label">
     <li repeat.for="row of rows; key: key" dragover.trigger="dragover($event)" drop.trigger="drop($index, $event)">
       <button type="button" draggable.bind="!disabled" disabled.bind="disabled" aria-describedby.bind="helpId" aria-pressed.bind="grabbed === $index ? 'true' : 'false'"
-        data-sort-key.bind="row.key" keydown.trigger="keydown($index, $event)" dragstart.trigger="dragstart($index, $event)" dragend.trigger="cancel()">\${row.label}</button>
+        data-sort-key.bind="row.key" pointerdown.trigger="cancelKeyboard()" keydown.trigger="keydown($index, $event)" dragstart.trigger="dragstart($index, $event)" dragend.trigger="cancel()">\${row.label}</button>
       <button if.bind="controls" type="button" disabled.bind="disabled || $first" aria-label.bind="'Move ' + row.label + ' up'" click.trigger="move($index, -1)">↑</button>
       <button if.bind="controls" type="button" disabled.bind="disabled || $last" aria-label.bind="'Move ' + row.label + ' down'" click.trigger="move($index, 1)">↓</button>
     </li>
@@ -69,6 +69,7 @@ export class AuSortable {
   private original: readonly unknown[] | null = null;
   private originalRows: { key: string; label: string; item: unknown }[] = [];
   private active = false;
+  private keyboardGesture = false;
   binding(): void {
     this.active = true;
     this.rebuild();
@@ -125,8 +126,9 @@ export class AuSortable {
         focused.focus();
     });
   }
-  private pick(index: number): void {
+  private pick(index: number, keyboard = true): void {
     if (this.disabled || !this.rows[index]) return;
+    this.keyboardGesture = keyboard;
     this.original = this.items;
     this.originalRows = [...this.rows];
     this.origin = this.grabbed = index;
@@ -135,6 +137,7 @@ export class AuSortable {
   cancel(): void {
     if (this.grabbed < 0) return;
     this.grabbed = this.origin = -1;
+    this.keyboardGesture = false;
     this.original = null;
     this.originalRows = [];
     this.rebuild();
@@ -151,6 +154,16 @@ export class AuSortable {
           row.label === this.getLabel(this.items[index]),
       )
     );
+  }
+  focusout(): void {
+    if (!this.keyboardGesture) return;
+    queueTask(() => {
+      if (this.active && this.keyboardGesture && !this.host.contains(this.host.ownerDocument.activeElement))
+        this.cancel();
+    });
+  }
+  cancelKeyboard(): void {
+    if (this.keyboardGesture) this.cancel();
   }
   private commit(): boolean {
     if (this.grabbed < 0 || !this.original || this.disabled) return false;
@@ -183,6 +196,7 @@ export class AuSortable {
       return false;
     }
     this.grabbed = this.origin = -1;
+    this.keyboardGesture = false;
     this.original = null;
     this.originalRows = [];
     if (from === to) {
@@ -204,6 +218,10 @@ export class AuSortable {
       event.metaKey
     )
       return;
+    if (this.grabbed >= 0 && index !== this.grabbed) {
+      this.cancel();
+      return;
+    }
     if (this.grabbed < 0) {
       if (event.key === ' ' || event.key === 'Enter') {
         event.preventDefault();
@@ -264,7 +282,9 @@ export class AuSortable {
       event.preventDefault();
       return;
     }
-    this.pick(index);
+    const key = this.rows[index]?.key;
+    this.cancel();
+    this.pick(this.rows.findIndex((row) => row.key === key), false);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', this.helpId);
   }

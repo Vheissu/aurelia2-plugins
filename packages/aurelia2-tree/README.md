@@ -48,11 +48,11 @@ Treat node trees as immutable input. Replace `nodes` to reflect external changes
 | Enter / Space | Select the focused node |
 | Printable characters | Prefix search; the prefix resets after 700 ms |
 
-Click selects; a disclosure button toggles expansion with one click or tap. Double-clicking the row also toggles expansion. Disabled nodes remain focusable but cannot be selected. Selection is single-valued. `tree-select` bubbles with `{ id }`. Parent collapse moves focus out of hidden descendants. Lazy completion never reclaims focus after the user has moved outside the tree. Programmatic selection reveals known ancestors; removing the selected node clears the bound selection. Rows expose `aria-level`, `aria-posinset`, `aria-setsize`, `aria-expanded`, `aria-selected`, and loading/disabled states.
+Click selects; a disclosure button toggles expansion with one click or tap. Double-clicking the row also toggles expansion. Disabled nodes remain focusable but cannot be selected. Selection is single-valued. `tree-select` bubbles with `{ id }`. Parent collapse moves focus out of hidden descendants. Lazy completion never reclaims focus after the user has moved outside the tree. Programmatic selection reveals known ancestors; removing the selected node clears the bound selection. Selection and node changes made in the same turn are reconciled before an unknown ID is cleared. Rows expose `aria-level`, `aria-posinset`, `aria-setsize`, `aria-expanded`, `aria-selected`, and loading/disabled states.
 
 ## Headless model
 
-Resolve `TreeFactory` to create an independent `TreeModel` for a custom view. Its `rows` contain `{ id, node, level, position, size, expanded, branch, busy, error }`; `activeId` and `selectedId` hold navigation state. Methods include `expand`, `collapse`, `toggle`, `navigate`, `search`, `select`, `replace`, and `dispose`.
+Resolve `TreeFactory` to create an independent `TreeModel` for a custom view. Its `rows` contain `{ id, node, level, position, size, expanded, branch, busy, error }`; `activeId` and `selectedId` hold navigation state. Methods include `expand`, `collapse`, `toggle`, `navigate`, `search`, `select`, `has`, `replace`, and `dispose`.
 
 `expand` and `toggle` resolve a boolean; loader failures become row errors. `dispose` aborts requests and permanently stops expansion. Calling `replace` on a disposed model does nothing; create a new model to start again. Disposal from an abort callback also takes precedence over an ongoing replacement. A custom loader must honour its signal to stop underlying work.
 

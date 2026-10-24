@@ -114,6 +114,9 @@ export class PluginLab {
     });
   }
   unbinding(): void {
+    this.task.cancel();
+  }
+  dispose(): void {
     this.task.dispose();
   }
 }

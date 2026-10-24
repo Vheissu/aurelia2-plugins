@@ -8,6 +8,7 @@ import {
   IEffect,
   INode,
   resolve,
+  valueConverter,
 } from 'aurelia';
 
 export interface SchemaField {
@@ -37,6 +38,12 @@ export interface FieldContext {
 export interface FieldRenderer {
   readonly template: string;
 }
+@valueConverter('schemaNumberValue')
+export class SchemaNumberValueConverter {
+  toView(value: unknown): unknown {
+    return value == null ? NaN : value;
+  }
+}
 export const IFieldRenderers = DI.createInterface<FieldRenderers>('IFieldRenderers', (x) =>
   x.singleton(FieldRenderers),
 );
@@ -49,7 +56,11 @@ const builtins: Record<string, FieldRenderer> = {
     template:
       '<textarea id.bind="id" value.two-way="model[field.key]" required.bind="field.required" disabled.bind="field.disabled" placeholder.bind="field.placeholder" minlength.bind="field.minLength" maxlength.bind="field.maxLength" aria-invalid.bind="error ? \'true\' : \'false\'" aria-describedby.bind="error ? id + \'-error\' : null" blur.trigger="touch()"></textarea>',
   },
-  number: { template: input('number').replace('value.two-way', 'value-as-number.two-way') },
+  number: {
+    template: input('number')
+      .replace('value.two-way', 'value-as-number.two-way')
+      .replace('model[field.key]"', 'model[field.key] | schemaNumberValue"'),
+  },
   checkbox: {
     template: `<input id.bind="id" type="checkbox" checked.two-way="model[field.key]" required.bind="field.required" disabled.bind="field.disabled" aria-invalid.bind="error ? 'true' : 'false'" aria-describedby.bind="error ? id + '-error' : null" change.trigger="touch()">`,
   },
@@ -247,7 +258,7 @@ export class AuSchemaForm {
 function configure(renderers: Record<string, FieldRenderer> = {}) {
   return {
     register(container: IContainer) {
-      container.register(IFieldRenderers, AuSchemaForm);
+      container.register(IFieldRenderers, SchemaNumberValueConverter, AuSchemaForm);
       const registry = container.get(IFieldRenderers);
       for (const [type, renderer] of Object.entries(renderers)) registry.register(type, renderer);
       return container;

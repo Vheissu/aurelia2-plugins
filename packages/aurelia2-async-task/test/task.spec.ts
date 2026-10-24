@@ -1,3 +1,4 @@
+import { CustomElement, resolve, runTasks } from 'aurelia';
 import { createFixture } from '@aurelia/testing';
 import { AsyncTask, AureliaAsyncTaskConfiguration, TaskFactory } from '../src/index';
 const deferred = <T>() => {
@@ -183,4 +184,44 @@ it('does not start replacement work if an abort listener disposes the task', asy
   expect(await second).toEqual({ status: 'cancelled' });
   expect(action).toHaveBeenCalledTimes(1);
   expect(task.running).toBe(false);
+});
+
+it('keeps the documented task example reusable after cached view reactivation', async () => {
+  const Search = CustomElement.define({name:'example-search',template:'Search'}, class {
+    search = resolve(TaskFactory).create((query: string) => query);
+    unbinding() { this.search.cancel(); }
+    dispose() { this.search.dispose(); }
+  });
+  const f = createFixture('<example-search if.bind="show" component.ref="search"></example-search>', {show:true,search:undefined as any}, [AureliaAsyncTaskConfiguration,Search]);
+  await f.startPromise;
+  try {
+    f.component.show = false; runTasks();
+    f.component.show = true; runTasks();
+    expect(await f.component.search.search.run('query')).toEqual({status:'completed',value:'query'});
+  } finally { await f.tearDown(); }
+});
+
+it('cancels work when a cached component hides and disposes it on destruction', async () => {
+  let signal!: AbortSignal;
+  const Search = CustomElement.define({name:'lifetime-search',template:'Search'}, class {
+    search = resolve(TaskFactory).create((_query: string, s: AbortSignal) => {
+      signal = s;
+      return new Promise<never>(() => {});
+    });
+    unbinding() { this.search.cancel(); }
+    dispose() { this.search.dispose(); }
+  });
+  const f = createFixture('<lifetime-search if.bind="show" component.ref="view"></lifetime-search>',
+    {show:true,view:undefined as any}, [AureliaAsyncTaskConfiguration,Search]);
+  await f.startPromise;
+  const task = f.component.view.search;
+  const pending = task.run('pending');
+  await tick();
+  f.component.show = false; runTasks();
+  expect(signal.aborted).toBe(true);
+  expect(await pending).toEqual({status:'cancelled'});
+  f.component.show = true; runTasks();
+  expect(f.component.view.search).toBe(task);
+  await f.tearDown();
+  expect(await task.run('after destruction')).toEqual({status:'cancelled'});
 });

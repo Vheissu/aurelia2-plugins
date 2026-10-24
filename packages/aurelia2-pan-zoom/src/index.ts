@@ -6,6 +6,7 @@ import {
   IEffect,
   INode,
   IObservation,
+  queueTask,
   resolve,
 } from 'aurelia';
 
@@ -96,6 +97,7 @@ export class AuPanZoom {
   private effect?: IEffect;
   private observer?: ResizeObserver;
   private attachedView = false;
+  private limitsQueued = false;
   private readonly wheel = (event: WheelEvent) => {
     if (this.disabled || !event.ctrlKey || event.defaultPrevented) return;
     event.preventDefault();
@@ -148,10 +150,18 @@ export class AuPanZoom {
     this.refresh();
   }
   minScaleChanged(): void {
-    this.refresh();
+    this.refreshLimits();
   }
   maxScaleChanged(): void {
-    this.refresh();
+    this.refreshLimits();
+  }
+  private refreshLimits(): void {
+    if (!this.attachedView || this.limitsQueued) return;
+    this.limitsQueued = true;
+    queueTask(() => {
+      this.limitsQueued = false;
+      this.refresh();
+    });
   }
   transformChanged(): void {
     this.refresh();

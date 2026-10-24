@@ -295,3 +295,38 @@ it('converts pointer events and world coordinates consistently', async () => {
     await f.tearDown();
   }
 });
+
+it.each([
+  ['min-first', 'min-scale.bind="limits.min" max-scale.bind="limits.max"', {min:0.1,max:8}, {min:10,max:20}],
+  ['max-first', 'max-scale.bind="limits.max" min-scale.bind="limits.min"', {min:10,max:20}, {min:0.1,max:8}],
+])('accepts a valid replacement of both scale limits: %s', async (_name, attrs, initial, next) => {
+  const f = createFixture(`<au-pan-zoom ${attrs} component.ref="view"></au-pan-zoom>`, {
+    limits: initial, view: undefined as any,
+  }, [AureliaPanZoomConfiguration]);
+  await f.startPromise;
+  try {
+    expect(() => { f.component.limits = next; runTasks(); }).not.toThrow();
+    expect(f.component.view.minScale).toBe(next.min);
+    expect(f.component.view.maxScale).toBe(next.max);
+    expect(f.component.view.transform.scale).toBeGreaterThanOrEqual(next.min);
+    expect(f.component.view.transform.scale).toBeLessThanOrEqual(next.max);
+  } finally { await f.tearDown(); }
+});
+
+it('rejects invalid final limits and skips a pending limit refresh after detachment', async () => {
+  const { f } = await setup();
+  const view = f.component.view;
+  try {
+    view.minScale = 20; view.maxScale = 10;
+    expect(() => runTasks()).toThrow();
+    view.minScale = 1; view.maxScale = 8; runTasks();
+    const refresh = jest.spyOn(view, 'refresh');
+    view.minScale = 2;
+    await f.au.stop(); runTasks();
+    // A queued refresh may run, but detached views cannot change their transform.
+    const transform = { ...view.transform };
+    view.refresh();
+    expect(view.transform).toEqual(transform);
+    refresh.mockRestore();
+  } finally { await f.tearDown(); }
+});

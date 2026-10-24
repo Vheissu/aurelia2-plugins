@@ -29,7 +29,7 @@ Initialize `viewport = { x: 0, y: 0, scale: 1 }`. The container must have a defi
 
 ## Coordinates and bounds
 
-`x` and `y` are viewport CSS pixels; `scale` maps world pixels to viewport pixels. Content larger than the viewport cannot be dragged beyond its edges. Smaller content is centered. Scale is clamped between `minScale` (default 0.1) and `maxScale` (default 8). Dimensions and scale limits must be positive and finite.
+`x` and `y` are viewport CSS pixels; `scale` maps world pixels to viewport pixels. Content larger than the viewport cannot be dragged beyond its edges. Smaller content is centered. Scale is clamped between `minScale` (default 0.1) and `maxScale` (default 8). Dimensions and scale limits must be positive and finite. Scale-limit changes are reconciled at the end of the turn so both limits can be replaced together; final invalid bounds still raise an error.
 
 `fit()` chooses a scale that fits the complete content, subject to the configured limits. `screenToWorld({ x, y })` converts a point relative to the viewport's top-left into world coordinates. For a mouse/pointer event, use `clientToWorld(event)` to account for ancestor CSS scaling and the viewport offset. `worldToScreen(point)` performs the inverse local-coordinate transform.
 
