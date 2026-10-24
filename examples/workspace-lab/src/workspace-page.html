@@ -1,0 +1,91 @@
+<main url-state="model.bind: view; params.bind: params" url-state-apply.trigger="urlApplied()">
+  <header>
+    <p class="eyebrow">Aurelia 2 · Workspace lab</p>
+    <h1>Application workflows</h1>
+    <p>Share a customer segment, assign reviewers, and resolve a conflicting edit.</p>
+  </header>
+  <section>
+    <p class="eyebrow">Filter builder</p>
+    <h2>Customer segment</h2>
+    <label for="customer-search">Search customers</label
+    ><input id="customer-search" type="search" value.bind="view.q" input.trigger="preview()" />
+    <p>The search and filter are saved in the URL. Change pages, then use Back and Forward.</p>
+    <button type="button" disabled.bind="view.page === 1" click.trigger="view.page = view.page - 1">
+      Previous page
+    </button>
+    <span aria-live="polite">Page ${view.page}</span>
+    <button type="button" click.trigger="view.page = view.page + 1">Next page</button>
+    <au-filter-builder
+      fields.bind="fields"
+      filter.two-way="segment"
+      max-depth="4"
+      max-conditions="20"
+      filter-change.trigger="filterEdited()"
+    ></au-filter-builder>
+    <p if.bind="previewError" role="alert">${previewError}</p>
+    <table aria-label="Matching customers">
+      <thead>
+        <tr>
+          <th>Customer</th>
+          <th>Seats</th>
+          <th>Plan</th>
+          <th>Active</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr repeat.for="customer of visible">
+          <td>${customer.name}</td>
+          <td>${customer.seats}</td>
+          <td>${customer.plan}</td>
+          <td>${customer.active ? 'Yes' : 'No'}</td>
+        </tr>
+      </tbody>
+    </table>
+    <p role="status">${visible.length} customers match</p>
+  </section>
+  <section>
+    <p class="eyebrow">Transfer list</p>
+    <h2>Assign reviewers</h2>
+    <au-transfer-list
+      options.bind="assignees"
+      value.two-way="assigned"
+      filterable
+      orderable
+      max="3"
+      source-label="Teammates"
+      target-label="Reviewers"
+    ></au-transfer-list>
+    <p aria-label="Assigned reviewers">Assigned: ${assignedSummary}</p>
+  </section>
+  <section>
+    <p class="eyebrow">Three-way merge</p>
+    <h2>Resolve an edit conflict</h2>
+    <p>
+      Your title edit overlaps a server change. The server’s priority update can merge
+      automatically.
+    </p>
+    <button type="button" click.trigger="simulateConflict()">Simulate save conflict</button>
+    <au-merge
+      if.bind="conflict"
+      base.bind="base"
+      mine.bind="mine"
+      theirs.bind="theirs"
+      merge-resolve.trigger="apply($event.detail.merged)"
+      merge-cancel.trigger="conflict = false"
+    ></au-merge>
+    <pre if.bind="merged" aria-label="Merged document">${merged}</pre>
+  </section>
+  <section>
+    <p class="eyebrow">Free-text mentions</p>
+    <h2>Discuss the change</h2>
+    <label for="workspace-comment">Comment</label
+    ><textarea
+      id="workspace-comment"
+      value.bind="comment"
+      placeholder="Type @ to find a teammate"
+      mentions="triggers.bind: triggers; mentions.two-way: mentions; state.from-view: mentionState"
+    ></textarea>
+    <au-mention-list state.bind="mentionState" label="Teammates"></au-mention-list>
+    <pre aria-label="Mention entities">${mentionSummary}</pre>
+  </section>
+</main>

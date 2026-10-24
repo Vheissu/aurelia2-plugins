@@ -60,6 +60,18 @@ These packages use Aurelia composition, observation, DI, and lifecycle APIs to m
 
 The [plugin lab](examples/plugin-lab/README.md) runs all ten together using their built package exports. See the [verification record](docs/plugin-verification.md) for test coverage, browser checks, and package checks.
 
+## Shared state and editing
+
+| Package | Use case |
+| --- | --- |
+| [aurelia2-filter-builder](packages/aurelia2-filter-builder/README.md) | Typed nested filters, field editors, validation, and safe in-memory predicates |
+| [aurelia2-merge](packages/aurelia2-merge/README.md) | Three-way record merging with explicit conflict choices and custom values |
+| [aurelia2-mentions](packages/aurelia2-mentions/README.md) | Async mentions in text inputs and textareas, with tracked text ranges |
+| [aurelia2-transfer-list](packages/aurelia2-transfer-list/README.md) | Assign and order keyed items using two accessible lists |
+| [aurelia2-url-state](packages/aurelia2-url-state/README.md) | Typed query parameters, debounced writes, router integration, and browser history |
+
+The [workspace lab](examples/workspace-lab/README.md) combines these five plugins. See the [verification record](docs/workspace-plugin-verification.md) for regression tests and browser checks.
+
 ## Using a plugin
 
 Install the package you want and register its configuration:

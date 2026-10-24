@@ -1,0 +1,25 @@
+{
+  "name": "aurelia2-workspace-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --host 127.0.0.1"
+  },
+  "dependencies": {
+    "aurelia": "^2.0.0-rc.2",
+    "@aurelia/router": "^2.0.0-rc.2",
+    "aurelia2-filter-builder": "file:../../packages/aurelia2-filter-builder",
+    "aurelia2-merge": "file:../../packages/aurelia2-merge",
+    "aurelia2-mentions": "file:../../packages/aurelia2-mentions",
+    "aurelia2-transfer-list": "file:../../packages/aurelia2-transfer-list",
+    "aurelia2-url-state": "file:../../packages/aurelia2-url-state"
+  },
+  "devDependencies": {
+    "@aurelia/vite-plugin": "^2.0.0-rc.2",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.5"
+  }
+}

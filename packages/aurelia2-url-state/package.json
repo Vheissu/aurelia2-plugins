@@ -1,0 +1,53 @@
+{
+  "name": "aurelia2-url-state",
+  "version": "0.1.0",
+  "description": "Typed two-way binding between Aurelia view models and the URL query string",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./router": {
+      "types": "./dist/types/router.d.ts",
+      "import": "./dist/router.js",
+      "default": "./dist/router.js"
+    }
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.js.map",
+    "dist/types/**/*.d.ts",
+    "dist/types/**/*.d.ts.map",
+    "src",
+    "README.md"
+  ],
+  "sideEffects": false,
+  "repository": "https://github.com/Vheissu/aurelia2-plugins",
+  "author": "Dwayne Charrington <dwaynecharrington@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "clean": "rimraf ./dist",
+    "prebuild": "npm run clean",
+    "build": "tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings=0"
+  },
+  "devDependencies": {
+    "@aurelia/router": "^2.0.0-rc.2",
+    "aurelia": "^2.0.0-rc.2"
+  },
+  "peerDependencies": {
+    "@aurelia/router": "^2.0.0-rc.2",
+    "aurelia": "^2.0.0-rc.2"
+  },
+  "peerDependenciesMeta": {
+    "@aurelia/router": {
+      "optional": true
+    }
+  }
+}
