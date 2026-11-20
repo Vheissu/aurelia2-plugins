@@ -158,6 +158,26 @@ describe('GoogleMaps', () => {
     expect(component.events).toContain(Events.MAPCLICK);
   });
 
+  test('initializes only the current attachment when the library loads after a restart', async () => {
+    let finishLoading!: (library: object) => void;
+    const library = new Promise<object>((resolve) => { finishLoading = resolve; });
+    (importLibrary as jest.Mock).mockReturnValueOnce(library);
+    const { fixture, mapLoaded } = createMapsFixture();
+    await fixture.startPromise;
+    const previousReady = fixture.component.mapVm._mapPromise;
+
+    await fixture.au.stop();
+    await previousReady;
+    await fixture.au.start();
+    const currentReady = fixture.component.mapVm._mapPromise;
+    expect(currentReady).not.toBe(previousReady);
+
+    finishLoading({});
+    await currentReady;
+    expect(mapLoaded).toHaveBeenCalledTimes(1);
+    expect(fixture.component.mapVm.map).toBeInstanceOf(MapMock);
+  });
+
   test('renders staged markers, opens info windows, and emits marker events', async () => {
     const { fixture } = createMapsFixture(
       {
@@ -207,13 +227,13 @@ describe('GoogleMaps', () => {
     map.setCenter.mockClear();
 
     component.options = { tilt: 45 };
-    component.lat = 40;
+    component.lat = 0;
     component.lng = -73;
 
     await flushPromises(3);
 
     expect(map.setOptions).toHaveBeenCalledWith({ tilt: 45 });
-    expect(map.setCenter).toHaveBeenCalled();
+    expect(map.setCenter).toHaveBeenCalledWith({ lat: 0, lng: -73 });
   });
 
   test('exposes helper services from a staged map instance', async () => {
@@ -277,6 +297,7 @@ describe('GoogleMaps', () => {
 
   test('renders polygons through staged bindings and reports polygon events', async () => {
     const { fixture } = createMapsFixture({
+      autoUpdateBounds: true,
       polygons: [
         {
           paths: [{ latitude: 1, longitude: 2 }],
@@ -291,7 +312,8 @@ describe('GoogleMaps', () => {
     expect(appHost.querySelector('google-map')).toBeTruthy();
 
     const mapVm = component.mapVm as GoogleMaps;
-    expect(mapVm._renderedPolygons.length).toBeGreaterThanOrEqual(1);
-    expect(component.events).toContain(Events.POLYGONRENDERED);
+    expect(mapVm._renderedPolygons).toHaveLength(1);
+    expect(component.events.filter((type) => type === Events.POLYGONRENDERED)).toHaveLength(1);
+    expect((mapVm.map as MapMock).fitBounds).toHaveBeenCalledTimes(1);
   });
 });

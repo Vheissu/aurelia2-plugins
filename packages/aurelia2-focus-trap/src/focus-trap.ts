@@ -6,8 +6,8 @@ import type { FocusTrapHandle } from './types';
 export class FocusTrapCustomAttribute {
   @bindable public active = true;
   @bindable public initialFocus: string | HTMLElement | null = null;
-  @bindable public returnFocus = true;
-  @bindable public escapeDeactivates = true;
+  @bindable public returnFocus?: boolean;
+  @bindable public escapeDeactivates?: boolean;
   @bindable public escape: ((event: KeyboardEvent) => void) | null = null;
 
   private readonly element = resolve(INode) as HTMLElement;
@@ -20,7 +20,7 @@ export class FocusTrapCustomAttribute {
     this.sync();
   }
 
-  public detached(): void {
+  public detaching(): void {
     this.isAttached = false;
     this.handle?.dispose();
     this.handle = null;

@@ -1,5 +1,4 @@
-import { observable } from 'aurelia';
-import { resolve } from '@aurelia/kernel';
+import { IPlatform, observable, resolve, type IDisposable } from 'aurelia';
 import { IRouter, IRouterEvents } from '@aurelia/router';
 import type { RouteNode } from '@aurelia/router';
 import type { BreadcrumbItem, MetaEntry } from './types';
@@ -8,18 +7,21 @@ export class RouterExtras {
   @observable public breadcrumbs: BreadcrumbItem[] = [];
 
   private readonly router = resolve(IRouter);
+  private readonly events = resolve(IRouterEvents);
+  private readonly document = resolve(IPlatform).document;
   private readonly metaElements: HTMLMetaElement[] = [];
-
-  public constructor() {
-    resolve(IRouterEvents).subscribe('au:router:navigation-end', () => {
-      const root = this.router.currentTr.routeTree.root;
-      this.updateFromRouteTree(root);
-    });
-  }
+  private subscription: IDisposable | null = null;
 
   public init(): void {
-    const root = this.router.currentTr.routeTree.root;
-    this.updateFromRouteTree(root);
+    const update = () => this.updateFromRouteTree(this.router.currentTr.routeTree.root);
+    this.subscription ??= this.events.subscribe('au:router:navigation-end', update);
+    update();
+  }
+
+  public dispose(): void {
+    this.subscription?.dispose();
+    this.subscription = null;
+    this.applyMeta([]);
   }
 
   public updateFromRouteTree(root: RouteNode): void {
@@ -80,8 +82,7 @@ export class RouterExtras {
       const data = node.data as Record<string, unknown> | undefined;
       if (!data || !('meta' in data)) continue;
 
-      const meta = (data as any).meta as unknown;
-      const entries = normalizeMeta(meta);
+      const entries = normalizeMeta(data.meta);
 
       for (const entry of entries) {
         const key = entry.name
@@ -103,9 +104,9 @@ export class RouterExtras {
     }
     this.metaElements.length = 0;
 
-    const head = document.head;
+    const head = this.document.head;
     for (const entry of entries) {
-      const meta = document.createElement('meta');
+      const meta = this.document.createElement('meta');
       if (entry.name) meta.setAttribute('name', entry.name);
       if (entry.property) meta.setAttribute('property', entry.property);
       meta.setAttribute('content', entry.content);

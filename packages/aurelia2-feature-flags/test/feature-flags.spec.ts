@@ -132,4 +132,61 @@ describe('aurelia2-feature-flags', () => {
 
     await fixture.tearDown();
   });
+
+  test('cyclic dependencies are disabled and missing variations use the fallback', async () => {
+    const fixture = await createFixture('<div></div>', class {}, [
+      AureliaFeatureFlagsConfiguration.configure({
+        flags: { a: { requires: ['b'] }, b: { requires: ['a'] } },
+      }),
+    ]).started;
+    const flags = fixture.container.get(IFeatureFlags);
+
+    expect(flags.evaluate('a')).toMatchObject({ enabled: false, reason: 'dependency' });
+    expect(flags.evaluate('b')).toMatchObject({ enabled: false, reason: 'dependency' });
+    expect(flags.variation('constructor', 'control')).toBe('control');
+    await fixture.tearDown();
+  });
+
+  test('a slower provider response cannot restore a flag removed by a newer refresh', async () => {
+    let finish!: (flags: FeatureFlagMap) => void;
+    const load = jest.fn<Promise<FeatureFlagMap>, []>()
+      .mockResolvedValueOnce({ reports: true })
+      .mockImplementationOnce(() => new Promise((resolve) => { finish = resolve; }))
+      .mockResolvedValueOnce({});
+    const fixture = await createFixture(
+      '<section feature-enabled="reports">Reports</section>',
+      class {},
+      [AureliaFeatureFlagsConfiguration.configure({ providers: [{ load }] })],
+    ).started;
+    const flags = fixture.container.get(IFeatureFlags);
+    const reports = fixture.appHost.querySelector('section')!;
+    await flags.refresh();
+    expect(reports.hidden).toBe(false);
+
+    const staleRefresh = flags.refresh();
+    await flags.refresh();
+    expect(reports.hidden).toBe(true);
+
+    finish({ reports: true });
+    await staleRefresh;
+    expect(flags.isEnabled('reports')).toBe(false);
+    expect(reports.hidden).toBe(true);
+    await fixture.tearDown();
+  });
+
+  test('a removed node leaves no placeholder when its containing view is deactivated', async () => {
+    const fixture = await createFixture(
+      `<div><template if.bind="open">
+        <section feature-enabled="value: missing; remove.bind: true">Reports</section>
+      </template></div>`,
+      class { open = true; },
+      [AureliaFeatureFlagsConfiguration],
+    ).started;
+    expect(fixture.appHost.innerHTML).toContain('feature-enabled:missing');
+
+    fixture.component.open = false;
+    await flush();
+    expect(fixture.appHost.innerHTML).not.toContain('feature-enabled:missing');
+    await fixture.tearDown();
+  });
 });

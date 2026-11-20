@@ -1,6 +1,4 @@
-import { bindable, customElement, ICustomElementViewModel, watch } from 'aurelia';
-import { inject } from '@aurelia/kernel';
-import { queueTask } from '@aurelia/runtime';
+import { bindable, customElement, ICustomElementViewModel, queueTask, resolve, watch } from 'aurelia';
 import { Chart as ChartJS } from 'chart.js';
 import type {
   ChartData,
@@ -17,7 +15,6 @@ import template from './au-chart.html';
   name: 'au-chart',
   template
 })
-@inject(IChartJSConfiguration)
 export class AuChartCustomElement implements ICustomElementViewModel {
   @bindable public type?: ChartType;
   @bindable public data?: ChartData;
@@ -35,9 +32,10 @@ export class AuChartCustomElement implements ICustomElementViewModel {
   public canvas?: HTMLCanvasElement;
   public chart: ChartJS | null = null;
 
-  private pendingUpdate = false;
-
-  public constructor(private readonly config: IChartJSConfiguration) {}
+  private readonly config = resolve(IChartJSConfiguration);
+  private isAttached = false;
+  private pendingUpdate: ChartJS | null = null;
+  private destroyTimer?: ReturnType<typeof setTimeout>;
 
   public binding(): void {
     this.config.apply();
@@ -57,11 +55,20 @@ export class AuChartCustomElement implements ICustomElementViewModel {
   }
 
   public attached(): void {
+    this.isAttached = true;
+    clearTimeout(this.destroyTimer);
+    this.destroyChart();
     this.renderChart();
   }
 
-  public detached(): void {
-    this.destroyChart();
+  public detaching(): void {
+    this.isAttached = false;
+    this.pendingUpdate = null;
+    if (this.chart && this.destroyDelay > 0) {
+      this.destroyTimer = setTimeout(() => this.destroyChart(), this.destroyDelay);
+    } else {
+      this.destroyChart();
+    }
   }
 
   @watch((x: AuChartCustomElement) => x.data)
@@ -82,7 +89,7 @@ export class AuChartCustomElement implements ICustomElementViewModel {
   @watch(
     (x: AuChartCustomElement) =>
       x.data?.datasets
-        ?.map((dataset: any) =>
+        ?.map(dataset =>
           Array.isArray(dataset?.data) ? dataset.data.length : 0
         )
         .join('|')
@@ -112,6 +119,7 @@ export class AuChartCustomElement implements ICustomElementViewModel {
   }
 
   public update(): void {
+    if (!this.isAttached) return;
     if (!this.chart) {
       this.renderChart();
       return;
@@ -121,20 +129,19 @@ export class AuChartCustomElement implements ICustomElementViewModel {
   }
 
   private requestUpdate(): void {
-    if (!this.chart) {
+    if (!this.isAttached) return;
+    const chart = this.chart;
+    if (!chart) {
       this.renderChart();
       return;
     }
 
-    this.scheduleUpdate();
-  }
-
-  private scheduleUpdate(): void {
-    if (this.pendingUpdate) return;
-    this.pendingUpdate = true;
+    if (this.pendingUpdate === chart) return;
+    this.pendingUpdate = chart;
 
     queueTask(() => {
-      this.pendingUpdate = false;
+      if (this.pendingUpdate !== chart) return;
+      this.pendingUpdate = null;
       this.updateChart();
     });
   }
@@ -182,18 +189,9 @@ export class AuChartCustomElement implements ICustomElementViewModel {
 
   private destroyChart(): void {
     const chart = this.chart;
-    if (!chart) return;
-
-    if (this.destroyDelay > 0) {
-      setTimeout(() => {
-        chart.destroy();
-        this.chart = null;
-      }, this.destroyDelay);
-      return;
-    }
-
-    chart.destroy();
     this.chart = null;
+    this.destroyTimer = undefined;
+    chart?.destroy();
   }
 
   private mergePlugins(

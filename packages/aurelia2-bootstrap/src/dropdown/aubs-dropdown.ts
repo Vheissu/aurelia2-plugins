@@ -55,10 +55,9 @@ export class AubsDropdownCustomAttribute {
     }
   }
 
-  detached() {
+  detaching() {
     this.removeListeners();
     this.disposeInstance();
-    this.listeners = null;
     this.toggleElement = null;
     this.isAttached = false;
   }

@@ -33,7 +33,7 @@ export class GooglePlaces implements ICustomAttributeViewModel {
   ) => void;
   @bindable onError?: (error: Error) => void;
 
-  private _isAttached = false;
+  private _attachment: object | null = null;
   private _placeChangedListener: google.maps.MapsEventListener | null = null;
 
   constructor(
@@ -57,12 +57,12 @@ export class GooglePlaces implements ICustomAttributeViewModel {
   }
 
   attached() {
-    this._isAttached = true;
+    const attachment = this._attachment = {};
 
     this.googlePlacesApi
       .getPlacesInstance()
       .then(() => {
-        if (!this._isAttached) {
+        if (this._attachment !== attachment) {
           return;
         }
 
@@ -84,6 +84,9 @@ export class GooglePlaces implements ICustomAttributeViewModel {
         );
       })
       .catch((error) => {
+        if (this._attachment !== attachment) {
+          return;
+        }
         this.logger.error('Failed to load Google Places API.');
         if (this.onError) {
           this.onError(error);
@@ -91,8 +94,8 @@ export class GooglePlaces implements ICustomAttributeViewModel {
       });
   }
 
-  detached() {
-    this._isAttached = false;
+  detaching() {
+    this._attachment = null;
     this._placeChangedListener?.remove();
     this._placeChangedListener = null;
     this.autocomplete = null;

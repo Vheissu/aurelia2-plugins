@@ -41,10 +41,9 @@ export class AubsCollapseCustomAttribute {
     this.syncFromCollapsed();
   }
 
-  detached() {
+  detaching() {
     this.removeListeners();
     this.disposeInstance();
-    this.listeners = null;
     this.isAttached = false;
   }
 

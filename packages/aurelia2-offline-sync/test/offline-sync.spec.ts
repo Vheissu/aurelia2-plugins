@@ -150,4 +150,122 @@ describe('aurelia2-offline-sync', () => {
 
     await tearDown();
   });
+
+  test('waits for a delayed store and recovers interrupted operations', async () => {
+    let finishLoading!: (operations: OfflineOperation[]) => void;
+    const loading = new Promise<OfflineOperation[]>((resolve) => { finishLoading = resolve; });
+    const store = new MemoryOfflineSyncStore();
+    jest.spyOn(store, 'load').mockReturnValueOnce(loading);
+    const save = jest.spyOn(store, 'save');
+    const { container, startPromise, tearDown } = createFixture(
+      '<div></div>',
+      class {},
+      [AureliaOfflineSyncConfiguration.configure({
+        store,
+        network: new ManualNetworkStatusProvider(true),
+        autoSync: false,
+      })]
+    );
+
+    await startPromise;
+    const offline = container.get(IOfflineSync);
+    const enqueued = offline.enqueue('draft.save', 'new', { id: 'new' });
+    await Promise.resolve();
+    expect(save).not.toHaveBeenCalled();
+
+    finishLoading([{
+      id: 'interrupted',
+      type: 'draft.save',
+      payload: 'persisted',
+      status: 'syncing',
+      attempts: 0,
+      createdAt: 1,
+      updatedAt: 1,
+    }]);
+    await enqueued;
+    expect((await store.load()).map((operation) => operation.id)).toEqual(['interrupted', 'new']);
+
+    const handle = jest.fn();
+    offline.registerHandler('draft.save', { handle });
+    await offline.sync();
+    expect(handle.mock.calls.map(([operation]) => operation.id)).toEqual(['interrupted', 'new']);
+    expect(offline.getOperations()).toEqual([]);
+    await tearDown();
+  });
+
+  test('syncs a newer dedupe payload after the active request finishes', async () => {
+    const { container, startPromise, tearDown } = createFixture(
+      '<div></div>',
+      class {},
+      [AureliaOfflineSyncConfiguration.configure({
+        store: new MemoryOfflineSyncStore(),
+        network: new ManualNetworkStatusProvider(true),
+      })]
+    );
+
+    await startPromise;
+    const offline = container.get(IOfflineSync);
+    let started!: () => void;
+    let finish!: () => void;
+    const active = new Promise<void>((resolve) => { started = resolve; });
+    const pending = new Promise<void>((resolve) => { finish = resolve; });
+    const handle = jest.fn().mockImplementationOnce(() => {
+      started();
+      return pending;
+    });
+    offline.registerHandler('draft.save', { handle });
+
+    const first = await offline.enqueue('draft.save', 'first', { dedupeKey: 'draft' });
+    await active;
+    const initialSync = offline.sync();
+    const second = await offline.enqueue('draft.save', 'second', { dedupeKey: 'draft' });
+    const latest = await offline.enqueue('draft.save', 'latest', { dedupeKey: 'draft' });
+
+    expect(second.id).not.toBe(first.id);
+    expect(latest.id).toBe(second.id);
+    finish();
+    await initialSync;
+    await offline.sync();
+    expect(handle.mock.calls.map(([operation]) => operation.payload)).toEqual(['first', 'latest']);
+    expect(offline.getOperations()).toEqual([]);
+    await tearDown();
+  });
+
+  test('writes snapshots to an asynchronous store in queue order', async () => {
+    const store = new MemoryOfflineSyncStore();
+    const originalSave = store.save.bind(store);
+    let started!: () => void;
+    let finish!: () => void;
+    const active = new Promise<void>((resolve) => { started = resolve; });
+    const pending = new Promise<void>((resolve) => { finish = resolve; });
+    const save = jest.spyOn(store, 'save').mockImplementationOnce(async (operations) => {
+      started();
+      await pending;
+      await originalSave(operations);
+    });
+    const { container, startPromise, tearDown } = createFixture(
+      '<div></div>',
+      class {},
+      [AureliaOfflineSyncConfiguration.configure({
+        store,
+        network: new ManualNetworkStatusProvider(false),
+      })]
+    );
+
+    await startPromise;
+    const offline = container.get(IOfflineSync);
+    const first = offline.enqueue('draft.save', 'first', { id: 'first' });
+    await active;
+    const second = offline.enqueue('draft.save', 'second', { id: 'second' });
+    await Promise.resolve();
+    finish();
+
+    await Promise.all([first, second]);
+    expect(save.mock.calls.map(([operations]) => operations.map((operation) => operation.id))).toEqual([
+      ['first'],
+      ['first', 'second'],
+    ]);
+    expect((await store.load()).map((operation) => operation.id)).toEqual(['first', 'second']);
+    await tearDown();
+  });
 });

@@ -133,5 +133,6 @@ describe('aurelia2-media', () => {
     expect(nav.hidden).toBe(false);
 
     await tearDown();
+    expect(media.listeners).toHaveLength(0);
   });
 });

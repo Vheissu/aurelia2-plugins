@@ -78,6 +78,8 @@ describe('aurelia2-resize', () => {
 
     handle.dispose();
     expect(observer.disconnected).toBe(true);
+    observer.emit(panel, 640, 360);
+    expect(callback).toHaveBeenCalledTimes(1);
 
     await tearDown();
   });
@@ -110,7 +112,8 @@ describe('aurelia2-resize', () => {
     await startPromise;
 
     const panel = appHost.querySelector('#panel') as HTMLElement;
-    FakeResizeObserver.instances[0].emit(panel, 640, 360);
+    const observer = FakeResizeObserver.instances[0];
+    observer.emit(panel, 640, 360);
     await flush();
 
     expect(component.width).toBe(640);
@@ -120,5 +123,6 @@ describe('aurelia2-resize', () => {
     expect(component.eventChange?.height).toBe(360);
 
     await tearDown();
+    expect(observer.disconnected).toBe(true);
   });
 });

@@ -20,7 +20,7 @@ export class AubsTabsetCustomElement {
 
     activeChanged(newValue: number){
 
-        if(!this.tabs || this.tabs.length == 0) {
+        if(!this.tabs || this.tabs.length === 0) {
             return;
         }
 
@@ -38,7 +38,7 @@ export class AubsTabsetCustomElement {
         }
 
         for(let i = 0; i < this.tabs.length; i++){
-            let next = this.tabs[i];
+            const next = this.tabs[i];
             next.index = i;
         }
 
@@ -79,7 +79,7 @@ export class AubsTabsetCustomElement {
     }
 
     emitTabChanged() {
-        for (let next of this.tabs) {
+        for (const next of this.tabs) {
             next.handleTabChanged(this.active);
         }
     }

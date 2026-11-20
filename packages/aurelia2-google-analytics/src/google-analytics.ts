@@ -1,63 +1,16 @@
 import { DI, IEventAggregator, ILogger, inject } from 'aurelia';
+import type { NavigationEndEvent } from '@aurelia/router';
 
-const deepMerge = function (target: Record<string, unknown>, ...sources: Record<string, unknown>[]): Record<string, unknown> {
-	if (!sources.length) {
-		return target;
-	}
+interface PageEvent {
+	navigation: {
+		title: string;
+		fragment: string;
+		instruction: string;
+		scope?: { router?: { activeComponents?: { component?: { name?: string } }[] } };
+	};
+}
 
-	const source = sources.shift();
-
-	if (source === undefined) {
-		return target;
-	}
-
-	if (source !== Object(source)) {
-		return target;
-	}
-
-	const isArray = Array.isArray(source);
-
-	for (const key in source) {
-		if (Object.prototype.hasOwnProperty.call(source, key)) {
-			if (isArray)
-				target = [...(Object.values(target))] as unknown as Record<string, unknown>;
-			else
-				target = { ...target };
-			if (source[key] && typeof source[key] === 'object') {
-				target[key] = deepMerge(target[key] as Record<string, unknown>, source[key] as Record<string, unknown>);
-			} else {
-				target[key] = source[key];
-			}
-		}
-	}
-
-	return deepMerge(target, ...sources);
-};
-
-const criteria = {
-	isElement: function (e: EventTarget | null): e is HTMLElement {
-		return e instanceof HTMLElement;
-	},
-	hasClass: function (cls: string) {
-		return function (e: EventTarget | null): boolean {
-			return criteria.isElement(e) && e.classList.contains(cls);
-		}
-	},
-	hasTrackingInfo: function (e: EventTarget | null): boolean {
-		return criteria.isElement(e) &&
-			e.hasAttribute('data-analytics-category') &&
-			e.hasAttribute('data-analytics-action');
-	},
-	isOfType: function (e: EventTarget | null, type: string): boolean {
-		return criteria.isElement(e) && e.nodeName.toLowerCase() === type.toLowerCase();
-	},
-	isAnchor: function (e: EventTarget | null): boolean {
-		return criteria.isOfType(e, 'a');
-	},
-	isButton: function (e: EventTarget | null): boolean {
-		return criteria.isOfType(e, 'button');
-	}
-};
+type TrackingFunction = ((...args: unknown[]) => void) & { q?: unknown[][] };
 
 const defaultOptions = {
 	useNativeGaScript: true,
@@ -70,14 +23,14 @@ const defaultOptions = {
 	pageTracking: {
 		enabled: false,
 		ignore: {
-			fragments: [],
-			routes: [],
-			routeNames: []
+			fragments: [] as string[],
+			routes: [] as string[],
+			routeNames: [] as string[]
 		},
-		getTitle: (payload: any): string => {
+		getTitle: (payload: PageEvent): string => {
 			return payload.navigation.title;
 		},
-		getUrl: (payload: any): string => {
+		getUrl: (payload: PageEvent): string => {
 			return payload.navigation.fragment;
 		},
 		customFnTrack: false as false | ((...args: unknown[]) => unknown),
@@ -85,7 +38,7 @@ const defaultOptions = {
 	clickTracking: {
 		enabled: false,
 		filter: (element: EventTarget | null): boolean => {
-			return criteria.isAnchor(element) || criteria.isButton(element);
+			return element instanceof HTMLElement && element.matches('a, button');
 		},
 		customFnTrack: false as false | ((...args: unknown[]) => unknown),
 	},
@@ -95,6 +48,18 @@ const defaultOptions = {
 		applicationVersion: undefined as string | undefined,
 		customFnTrack: false as false | ((...args: unknown[]) => unknown),
 	}
+};
+
+type Defaults = typeof defaultOptions;
+type AnalyticsOptions = {
+	useNativeGaScript?: boolean;
+	logging?: Partial<Defaults['logging']>;
+	anonymizeIp?: Partial<Defaults['anonymizeIp']>;
+	pageTracking?: Partial<Omit<Defaults['pageTracking'], 'ignore'>> & {
+		ignore?: Partial<Defaults['pageTracking']['ignore']>;
+	};
+	clickTracking?: Partial<Defaults['clickTracking']>;
+	exceptionTracking?: Partial<Defaults['exceptionTracking']>;
 };
 
 interface DelegatedEvent extends Event {
@@ -141,7 +106,7 @@ interface PageProps {
 export class Analytics {
 	_initialized = false;
 	_options: typeof defaultOptions = defaultOptions;
-	private _clickDelegateHandler: ((evt: Event) => void) | null = null;
+	private readonly cleanups: (() => void)[] = [];
 
 	constructor(readonly eventAggregator: IEventAggregator, readonly logger: ILogger) {
 		this.logger.scopeTo('aurelia2-google-analytics');
@@ -150,8 +115,23 @@ export class Analytics {
 		this._trackPage = this._trackPage.bind(this);
 	}
 
-	attach(options: Partial<typeof defaultOptions> = defaultOptions) {
-		this._options = deepMerge(defaultOptions, options as Record<string, unknown>) as unknown as typeof defaultOptions;
+	detach(): void {
+		for (const cleanup of this.cleanups.splice(0)) cleanup();
+	}
+
+	attach(options: AnalyticsOptions = {}) {
+		this.detach();
+		this._options = {
+			useNativeGaScript: options.useNativeGaScript ?? defaultOptions.useNativeGaScript,
+			logging: { ...defaultOptions.logging, ...options.logging },
+			anonymizeIp: { ...defaultOptions.anonymizeIp, ...options.anonymizeIp },
+			pageTracking: {
+				...defaultOptions.pageTracking, ...options.pageTracking,
+				ignore: { ...defaultOptions.pageTracking.ignore, ...options.pageTracking?.ignore },
+			},
+			clickTracking: { ...defaultOptions.clickTracking, ...options.clickTracking },
+			exceptionTracking: { ...defaultOptions.exceptionTracking, ...options.exceptionTracking },
+		};
 
 		if (!this._options.useNativeGaScript) {
 			this._initialized = true;
@@ -195,18 +175,14 @@ export class Analytics {
 
 	_initFnGa() {
 		if (typeof ga === 'undefined') {
-			(window as any).ga = function (...args: any[]) {
-				const fn = (window as any).ga;
-				(fn.q = fn.q || []).push(args);
-			};
+			const queue: TrackingFunction = (...args) => (queue.q ??= []).push(args);
+			Object.assign(window, { ga: queue });
 		}
 	}
 
-	_sendFnGa(...args: any[]) {
+	_sendFnGa(command: string, ...args: unknown[]) {
 		this._initFnGa();
-		if (typeof ga === 'function') {
-			(ga as Function).apply(null, args);
-		}
+		if (typeof ga === 'function') ga(command, ...args);
 	}
 
 	_attachClickTracker() {
@@ -219,8 +195,9 @@ export class Analytics {
 			return;
 		}
 
-		this._clickDelegateHandler = delegate(this._options.clickTracking.filter, this._trackClick);
-		body.addEventListener('click', this._clickDelegateHandler);
+		const handler = delegate(this._options.clickTracking.filter, this._trackClick);
+		body.addEventListener('click', handler);
+		this.cleanups.push(() => body.removeEventListener('click', handler));
 	}
 
 	_attachPageTracker() {
@@ -228,22 +205,29 @@ export class Analytics {
 			return;
 		}
 
-		this.eventAggregator.subscribe('au:router:navigation-end',
-			(payload: any) => {
-				const activeComponent = payload?.navigation?.scope?.router?.activeComponents[0];
-
-				if (
-					// Ignore page fragments
-					this._options.pageTracking.ignore.fragments.some((fragment: string) => payload.navigation.fragment.includes(fragment))
-					// Ignore routes
-					|| this._options.pageTracking.ignore.routes.some((route: string) => payload.navigation.instruction === route)
-					// Ignore route names
-					|| this._options.pageTracking.ignore.routeNames.some((routeName: string) => activeComponent?.component?.name === routeName)
-					)
-					return;
-
-				this._trackPage(this._options.pageTracking.getUrl(payload), this._options.pageTracking.getTitle(payload))
-			});
+		const tracking = this._options.pageTracking;
+		const subscription = this.eventAggregator.subscribe('au:router:navigation-end', (event: PageEvent | NavigationEndEvent) => {
+			let payload: PageEvent;
+			let routeName: string | undefined;
+			if ('navigation' in event) {
+				payload = event;
+				routeName = event.navigation.scope?.router?.activeComponents?.[0]?.component?.name;
+			} else {
+				const tree = event.finalInstructions;
+				const path = tree.toPath();
+				const query = tree.queryParams.toString();
+				const fragment = '/' + path + (query ? '?' + query : '') + (tree.fragment ? '#' + tree.fragment : '');
+				payload = { ...event, navigation: { fragment, title: document.title, instruction: path } };
+				const route = tree.children[0]?.recognizedRoute?.route.endpoint.route.handler;
+				if (route && 'id' in route) routeName = route.id;
+			}
+			const { fragment, instruction } = payload.navigation;
+			if (tracking.ignore.fragments.some(value => fragment.includes(value))
+				|| tracking.ignore.routes.includes(instruction)
+				|| (routeName && tracking.ignore.routeNames.includes(routeName))) return;
+			this._trackPage(tracking.getUrl(payload), tracking.getTitle(payload));
+		});
+		this.cleanups.push(() => subscription.dispose());
 	}
 
 	_attachExceptionTracker() {
@@ -251,51 +235,24 @@ export class Analytics {
 			return;
 		}
 
-		const options = this._options;
-		const sendGa = (...args: unknown[]) => this._sendFnGa(...args);
-		const existingWindowErrorCallback = window.onerror;
-
-		window.onerror = (errorMessage, url, lineNumber, columnNumber, errorObject) => {
-			// Send error details to Google Analytics, if library has loaded.
-			if (typeof ga === 'function') {
-				let exceptionDescription: string | Event;
-				if (errorObject !== undefined && typeof errorObject.message !== 'undefined') {
-					exceptionDescription = errorObject.message;
-				} else {
-					exceptionDescription = errorMessage as string | Event;
-				}
-
-				exceptionDescription += " @ " + url;
-				// Include additional details if available.
-				if (lineNumber !== undefined && columnNumber !== undefined) {
-					exceptionDescription += ":" + lineNumber + ":" + columnNumber;
-				}
-
-				const exOptions: ExceptionOptions = {
-					exDescription: exceptionDescription,
-					exFatal: false,
-				};
-
-				if (options.exceptionTracking.applicationName !== undefined) {
-					exOptions.appName = options.exceptionTracking.applicationName;
-				}
-				if (options.exceptionTracking.applicationVersion !== undefined) {
-					exOptions.appVersion = options.exceptionTracking.applicationVersion;
-				}
-
-				if (typeof options.exceptionTracking.customFnTrack === 'function') {
-					return options.exceptionTracking.customFnTrack(exOptions);
-				}
-				sendGa('send', 'exception', exOptions);
+		const options = this._options.exceptionTracking;
+		const onError = (event: ErrorEvent) => {
+			if (typeof ga !== 'function' && !options.customFnTrack) return;
+			const message = event.error?.message ?? event.message;
+			const details: ExceptionOptions = {
+				exDescription: `${message} @ ${event.filename}:${event.lineno}:${event.colno}`,
+				exFatal: false,
+			};
+			if (options.applicationName !== undefined) details.appName = options.applicationName;
+			if (options.applicationVersion !== undefined) details.appVersion = options.applicationVersion;
+			if (options.customFnTrack) {
+				if (options.customFnTrack(details) === true) event.preventDefault();
+			} else {
+				this._sendFnGa('send', 'exception', details);
 			}
-
-			if (typeof existingWindowErrorCallback === 'function') {
-				return existingWindowErrorCallback(errorMessage, url, lineNumber, columnNumber, errorObject);
-			}
-
-			// Otherwise continue with the error.
-			return false;
 		};
+		window.addEventListener('error', onError);
+		this.cleanups.push(() => window.removeEventListener('error', onError));
 	}
 
 	_log(level: 'debug' | 'info' | 'warn' | 'error', message: string) {
@@ -311,11 +268,10 @@ export class Analytics {
 			this._log('warn', "The component has not been initialized. Please call 'init()' before calling 'attach()'.");
 			return;
 		}
-		if (!evt || !evt.delegateTarget || !criteria.hasTrackingInfo(evt.delegateTarget)) {
-			return
+		const element = evt?.delegateTarget;
+		if (!(element instanceof HTMLElement) || !element.hasAttribute('data-analytics-category') || !element.hasAttribute('data-analytics-action')) {
+			return;
 		}
-
-		const element = evt.delegateTarget as HTMLElement;
 		const tracking: TrackingInfo = {
 			category: element.getAttribute('data-analytics-category'),
 			action: element.getAttribute('data-analytics-action'),

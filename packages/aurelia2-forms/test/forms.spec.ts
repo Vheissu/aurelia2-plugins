@@ -1,7 +1,7 @@
 import { createFixture } from '@aurelia/testing';
 import { ExpressionParser } from '@aurelia/expression-parser';
 import { ValidationConfiguration, IValidationRules } from '@aurelia/validation';
-import { AureliaFormsConfiguration, FormController, required } from './../src/index';
+import { AureliaFormsConfiguration, FormController, pattern, required } from './../src/index';
 
 async function flush(): Promise<void> {
   await Promise.resolve();
@@ -9,6 +9,44 @@ async function flush(): Promise<void> {
 }
 
 describe('aurelia2-forms', () => {
+  test('repeated validation is independent of the supplied regex state', async () => {
+    const regex = /^a/g;
+    regex.lastIndex = 2;
+    const form = new FormController();
+    const field = form.registerField({ name: 'word', value: 'apple', validators: [pattern(regex)] });
+
+    await expect(field.validate()).resolves.toBe(true);
+    await expect(field.validate()).resolves.toBe(true);
+    expect(regex.lastIndex).toBe(2);
+  });
+
+  test('registers the initial DOM value and unregisters fields removed from the form', async () => {
+    const { appHost, component, startPromise, tearDown } = createFixture(
+      `<au-form form.bind="form">
+        <input if.bind="visible" id="email" value="initial@example.com" au-field>
+      </au-form>`,
+      class App {
+        form: FormController | null = null;
+        visible = true;
+      },
+      [AureliaFormsConfiguration]
+    );
+
+    await startPromise;
+    const input = appHost.querySelector('input')!;
+    const field = component.form?.getField('email');
+    expect(field?.value).toBe('initial@example.com');
+
+    component.visible = false;
+    await flush();
+
+    expect(component.form?.value).toEqual({});
+    input.value = 'detached';
+    input.dispatchEvent(new Event('input'));
+    expect(field?.value).toBe('initial@example.com');
+    await tearDown();
+  });
+
   test('validates required fields on submit', async () => {
     const submit = jest.fn();
 

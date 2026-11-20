@@ -4,8 +4,13 @@
   "description": "Focus trap service and attribute for Aurelia 2",
   "main": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
+  "files": [
+    "dist",
+    "!dist/**/*.tsbuildinfo",
+    "src"
+  ],
   "repository": "https://github.com/Vheissu/aurelia2-plugins",
-  "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
+  "author": "Dwayne Charrington <dwaynecharrington@gmail.com>",
   "license": "MIT",
   "scripts": {
     "clean": "rimraf ./dist",
@@ -16,7 +21,7 @@
     "watch:ts": "tsc --watch --preserveWatchOutput",
     "watch:other": "cpx \"./src/**/*.{html,css}\" ./dist --watch",
     "test:debug": "cross-env DEBUG=true npm run test",
-    "test:watch": "cross-env DEV=true npm run test",
+    "test:watch": "jest --watch",
     "test": "jest"
   },
   "devDependencies": {

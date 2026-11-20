@@ -6,6 +6,7 @@ describe('aurelia2-hotkeys', () => {
     expect(normalizeKeys('meta+k, ctrl+k')).toEqual(['meta+k', 'ctrl+k']);
     expect(hotkeyMatches(new KeyboardEvent('keydown', { key: 'k', metaKey: true }), 'cmd+k')).toBe(true);
     expect(hotkeyMatches(new KeyboardEvent('keydown', { key: 'Escape' }), 'esc')).toBe(true);
+    expect(hotkeyMatches(new KeyboardEvent('keydown', { key: ' ', ctrlKey: true }), 'ctrl+space')).toBe(true);
     expect(hotkeyMatches(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }), 'meta+k')).toBe(false);
   });
 
@@ -79,5 +80,12 @@ describe('aurelia2-hotkeys', () => {
     expect(appHost.querySelector('#palette')).not.toBeNull();
 
     await tearDown();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      cancelable: true,
+    }));
+    expect(component.clicks).toBe(1);
   });
 });

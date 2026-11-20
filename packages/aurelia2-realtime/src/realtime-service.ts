@@ -29,9 +29,12 @@ export class RealtimeService {
 
   private transport: RealtimeTransport | null = null;
   private transportSubscription: RealtimeDispose | null = null;
+  private connecting: Promise<void> | null = null;
+  private connectionVersion = 0;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-  private outboundQueue: RealtimeEnvelope[] = [];
+  private outboundQueue: { envelope: RealtimeEnvelope; data: string }[] = [];
+  private drainingQueue = false;
   private channels = new Map<string, Set<RealtimeChannelHandler>>();
   private statusListeners = new Set<RealtimeStatusHandler>();
   private messageListeners = new Set<RealtimeMessageHandler>();
@@ -42,29 +45,34 @@ export class RealtimeService {
       ...options,
     };
     if (this.options.autoConnect) {
-      void this.connect();
+      void this.connect().catch(() => {});
     }
   }
 
-  public async connect(): Promise<void> {
-    if (this.status === 'open' || this.status === 'connecting') return;
+  public connect(): Promise<void> {
+    if (this.connecting) return this.connecting;
+    if (this.status === 'open') return Promise.resolve();
+
+    this.clearReconnect();
+    const version = ++this.connectionVersion;
+    const connection = Promise.resolve().then(() => this.startConnection(version));
+    this.connecting = connection;
+    const clear = () => {
+      if (this.connecting === connection) this.connecting = null;
+    };
+    void connection.then(clear, clear);
     this.setStatus('connecting');
-    this.transport = this.options.transportFactory({
-      url: this.options.url,
-      protocols: this.options.protocols,
-    });
-    this.transportSubscription = this.transport.subscribe((event) => void this.handleTransportEvent(event));
-    await this.transport.connect();
+    return connection;
   }
 
   public async disconnect(): Promise<void> {
     this.clearReconnect();
     this.reconnectAttempts = 0;
-    await this.transport?.disconnect();
-    this.transportSubscription?.dispose();
-    this.transportSubscription = null;
-    this.transport = null;
+    this.connectionVersion += 1;
+    this.connecting = null;
+    const transport = this.releaseTransport();
     this.setStatus('closed');
+    await transport?.disconnect();
   }
 
   public async publish<TPayload = unknown>(
@@ -89,7 +97,7 @@ export class RealtimeService {
       if (!this.options.queueWhileDisconnected) {
         throw new Error('Realtime transport is not open.');
       }
-      this.outboundQueue.push(envelope);
+      this.outboundQueue.push({ envelope, data: JSON.stringify(envelope) });
       return;
     }
 
@@ -130,19 +138,51 @@ export class RealtimeService {
   }
 
   public getQueuedMessages(): RealtimeEnvelope[] {
-    return [...this.outboundQueue];
+    return this.outboundQueue.map(({ envelope }) => envelope);
   }
 
-  private async handleTransportEvent(event: RealtimeTransportEvent): Promise<void> {
+  private async startConnection(version: number): Promise<void> {
+    if (version !== this.connectionVersion) return;
+    try {
+      const previous = this.releaseTransport();
+      if (previous && previous.status !== 'closed') await previous.disconnect();
+      if (version !== this.connectionVersion) return;
+
+      const transport = this.transport = this.options.transportFactory({
+        url: this.options.url,
+        protocols: this.options.protocols,
+      });
+      this.transportSubscription = transport.subscribe((event) => {
+        if (version === this.connectionVersion) this.handleTransportEvent(event);
+      });
+      await transport.connect();
+    } catch (error) {
+      if (version === this.connectionVersion && this.status !== 'closed') {
+        this.setStatus('error');
+        if (this.options.reconnect) this.scheduleReconnect();
+      }
+      throw error;
+    }
+  }
+
+  private releaseTransport(): RealtimeTransport | null {
+    const transport = this.transport;
+    this.transportSubscription?.dispose();
+    this.transportSubscription = null;
+    this.transport = null;
+    return transport;
+  }
+
+  private handleTransportEvent(event: RealtimeTransportEvent): void {
     if (event.type === 'open') {
-      this.reconnectAttempts = 0;
       this.setStatus('open');
-      await this.flushQueue();
+      void this.flushQueue();
       return;
     }
 
     if (event.type === 'message') {
-      this.dispatchMessage(parseMessage(event.data));
+      const message = parseMessage(event.data);
+      if (message) this.dispatchMessage(message);
       return;
     }
 
@@ -158,10 +198,24 @@ export class RealtimeService {
   }
 
   private async flushQueue(): Promise<void> {
-    const pending = [...this.outboundQueue];
-    this.outboundQueue = [];
-    for (const envelope of pending) {
-      await this.send(envelope);
+    if (this.drainingQueue) return;
+    this.drainingQueue = true;
+    try {
+      while (this.transport && this.status === 'open' && this.outboundQueue.length) {
+        const version = this.connectionVersion;
+        try {
+          await this.transport.send(this.outboundQueue[0].data);
+          this.outboundQueue.shift();
+        } catch {
+          if (version === this.connectionVersion && this.status === 'open') {
+            this.setStatus('error');
+            if (this.options.reconnect) this.scheduleReconnect();
+          }
+        }
+      }
+      if (this.status === 'open' && this.outboundQueue.length === 0) this.reconnectAttempts = 0;
+    } finally {
+      this.drainingQueue = false;
     }
   }
 
@@ -180,7 +234,7 @@ export class RealtimeService {
     this.reconnectAttempts += 1;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      void this.connect();
+      void this.connect().catch(() => {});
     }, this.options.reconnectDelay);
   }
 
@@ -202,12 +256,15 @@ export class RealtimeService {
 export const IRealtime = DI.createInterface<IRealtime>('IRealtime', (x) => x.singleton(RealtimeService));
 export interface IRealtime extends RealtimeService {}
 
-function parseMessage(data: string | RealtimeEnvelope): RealtimeEnvelope {
-  if (typeof data !== 'string') return data;
-  const parsed = JSON.parse(data) as RealtimeEnvelope;
-  if (!parsed.channel || !parsed.type) {
-    throw new Error('Realtime messages must include channel and type.');
+function parseMessage(data: string | RealtimeEnvelope): RealtimeEnvelope | null {
+  let parsed: RealtimeEnvelope;
+  try {
+    parsed = typeof data === 'string' ? JSON.parse(data) as RealtimeEnvelope : data;
+  } catch {
+    return null;
   }
+  if (typeof parsed?.channel !== 'string' || !parsed.channel ||
+      typeof parsed.type !== 'string' || !parsed.type) return null;
   return parsed;
 }
 

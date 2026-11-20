@@ -19,11 +19,11 @@ export class AubsBtnCheckboxCustomAttribute {
   }
 
   bound() {
-    if (this.checkedValue == undefined || this.checkedValue == null) {
+    if (this.checkedValue == null) {
       this.checkedValue = true;
     }
 
-    if (this.uncheckedValue == undefined || this.uncheckedValue == null) {
+    if (this.uncheckedValue == null) {
       this.uncheckedValue = false;
     }
 
@@ -42,11 +42,10 @@ export class AubsBtnCheckboxCustomAttribute {
     this.setClass();
   }
 
-  detached() {
+  detaching() {
     if (this.clickedListener) {
       this.element.removeEventListener("click", this.clickedListener);
     }
-    this.clickedListener = null;
   }
 
   stateChanged() {

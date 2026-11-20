@@ -53,8 +53,9 @@ export class AuNotificationHostCustomElement {
     this.updateItemsByPosition();
   }
 
-  public detached(): void {
+  public unbinding(): void {
     this.translationSubscription?.dispose();
+    this.translationSubscription = undefined;
   }
 
   public hostClasses(): string {

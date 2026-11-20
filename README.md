@@ -74,12 +74,13 @@ The [workspace lab](examples/workspace-lab/README.md) combines these five plugin
 
 ## Using a plugin
 
-Install the package you want and register its configuration:
+Each plugin has its own npm package. For example, install `aurelia2-clipboard` and register it when starting your app.
 
 ```ts
-import { AureliaXConfiguration } from 'aurelia2-x';
+import Aurelia from 'aurelia';
+import { AureliaClipboardConfiguration } from 'aurelia2-clipboard';
 
-Aurelia.register(AureliaXConfiguration);
+Aurelia.register(AureliaClipboardConfiguration);
 ```
 
 Refer to the package README in `packages/<name>/README.md` for concrete examples and advanced usage.
@@ -89,8 +90,11 @@ Refer to the package README in `packages/<name>/README.md` for concrete examples
 ```bash
 npm ci
 npm test -- --runInBand
+npm run lint
 npm run build
+npm run check:packages
 ```
 
+To run one plugin’s tests, use `npm test -- --selectProjects google-maps`. For watch mode, run `npm run test:watch --workspace=aurelia2-google-maps`.
 
 See [dependency compatibility](docs/dependency-compatibility.md) for the current toolchain pins and unresolved upstream advisories.

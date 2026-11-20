@@ -207,9 +207,10 @@ export function createSsrRequestHandler<TComponent extends object = object>(
       const status = render.status ?? route.status ?? 200;
       const cachePolicy = { ...(site.cache ?? {}), ...(route.cache ?? {}) };
       const headers: Record<string, string> = { ...baseHeaders, 'cache-control': cacheControl(cachePolicy) };
-      const response = finalize({
+      if (useEtag && status === 200) headers.etag ??= etagFor(document.html);
+      const response: SsrResponse = {
         status, headers, body: document.html, source: 'render', route, render, diagnostics: document.diagnostics,
-      }, request);
+      };
 
       if (cache && status === 200 && !cachePolicy.noStore && (cachePolicy.ttlMs ?? 0) > 0) {
         await cache.set(cacheKey, {
@@ -217,7 +218,7 @@ export function createSsrRequestHandler<TComponent extends object = object>(
         }, cachePolicy.ttlMs!);
       }
 
-      return response;
+      return finalize(response, request);
     } catch (error) {
       options.onError?.(error, request);
       return failed(request, baseHeaders, route, null, [{

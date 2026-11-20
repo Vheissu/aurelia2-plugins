@@ -24,6 +24,8 @@ describe('Outclick', () => {
         expect(callbackFn).toHaveBeenCalledTimes(1);
 
         await tearDown();
+        document.body.click();
+        expect(callbackFn).toHaveBeenCalledTimes(1);
     });
 
     test('outside click fires event using lamba', async () => {

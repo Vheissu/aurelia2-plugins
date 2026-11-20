@@ -72,7 +72,7 @@ const itemComparer = (a: NormalizedCalendarItem, b: NormalizedCalendarItem): num
   if (b.startDate < a.startDate) return 1;
   if (a.endDate > b.endDate) return -1;
   if (b.endDate > a.endDate) return 1;
-  return a.id < b.id ? -1 : 1;
+  return a.id.localeCompare(b.id);
 };
 
 const normalizeDateClassList = (value: string | string[] | undefined): string[] => {
@@ -247,13 +247,11 @@ export class AuCalendarCustomElement {
   }
 
   public previousYear(): void {
-    const count = this.displayPeriodUom === 'year' ? -1 : -12;
-    this.navigateBy(count);
+    this.goToDate(this.getYearShiftedPeriod(-1));
   }
 
   public nextYear(): void {
-    const count = this.displayPeriodUom === 'year' ? 1 : 12;
-    this.navigateBy(count);
+    this.goToDate(this.getYearShiftedPeriod(1));
   }
 
   public goToToday(): void {
@@ -296,7 +294,10 @@ export class AuCalendarCustomElement {
   private recompute(forceEmit = false): void {
     this.displayLocale = this.locale || CalendarMath.getDefaultBrowserLocale();
 
-    const defaultedShowDate = this.showDate ? CalendarMath.dateOnly(this.showDate) : CalendarMath.today();
+    const requestedDate = this.showDate == null ? null : CalendarMath.dateOnly(this.showDate);
+    const defaultedShowDate = requestedDate && Number.isFinite(requestedDate.getTime())
+      ? requestedDate
+      : CalendarMath.today();
     this.defaultedShowDate = defaultedShowDate;
 
     this.periodStart = CalendarMath.beginningOfPeriod(defaultedShowDate, this.displayPeriodUom, this.startingDayOfWeek);
@@ -306,7 +307,7 @@ export class AuCalendarCustomElement {
     );
 
     this.displayFirstDate = CalendarMath.beginningOfWeek(this.periodStart, this.startingDayOfWeek);
-    this.displayLastDate = CalendarMath.endOfWeek(this.periodEnd, this.startingDayOfWeek);
+    this.displayLastDate = CalendarMath.addDays(CalendarMath.endOfWeek(this.periodEnd, this.startingDayOfWeek), -1);
 
     const numWeeks = Math.floor((CalendarMath.dayDiff(this.displayFirstDate, this.displayLastDate) + 1) / 7);
     const weekStarts = Array.from({ length: numWeeks }, (_, i) => CalendarMath.addDays(this.displayFirstDate, i * 7));
@@ -327,12 +328,12 @@ export class AuCalendarCustomElement {
     this.periodLabel = CalendarMath.formattedPeriod(this.periodStart, this.periodEnd, this.displayPeriodUom, this.monthNames);
 
     this.headerProps = {
-      previousYear: this.getIncrementedPeriod(this.displayPeriodUom === 'year' ? -1 : -12),
+      previousYear: this.getYearShiftedPeriod(-1),
       previousPeriod: this.getIncrementedPeriod(-1),
       nextPeriod: this.getIncrementedPeriod(1),
       previousFullPeriod: this.getIncrementedPeriod(-this.displayPeriodCount),
       nextFullPeriod: this.getIncrementedPeriod(this.displayPeriodCount),
-      nextYear: this.getIncrementedPeriod(this.displayPeriodUom === 'year' ? 1 : 12),
+      nextYear: this.getYearShiftedPeriod(1),
       currentPeriod: CalendarMath.beginningOfPeriod(CalendarMath.today(), this.displayPeriodUom, this.startingDayOfWeek),
       periodStart: this.periodStart,
       periodEnd: this.periodEnd,
@@ -411,6 +412,12 @@ export class AuCalendarCustomElement {
     return CalendarMath.incrementPeriod(this.periodStart, this.displayPeriodUom, count);
   }
 
+  private getYearShiftedPeriod(count: number): Date {
+    const date = new Date(this.periodStart);
+    date.setFullYear(date.getFullYear() + count);
+    return CalendarMath.beginningOfPeriod(date, this.displayPeriodUom, this.startingDayOfWeek);
+  }
+
   private navigateBy(count: number): void {
     const nextDate = CalendarMath.incrementPeriod(this.periodStart, this.displayPeriodUom, count);
     this.showDate = CalendarMath.dateOnly(nextDate);
@@ -425,7 +432,7 @@ export class AuCalendarCustomElement {
     if (this.lastClickedDate && CalendarMath.isSameDate(day, this.lastClickedDate)) {
       return true;
     }
-    if (!this.selectionStart || !this.selectionEnd) return false;
+    if (this.selectionStart == null || this.selectionEnd == null) return false;
     const start = CalendarMath.dateOnly(this.selectionStart);
     const end = CalendarMath.dateOnly(this.selectionEnd);
     if (day < start) return false;

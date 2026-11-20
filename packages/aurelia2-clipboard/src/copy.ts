@@ -9,25 +9,30 @@ export class CopyCustomAttribute {
   @bindable public event: keyof HTMLElementEventMap = 'click';
   @bindable public disabled = false;
   @bindable public preventDefault = true;
-  @bindable public trim = false;
+  @bindable public trim?: boolean;
   @bindable public success: ClipboardCallback | null = null;
   @bindable public error: ClipboardErrorCallback | null = null;
 
   private readonly element = resolve(INode) as HTMLElement;
   private readonly clipboard = resolve(IClipboardService);
+  private listening?: keyof HTMLElementEventMap;
+  private attachment = 0;
 
   public attached(): void {
-    this.element.addEventListener(this.event, this.onTrigger as EventListener);
+    this.listening = this.event;
+    this.element.addEventListener(this.listening, this.onTrigger);
   }
 
-  public detached(): void {
-    this.element.removeEventListener(this.event, this.onTrigger as EventListener);
+  public detaching(): void {
+    this.attachment++;
+    if (this.listening) this.element.removeEventListener(this.listening, this.onTrigger);
+    this.listening = undefined;
   }
 
-  public eventChanged(newValue: keyof HTMLElementEventMap, oldValue: keyof HTMLElementEventMap): void {
-    if (!oldValue || oldValue === newValue) return;
-    this.element.removeEventListener(oldValue, this.onTrigger as EventListener);
-    this.element.addEventListener(newValue, this.onTrigger as EventListener);
+  public eventChanged(): void {
+    if (!this.listening || this.listening === this.event) return;
+    this.element.removeEventListener(this.listening, this.onTrigger);
+    this.attached();
   }
 
   private onTrigger = (event: Event): void => {
@@ -40,14 +45,22 @@ export class CopyCustomAttribute {
   };
 
   private async copy(event: Event): Promise<void> {
+    const attachment = this.attachment;
+    let result: ClipboardResult;
     try {
-      const result = await this.clipboard.copy(this.resolveText(), { trim: this.trim });
-      this.success?.(result);
-      this.dispatch('clipboard-copy', result, event);
+      result = await this.clipboard.copy(
+        this.resolveText(),
+        this.trim === undefined ? undefined : { trim: this.trim },
+      );
     } catch (error) {
+      if (attachment !== this.attachment) return;
       this.error?.(error);
       this.dispatch('clipboard-error', error, event);
+      return;
     }
+    if (attachment !== this.attachment) return;
+    this.success?.(result);
+    this.dispatch('clipboard-copy', result, event);
   }
 
   private resolveText(): string {
@@ -56,7 +69,7 @@ export class CopyCustomAttribute {
     }
 
     if (this.selector) {
-      const target = document.querySelector(this.selector);
+      const target = this.element.ownerDocument.querySelector(this.selector);
       if (!target) return '';
 
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {

@@ -20,6 +20,7 @@ export class AuTourCustomElement {
   public nextLabel = '';
   public previousLabel = '';
   public closeLabel = '';
+  public stepCount = 0;
 
   private readonly tour = resolve(ITourService);
   private readonly host = resolve(INode) as HTMLElement;
@@ -39,7 +40,7 @@ export class AuTourCustomElement {
     }
   }
 
-  public detached(): void {
+  public unbinding(): void {
     this.clearHighlight();
     this.subscription?.dispose();
     this.subscription = null;
@@ -67,7 +68,7 @@ export class AuTourCustomElement {
   }
 
   public next(): void {
-    const wasLast = this.index >= this.steps.length - 1;
+    const wasLast = this.index >= this.stepCount - 1;
     this.tour.next();
     this.dispatch(wasLast ? 'tour-complete' : 'tour-next');
   }
@@ -87,6 +88,7 @@ export class AuTourCustomElement {
     this.active = state.active;
     this.index = state.index;
     this.current = state.current;
+    this.stepCount = state.steps.length;
     this.syncingService = false;
     this.updateLabels();
     this.updateTarget();
@@ -94,7 +96,7 @@ export class AuTourCustomElement {
 
   private updateLabels(): void {
     const current = this.current;
-    const isLast = this.index >= this.steps.length - 1;
+    const isLast = this.index >= this.stepCount - 1;
     this.previousLabel = current?.previousLabel ?? this.tour.options.previousLabel;
     this.nextLabel = isLast
       ? current?.doneLabel ?? this.tour.options.doneLabel
@@ -104,7 +106,7 @@ export class AuTourCustomElement {
 
   private updateTarget(): void {
     this.clearHighlight();
-    const target = resolveTarget(this.current?.target);
+    const target = resolveTarget(this.host.ownerDocument, this.current?.target);
     this.placement = this.current?.placement ?? (target ? 'bottom' : 'center');
 
     if (!this.active || !target) {
@@ -133,10 +135,9 @@ export class AuTourCustomElement {
   }
 }
 
-function resolveTarget(target: string | Element | null | undefined): Element | null {
+function resolveTarget(document: Document, target: string | Element | null | undefined): Element | null {
   if (!target) return null;
-  if (target instanceof Element) return target;
-  return document.querySelector(target);
+  return typeof target === 'string' ? document.querySelector(target) : target;
 }
 
 function createCardStyle(target: Element, placement: TourPlacement): string {

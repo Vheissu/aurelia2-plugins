@@ -31,19 +31,7 @@ export class AuHeadCustomElement {
     this.sync();
   }
 
-  public detaching(): void {
-    this.dispose();
-  }
-
-  public detached(): void {
-    this.dispose();
-  }
-
   public unbinding(): void {
-    this.dispose();
-  }
-
-  private dispose(): void {
     this.handle?.dispose();
     this.handle = null;
     this.isBound = false;

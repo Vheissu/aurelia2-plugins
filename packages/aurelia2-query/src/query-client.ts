@@ -74,28 +74,30 @@ export class QueryClient {
 
     entry.status = 'loading';
     entry.error = null;
-    this.notify(entry);
 
     const fetchPromise = Promise.resolve()
       .then(() => options.fetch())
       .then((data) => {
-        entry.data = data;
-        entry.status = 'success';
-        entry.updatedAt = Date.now();
-        this.notify(entry);
+        if (entry.fetchPromise === fetchPromise) {
+          entry.fetchPromise = undefined;
+          entry.data = data;
+          entry.status = 'success';
+          entry.updatedAt = Date.now();
+          this.notify(entry);
+        }
         return data;
-      })
-      .catch((error) => {
-        entry.error = error;
-        entry.status = 'error';
-        this.notify(entry);
+      }, (error: unknown) => {
+        if (entry.fetchPromise === fetchPromise) {
+          entry.fetchPromise = undefined;
+          entry.error = error;
+          entry.status = 'error';
+          this.notify(entry);
+        }
         throw error;
-      })
-      .finally(() => {
-        entry.fetchPromise = undefined;
       });
 
     entry.fetchPromise = fetchPromise;
+    this.notify(entry);
     return fetchPromise;
   }
 

@@ -4,12 +4,14 @@ import type { FocusTrapConfigurationOptions, FocusTrapHandle, FocusTrapOptions }
 const selector = [
   'a[href]',
   'button:not([disabled])',
-  'input:not([disabled])',
+  'input:not([disabled]):not([type="hidden"])',
   'select:not([disabled])',
   'textarea:not([disabled])',
   '[tabindex]:not([tabindex="-1"])',
   '[contenteditable="true"]',
 ].join(',');
+
+const activeTraps = new WeakMap<Document, symbol[]>();
 
 export class FocusTrapService {
   private options: Required<FocusTrapConfigurationOptions> = {
@@ -25,21 +27,22 @@ export class FocusTrapService {
   }
 
   public create(element: HTMLElement, options: FocusTrapOptions = {}): FocusTrapHandle {
-    let active = false;
+    const document = element.ownerDocument;
+    let activation: symbol | undefined;
+    let addedTabIndex = false;
     let previousFocus: HTMLElement | null = null;
 
     const getFocusable = (): HTMLElement[] => findFocusable(element);
-    const focusInitial = (): void => {
-      const initial = resolveInitialFocus(element, options.initialFocus);
-      const target = initial ?? getFocusable()[0] ?? element;
-      if (!target.hasAttribute('tabindex') && target === element) {
-        target.setAttribute('tabindex', '-1');
+    const focusContainer = (): void => {
+      if (!element.hasAttribute('tabindex')) {
+        element.setAttribute('tabindex', '-1');
+        addedTabIndex = true;
       }
-      target.focus();
+      element.focus();
     };
 
     const onKeydown = (event: KeyboardEvent): void => {
-      if (!active) return;
+      if (!activation || activeTraps.get(document)?.at(-1) !== activation || event.defaultPrevented) return;
 
       if (event.key === 'Escape' && (options.escapeDeactivates ?? this.options.escapeDeactivates)) {
         options.onEscape?.(event);
@@ -52,18 +55,19 @@ export class FocusTrapService {
       const focusable = getFocusable();
       if (focusable.length === 0) {
         event.preventDefault();
-        element.focus();
+        focusContainer();
         return;
       }
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
-      const current = document.activeElement as HTMLElement | null;
+      const current = document.activeElement;
+      const outside = !element.contains(current) || current === element;
 
-      if (event.shiftKey && current === first) {
+      if (event.shiftKey && (current === first || outside)) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && current === last) {
+      } else if (!event.shiftKey && (current === last || outside)) {
         event.preventDefault();
         first.focus();
       }
@@ -71,21 +75,37 @@ export class FocusTrapService {
 
     const handle: FocusTrapHandle = {
       activate: () => {
-        if (active) return;
-        active = true;
-        previousFocus = document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
+        if (activation) return;
+        const current = activation = Symbol();
+        const stack = activeTraps.get(document) ?? [];
+        stack.push(current);
+        activeTraps.set(document, stack);
+        previousFocus = document.activeElement as HTMLElement | null;
         document.addEventListener('keydown', onKeydown);
-        queueMicrotask(focusInitial);
+        queueMicrotask(() => {
+          if (activation !== current || stack.at(-1) !== current) return;
+          const initial = resolveInitialFocus(element, options.initialFocus);
+          const target = initial ?? getFocusable()[0];
+          if (target && target !== element) target.focus();
+          else focusContainer();
+        });
       },
       deactivate: () => {
-        if (!active) return;
-        active = false;
+        if (!activation) return;
+        const stack = activeTraps.get(document)!;
+        const wasTop = stack.at(-1) === activation;
+        stack.splice(stack.indexOf(activation), 1);
+        if (stack.length === 0) activeTraps.delete(document);
+        activation = undefined;
         document.removeEventListener('keydown', onKeydown);
-        if ((options.returnFocus ?? this.options.returnFocus) && previousFocus?.isConnected) {
-          previousFocus.focus();
+        if (addedTabIndex && element.getAttribute('tabindex') === '-1') {
+          element.removeAttribute('tabindex');
         }
+        addedTabIndex = false;
+        if (wasTop && (options.returnFocus ?? this.options.returnFocus) && previousFocus?.isConnected) {
+          previousFocus.focus?.();
+        }
+        previousFocus = null;
       },
       dispose: () => {
         handle.deactivate();
@@ -106,14 +126,14 @@ export interface IFocusTrapService extends FocusTrapService {}
 export function findFocusable(element: HTMLElement): HTMLElement[] {
   return Array.from(element.querySelectorAll<HTMLElement>(selector))
     .filter((entry) => {
-      if (entry.hasAttribute('disabled')) return false;
-      if (entry.getAttribute('aria-hidden') === 'true') return false;
+      if (entry.matches(':disabled, input[type="hidden"]')) return false;
+      if (entry.closest('[hidden], [inert], [aria-hidden="true"]')) return false;
       return entry.tabIndex >= 0;
     });
 }
 
 function resolveInitialFocus(element: HTMLElement, initial: string | HTMLElement | null | undefined): HTMLElement | null {
   if (!initial) return null;
-  if (initial instanceof HTMLElement) return initial;
-  return element.querySelector<HTMLElement>(initial);
+  if (typeof initial === 'string') return element.querySelector<HTMLElement>(initial);
+  return element.contains(initial) ? initial : null;
 }

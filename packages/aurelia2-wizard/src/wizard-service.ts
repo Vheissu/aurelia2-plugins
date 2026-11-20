@@ -21,17 +21,19 @@ export class WizardService {
     index = 0,
     completed: string[] = []
   ): WizardState {
-    const enabledSteps = steps.filter((step) => !step.disabled);
-    const safeIndex = clamp(index, 0, Math.max(steps.length - 1, 0));
-    const activeStep = steps[safeIndex] ?? enabledSteps[0] ?? null;
+    const numericIndex = Number(index);
+    const requestedIndex = Number.isNaN(numericIndex) ? 0 : Math.trunc(numericIndex);
+    const eligible = steps.flatMap((step, candidate) => step.disabled ? [] : [candidate]);
+    const lastIndex = eligible.at(-1);
+    const activeIndex = eligible.find((candidate) => candidate >= requestedIndex) ?? lastIndex;
 
     return {
       steps: [...steps],
-      index: safeIndex,
+      index: activeIndex ?? 0,
       completed: [...completed],
-      activeStep,
-      canGoNext: safeIndex < steps.length - 1,
-      canGoPrevious: safeIndex > 0,
+      activeStep: activeIndex === undefined ? null : steps[activeIndex],
+      canGoNext: activeIndex !== lastIndex,
+      canGoPrevious: activeIndex !== eligible[0],
     };
   }
 
@@ -61,7 +63,7 @@ export class WizardService {
   }
 
   public markCompleted(state: WizardState, step = state.activeStep): string[] {
-    if (!step || state.completed.includes(step.id)) {
+    if (!step || step.disabled || state.completed.includes(step.id)) {
       return state.completed;
     }
     return [...state.completed, step.id];
@@ -70,7 +72,3 @@ export class WizardService {
 
 export const IWizardService = DI.createInterface<IWizardService>('IWizardService', x => x.singleton(WizardService));
 export interface IWizardService extends WizardService {}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}

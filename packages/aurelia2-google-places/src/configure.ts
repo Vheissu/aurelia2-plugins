@@ -57,11 +57,11 @@ export class Configure {
     });
   }
 
-  get(key: keyof ConfigInterface) {
+  get<K extends keyof ConfigInterface>(key: K) {
     return this._config[key];
   }
 
-  set(key: keyof ConfigInterface, val: any) {
+  set<K extends keyof ConfigInterface>(key: K, val: ConfigInterface[K]) {
     this._config[key] = val;
     return this._config[key];
   }
@@ -105,8 +105,8 @@ export class Configure {
 
     const merged = Object.assign({}, loaderOptions, this._config.loaderOptions);
 
-    if (this._config.client && !(merged as any).client) {
-      (merged as any).client = this._config.client;
+    if (this._config.client && !merged.client) {
+      merged.client = this._config.client;
     }
 
     return merged;

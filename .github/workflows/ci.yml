@@ -29,5 +29,27 @@ jobs:
       - name: Build all packages
         run: npm run build
 
+      - name: Lint plugin sources
+        if: matrix.node-version == 24
+        run: npm run lint
+
+      - name: Check package contents
+        if: matrix.node-version == 24
+        run: npm run check:packages
+
       - name: Run tests
         run: npm test
+
+      - name: Check auth coverage
+        if: matrix.node-version == 24
+        run: npm run test:coverage --workspace=aurelia2-auth
+
+      - name: Build and test examples
+        if: matrix.node-version == 24
+        run: |
+          for example in examples/*/package.json; do
+            dir=$(dirname "$example")
+            npm ci --prefix "$dir"
+            npm run build --prefix "$dir"
+            npm run test --if-present --prefix "$dir" -- --run
+          done

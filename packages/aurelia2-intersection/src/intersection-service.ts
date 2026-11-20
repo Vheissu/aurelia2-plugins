@@ -26,9 +26,9 @@ export class IntersectionService {
     options: IntersectionObserverInit = {}
   ): IntersectionDispose {
     const observerOptions = this.mergeOptions(options);
+    let disposed = false;
 
     if (!this.isSupported()) {
-      let disposed = false;
       queueMicrotask(() => {
         if (!disposed) {
           callback(createFallbackChange(element));
@@ -43,6 +43,7 @@ export class IntersectionService {
 
     const observer = this.createObserver((entries) => {
       for (const entry of entries) {
+        if (disposed) return;
         const visible = entry.isIntersecting || entry.intersectionRatio > 0;
         callback({
           target: entry.target,
@@ -57,6 +58,8 @@ export class IntersectionService {
 
     return {
       dispose() {
+        if (disposed) return;
+        disposed = true;
         observer.unobserve(element);
         observer.disconnect();
       },

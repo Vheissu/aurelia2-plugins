@@ -11,7 +11,7 @@ import { IGoogleMapsAPI } from "./google-maps-api";
 import { IMarkerClustering } from "./marker-clustering";
 
 import { Events } from "./events";
-import { ILogger, inject } from "@aurelia/kernel";
+import { ILogger, inject, type IDisposable } from "@aurelia/kernel";
 import type {
   DrawingControlOptions,
   DrawingManager,
@@ -23,6 +23,10 @@ import type {
   OverlayCompleteEvent,
   PolygonInput,
 } from "./types";
+
+type MarkerWithIcons = google.maps.Marker & {
+  custom?: { altIcon?: google.maps.MarkerOptions['icon']; defaultIcon?: google.maps.MarkerOptions['icon'] };
+};
 
 export interface IGoogleMaps extends GoogleMaps {}
 
@@ -53,20 +57,20 @@ export class GoogleMaps implements ICustomElementViewModel {
 
   public map: google.maps.Map | null = null;
   public _renderedMarkers: google.maps.Marker[] = [];
-  public _markersSubscription: any = null;
+  public _markersSubscription: IDisposable | null = null;
   public _scriptPromise: Promise<void> | null = null;
   public _mapPromise: Promise<void> | null = null;
   public _mapResolve: (() => void) | null = null;
   public drawingManager: DrawingManager | null = null;
   public _renderedPolygons: google.maps.Polygon[] = [];
-  public _polygonsSubscription: any = null;
+  public _polygonsSubscription: IDisposable | null = null;
 
   /** Bound element event handlers for proper cleanup */
   private _onStartMarkerHighlight = (data: Event) => {
     const detail = (data as CustomEvent).detail;
     const marker = this._renderedMarkers[detail.index];
     if (!marker) return;
-    const custom = (marker as any)?.custom;
+    const custom = (marker as MarkerWithIcons).custom;
     if (custom?.altIcon) {
       marker.setIcon(custom.altIcon);
     }
@@ -77,7 +81,7 @@ export class GoogleMaps implements ICustomElementViewModel {
     const detail = (data as CustomEvent).detail;
     const marker = this._renderedMarkers[detail.index];
     if (!marker) return;
-    const custom = (marker as any)?.custom;
+    const custom = (marker as MarkerWithIcons).custom;
     if (custom?.defaultIcon) {
       marker.setIcon(custom.defaultIcon);
     }
@@ -108,6 +112,7 @@ export class GoogleMaps implements ICustomElementViewModel {
 
   /** Google Maps event listeners for cleanup */
   private _mapListeners: google.maps.MapsEventListener[] = [];
+  private _polygonRevision = 0;
 
   constructor(
     readonly element: HTMLElement,
@@ -130,18 +135,21 @@ export class GoogleMaps implements ICustomElementViewModel {
     }
 
     this.markerClustering.loadScript();
+  }
+
+  binding() {
     this._scriptPromise = this.googleMapsApi.getMapsInstance();
-
-    this._mapPromise = this._scriptPromise.then(() => {
-      return new Promise<void>((resolve) => {
-        // Register the the resolve method for _mapPromise
-        this._mapResolve = resolve;
-      });
+    this._mapPromise = new Promise<void>((resolve) => {
+      this._mapResolve = resolve;
     });
+  }
 
-    /**
-     * Events which the element listens to
-     */
+  bound() {
+    this.markersChanged(this.markers);
+    this.polygonsChanged(this.polygons);
+  }
+
+  private addElementListeners() {
     this.element.addEventListener(
       Events.START_MARKER_HIGHLIGHT,
       this._onStartMarkerHighlight
@@ -163,11 +171,6 @@ export class GoogleMaps implements ICustomElementViewModel {
     );
   }
 
-  bound() {
-    this.markersChanged(this.markers);
-    this.polygonsChanged(this.polygons);
-  }
-
   clearMarkers() {
     if (!this._renderedMarkers) {
       return;
@@ -185,17 +188,20 @@ export class GoogleMaps implements ICustomElementViewModel {
   }
 
   attached() {
+    this.addElementListeners();
     this.element.addEventListener("dragstart", this._onDragStart);
     this.element.addEventListener("zoom_to_bounds", this._onZoomToBounds);
 
+    const ready = this._mapPromise;
     this._scriptPromise?.then(() => {
-      let latLng = new google.maps.LatLng(
-        parseFloat(this.latitude as unknown as string),
-        parseFloat(this.longitude as unknown as string)
-      );
-      let mapTypeId = this.getMapTypeId();
+      if (this._mapPromise !== ready) return;
 
-      let options: google.maps.MapOptions = Object.assign(
+      const latLng = new google.maps.LatLng(
+        Number(this.latitude),
+        Number(this.longitude)
+      );
+
+      const options: google.maps.MapOptions = Object.assign(
         {},
         this.options,
         this.config.get("options"),
@@ -203,13 +209,11 @@ export class GoogleMaps implements ICustomElementViewModel {
           center: latLng,
           zoom: parseInt(this.zoom as unknown as string, 10),
           disableDefaultUI: this.disableDefaultUi,
-          mapTypeId: mapTypeId,
+          mapTypeId: this.getMapTypeId(),
         }
       );
 
       this.map = new google.maps.Map(this.element, options);
-      this.mapLoaded?.(this.map);
-      this._mapResolve?.();
 
       // Add event listener for click event
       this._mapListeners.push(
@@ -255,10 +259,20 @@ export class GoogleMaps implements ICustomElementViewModel {
           this.sendBoundsEvent();
         })
       );
+      this.mapLoaded?.(this.map);
+    }).catch((error: unknown) => {
+      if (this._mapPromise === ready) {
+        this.logger.error("Failed to initialize Google Maps.", error);
+      }
+    }).finally(() => {
+      if (this._mapPromise === ready) this._mapResolve?.();
     });
   }
 
   detaching() {
+    this._mapResolve?.();
+    this._mapResolve = null;
+    this._mapPromise = null;
     // Remove element event listeners
     this.element.removeEventListener(Events.START_MARKER_HIGHLIGHT, this._onStartMarkerHighlight);
     this.element.removeEventListener(Events.STOP_MARKER_HIGHLIGHT, this._onStopMarkerHighlight);
@@ -275,10 +289,7 @@ export class GoogleMaps implements ICustomElementViewModel {
 
     // Clean up markers and polygons
     this.clearMarkers();
-    for (const polygon of this._renderedPolygons) {
-      polygon.setMap(null);
-    }
-    this._renderedPolygons = [];
+    this.clearPolygons();
 
     // Destroy drawing manager
     this.destroyDrawingManager();
@@ -297,7 +308,7 @@ export class GoogleMaps implements ICustomElementViewModel {
    * See https://developers.google.com/maps/documentation/javascript/reference#LatLngBounds
    */
   sendBoundsEvent() {
-    let bounds = this.map?.getBounds();
+    const bounds = this.map?.getBounds();
     if (!bounds) return;
 
     this.emitEvent(
@@ -314,8 +325,10 @@ export class GoogleMaps implements ICustomElementViewModel {
    *
    */
   async renderMarker(marker: MarkerInput, index = 0): Promise<void> {
-    await this._mapPromise;
-    if (!this.map) {
+    const ready = this._mapPromise;
+    await ready;
+    const map = this.map;
+    if (!map || this._mapPromise !== ready) {
       return;
     }
 
@@ -324,13 +337,17 @@ export class GoogleMaps implements ICustomElementViewModel {
       return;
     }
 
-    const { infoWindow, custom, latitude, longitude, ...markerOptions } =
+    const { infoWindow, custom, latitude: _latitude, longitude: _longitude, ...markerOptions } =
       marker;
     const createdMarker = await this.createMarker({
       ...markerOptions,
-      map: this.map,
+      map,
       position,
     });
+    if (this.map !== map) {
+      createdMarker.setMap(null);
+      return;
+    }
     const createdMarkerAny = createdMarker as google.maps.Marker & {
       infoWindow?: google.maps.InfoWindow;
       custom?: unknown;
@@ -481,7 +498,7 @@ export class GoogleMaps implements ICustomElementViewModel {
   private emitEvent(
     event: GoogleMapsEvent,
     domEvent: string,
-    detail: any
+    detail: unknown
   ) {
     dispatchEvent(domEvent, detail, this.element);
     this.onEvent?.(event);
@@ -567,17 +584,10 @@ export class GoogleMaps implements ICustomElementViewModel {
   }
 
   updateCenter() {
-    if (this.latitude && this.longitude) {
-      this._mapPromise?.then(() => {
-        let latLng = new google.maps.LatLng(
-          parseFloat(this.latitude as unknown as string),
-          parseFloat(this.longitude as unknown as string)
-        );
-
-        if (latLng) {
-          this.setCenter(latLng);
-        }
-      });
+    const latitude = Number(this.latitude);
+    const longitude = Number(this.longitude);
+    if (Number.isFinite(latitude) && Number.isFinite(longitude)) {
+      this.setCenter({ lat: latitude, lng: longitude });
     }
   }
 
@@ -600,7 +610,7 @@ export class GoogleMaps implements ICustomElementViewModel {
   zoomChanged(newValue: number | string) {
     this._mapPromise?.then(() => {
       queueTask(() => {
-        let zoomValue = parseInt(newValue as string, 10);
+        const zoomValue = parseInt(newValue as string, 10);
         this.map?.setZoom(zoomValue);
       });
     });
@@ -633,7 +643,9 @@ export class GoogleMaps implements ICustomElementViewModel {
       return;
     }
 
-    await this._mapPromise;
+    const ready = this._mapPromise;
+    await ready;
+    if (!this.map || this._mapPromise !== ready) return;
 
     this.clearMarkers();
 
@@ -651,15 +663,14 @@ export class GoogleMaps implements ICustomElementViewModel {
   }
 
   zoomToMarkerBounds(force = false) {
-    // Unless forced, if there's no markers, or not auto update bounds
-    if (!force && (!this._renderedMarkers.length || !this.autoUpdateBounds)) {
+    if (!force && (!this.autoUpdateBounds || (!this._renderedMarkers.length && !this._renderedPolygons.length))) {
       return;
     }
 
     this._mapPromise?.then(() => {
-      let bounds = new google.maps.LatLngBounds();
+      const bounds = new google.maps.LatLngBounds();
 
-      for (let marker of this._renderedMarkers) {
+      for (const marker of this._renderedMarkers) {
         // extend the bounds to include each marker's position
 
         const position = marker.getPosition();
@@ -667,20 +678,20 @@ export class GoogleMaps implements ICustomElementViewModel {
           continue;
         }
 
-        let lat = position.lat();
-        let lng = position.lng();
+        const lat = position.lat();
+        const lng = position.lng();
 
         if (isNaN(lat) || isNaN(lng)) {
-          console.warn(`Marker returned NaN for lat/lng`, { marker, lat, lng });
+          this.logger.warn("Marker returned NaN for lat/lng", { marker, lat, lng });
 
           return;
         }
 
-        let markerLatLng = new google.maps.LatLng(position.lat(), position.lng());
+        const markerLatLng = new google.maps.LatLng(position.lat(), position.lng());
         bounds.extend(markerLatLng);
       }
 
-      for (let polygon of this._renderedPolygons) {
+      for (const polygon of this._renderedPolygons) {
         polygon.getPath().forEach((element) => {
           bounds.extend(element);
         });
@@ -741,8 +752,8 @@ export class GoogleMaps implements ICustomElementViewModel {
       const overlayEvent = evt as OverlayCompleteEvent &
         OverlayCompleteDetail;
       if (
-        overlayEvent.type.toUpperCase() == "POLYGON" ||
-        overlayEvent.type.toUpperCase() == "POLYLINE"
+        overlayEvent.type.toUpperCase() === "POLYGON" ||
+        overlayEvent.type.toUpperCase() === "POLYLINE"
       ) {
         const path = (overlayEvent.overlay as google.maps.Polygon | google.maps.Polyline).getPath();
         Object.assign(overlayEvent, {
@@ -829,7 +840,7 @@ export class GoogleMaps implements ICustomElementViewModel {
    * more info: https://developers.google.com/maps/documentation/utilities/polylineutility
    * @param path
    */
-  encodePath(path: any = []) {
+  encodePath(path: Parameters<typeof google.maps.geometry.encoding.encodePath>[0] = []) {
     return google.maps.geometry.encoding.encodePath(path);
   }
 
@@ -862,12 +873,9 @@ export class GoogleMaps implements ICustomElementViewModel {
     let paths = rawPaths as google.maps.PolygonOptions["paths"];
 
     if (Array.isArray(rawPaths)) {
-      paths = rawPaths.map((point: any) => {
-        if (typeof point?.lat === "function" && typeof point?.lng === "function") {
-          return point;
-        }
-
+      paths = rawPaths.map(point => {
         if ("lat" in point && "lng" in point) {
+          if (typeof point.lat === "function") return point;
           return {
             lat: Number(point.lat),
             lng: Number(point.lng),
@@ -916,6 +924,7 @@ export class GoogleMaps implements ICustomElementViewModel {
       });
     }
 
+    this._renderedPolygons.push(polygon);
     this.emitEvent(
       {
         type: Events.POLYGONRENDERED,
@@ -926,95 +935,54 @@ export class GoogleMaps implements ICustomElementViewModel {
       Events.POLYGONRENDERED,
       { polygon, polygonObject, index }
     );
-
-    this._renderedPolygons.push(polygon);
   }
 
-  /**
-   * Observing changes in the entire polygons object. This is critical in
-   * case the user sets polygons to a new empty Array, where we need to
-   * resubscribe Observers and delete all previously rendered polygons.
-   *
-   * @param newValue
-   */
   polygonsChanged(newValue: Array<PolygonInput | string>) {
-    for (let polygon of this._renderedPolygons) {
+    this.polygonCollectionChange(newValue);
+  }
+
+  private clearPolygons() {
+    for (const polygon of this._renderedPolygons) {
       polygon.setMap(null);
     }
-
-    // And empty the renderMarkers collection
     this._renderedPolygons = [];
-
-    this.polygonCollectionChange();
-
-    if (!newValue.length) return;
-
-    // Render all markers again
-    this._mapPromise?.then(async () => {
-      await this.googleMapsApi.importLibrary("geometry");
-
-      const polygons = await Promise.all(
-        newValue.map((polygon) => {
-          if (typeof polygon === "string") {
-            return {
-              paths: this.decodePath(polygon),
-            } as PolygonInput;
-          }
-          return polygon;
-        })
-      );
-
-      await Promise.all(
-        polygons.map((polygon, index) =>
-          this.renderPolygon(polygon as PolygonInput, index)
-        )
-      );
-
-      queueTask(() => {
-        this.zoomToMarkerBounds();
-      });
-    });
   }
 
-  /**
-   * Handle the change to the polygon collection. Collection observer returns an array of splices which contains
-   * information about the change to the collection.
-   *
-   */
-  polygonCollectionChange() {
-    for (const [i, renderedPolygon] of this._renderedPolygons.entries()) {
-      renderedPolygon.setMap(null);
-      this._renderedPolygons.splice(i, 1);
-    }
+  polygonCollectionChange(polygons = this.polygons) {
+    const revision = ++this._polygonRevision;
+    const ready = this._mapPromise;
+    this.clearPolygons();
+    if (!ready || !polygons?.length) return;
 
-    this._mapPromise
-      ?.then(async () => {
+    const isCurrent = () => this._mapPromise === ready && this._polygonRevision === revision;
+    void ready.then(async () => {
+      if (!isCurrent() || !this.map) return;
+      if (polygons.some((polygon) => typeof polygon === "string")) {
         await this.googleMapsApi.importLibrary("geometry");
-        for (const [index, addedPolygon] of this.polygons.entries()) {
-          const polygonInput =
-            typeof addedPolygon === "string"
-              ? ({ paths: this.decodePath(addedPolygon) } as PolygonInput)
-              : addedPolygon;
-          this.renderPolygon(polygonInput, index);
-        }
-      })
-      .then(() => {
-        queueTask(() => {
-          this.zoomToMarkerBounds();
-        });
-      });
+      }
+      for (const [index, polygon] of polygons.entries()) {
+        if (!isCurrent()) return;
+        this.renderPolygon(
+          typeof polygon === "string" ? { paths: this.decodePath(polygon) } : polygon,
+          index
+        );
+      }
+      this.zoomToMarkerBounds();
+    }).catch((error: unknown) => {
+      if (isCurrent()) this.logger.error("Failed to render map polygons.", error);
+    });
   }
 }
 
 function dispatchEvent(
   name: string,
-  detail: any,
+  detail: unknown,
   target: Element,
   bubbles = true
 ) {
   let changeEvent;
 
-  if ((<any>window).CustomEvent) {
+  if (typeof window.CustomEvent === "function") {
     changeEvent = new CustomEvent(name, { detail, bubbles });
   } else {
     changeEvent = document.createEvent("CustomEvent");

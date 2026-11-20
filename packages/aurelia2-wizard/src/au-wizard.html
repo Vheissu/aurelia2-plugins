@@ -94,7 +94,7 @@
       </button>
     </div>
 
-    <div class="au-wizard-panel" role="tabpanel">
+    <div class="au-wizard-panel" role="tabpanel" if.bind="state.activeStep">
       <div class="au-wizard-counter">Step ${index + 1} of ${steps.length}</div>
       <h2>${activeStep.title}</h2>
       <p if.bind="activeStep.content">${activeStep.content}</p>
@@ -103,7 +103,7 @@
 
     <div class="au-wizard-actions">
       <button type="button" class="au-wizard-button" disabled.bind="!state.canGoPrevious" click.trigger="previous()">${previousLabelText}</button>
-      <button type="button" class="au-wizard-button primary" click.trigger="next()">${nextLabelText}</button>
+      <button type="button" class="au-wizard-button primary" disabled.bind="!state.activeStep" click.trigger="next()">${nextLabelText}</button>
     </div>
   </section>
 </template>

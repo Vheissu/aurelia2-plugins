@@ -33,6 +33,7 @@ export class AuAutocompleteCustomElement<T = unknown> {
 
   private readonly host = resolve(INode) as HTMLElement;
   private readonly autocomplete = resolve(IAutocompleteService);
+  private isBound = false;
   private searchVersion = 0;
 
   public get selectedItems(): AutocompleteOption<T>[] {
@@ -40,10 +41,17 @@ export class AuAutocompleteCustomElement<T = unknown> {
     return this.selected ? [this.selected] : [];
   }
 
-  public binding(): void {
+  public bound(): void {
+    this.isBound = true;
     this.placeholderText = this.placeholder ?? this.autocomplete.options.placeholder;
     this.noResultsTextValue = this.noResultsText ?? this.autocomplete.options.noResultsText;
     void this.refresh();
+  }
+
+  public unbinding(): void {
+    this.isBound = false;
+    this.searchVersion++;
+    this.closeList();
   }
 
   public queryChanged(): void {
@@ -56,6 +64,26 @@ export class AuAutocompleteCustomElement<T = unknown> {
 
   public searchChanged(): void {
     void this.refresh();
+  }
+
+  public minLengthChanged(): void {
+    void this.refresh();
+  }
+
+  public maxResultsChanged(): void {
+    void this.refresh();
+  }
+
+  public selectedChanged(): void {
+    if (this.multiple) void this.refresh();
+  }
+
+  public multipleChanged(): void {
+    void this.refresh();
+  }
+
+  public disabledChanged(): void {
+    if (this.disabled) this.closeList();
   }
 
   public placeholderChanged(): void {
@@ -78,6 +106,7 @@ export class AuAutocompleteCustomElement<T = unknown> {
   }
 
   public onKeydown(event: KeyboardEvent): void {
+    if (this.disabled) return;
     if (event.key === 'Escape') {
       event.preventDefault();
       this.closeList();
@@ -98,7 +127,7 @@ export class AuAutocompleteCustomElement<T = unknown> {
       return;
     }
 
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' && this.open) {
       const option = this.results[this.activeIndex];
       if (option) {
         event.preventDefault();
@@ -108,7 +137,7 @@ export class AuAutocompleteCustomElement<T = unknown> {
   }
 
   public select(option: AutocompleteOption<T>): void {
-    if (option.disabled) return;
+    if (this.disabled || option.disabled) return;
 
     if (this.multiple) {
       const selected = this.selectedItems;
@@ -124,10 +153,10 @@ export class AuAutocompleteCustomElement<T = unknown> {
     }
 
     this.dispatch('autocomplete-select', { option, selected: this.selected });
-    void this.refresh();
   }
 
   public remove(option: AutocompleteOption<T>): void {
+    if (this.disabled) return;
     if (!this.multiple) {
       this.selected = null;
       return;
@@ -135,27 +164,38 @@ export class AuAutocompleteCustomElement<T = unknown> {
 
     this.selected = this.selectedItems.filter((entry) => entry.value !== option.value);
     this.dispatch('autocomplete-remove', { option, selected: this.selected });
-    void this.refresh();
   }
 
   private async refresh(): Promise<void> {
+    if (!this.isBound) return;
     const version = ++this.searchVersion;
     const max = this.maxResults ?? this.autocomplete.options.maxResults;
     const min = this.minLength ?? this.autocomplete.options.minLength;
-    const baseResults = this.autocomplete.filter(this.options, this.query, max, min);
+    const query = this.query;
+    this.applyResults(this.autocomplete.filter(this.options, query, max, min));
+    if (!this.search || query.trim().length < min) return;
 
-    if (this.search) {
-      const searched = await this.search({ query: this.query, options: this.options });
-      if (version !== this.searchVersion) return;
-      this.results = this.autocomplete.filter(searched, this.query, max, min);
-    } else {
-      this.results = baseResults;
+    try {
+      const searched = await this.search({ query, options: this.options });
+      if (version === this.searchVersion) {
+        this.applyResults(this.autocomplete.filter(searched, query, max, min));
+      }
+    } catch (error) {
+      if (version === this.searchVersion) {
+        this.host.dispatchEvent(new CustomEvent('autocomplete-search-error', {
+          bubbles: true,
+          detail: error,
+        }));
+      }
     }
+  }
 
+  private applyResults(results: AutocompleteOption<T>[]): void {
     if (this.multiple) {
       const selectedValues = new Set(this.selectedItems.map((item) => item.value));
-      this.results = this.results.filter((option) => !selectedValues.has(option.value));
+      results = results.filter((option) => !selectedValues.has(option.value));
     }
+    this.results = results;
 
     if (this.activeIndex >= this.results.length) {
       this.activeIndex = Math.max(0, this.results.length - 1);

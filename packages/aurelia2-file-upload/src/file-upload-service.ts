@@ -14,11 +14,16 @@ export class FileUploadService {
     };
   }
 
-  public createItems(files: File[] | FileList, options: FileUploadValidationOptions = {}): FileUploadItem[] {
+  public createItems(
+    files: File[] | FileList,
+    options: FileUploadValidationOptions = {},
+    currentCount = 0,
+  ): FileUploadItem[] {
     const list = Array.from(files);
-    const maxFiles = options.multiple === false ? 1 : options.maxFiles ?? this.options.maxFiles;
+    const maxFiles = options.maxFiles ?? this.options.maxFiles;
+    const remaining = options.multiple === false ? Math.min(1, maxFiles) : maxFiles - currentCount;
 
-    return list.slice(0, maxFiles).map((file) => this.createItem(file, options));
+    return list.slice(0, Math.max(0, remaining)).map((file) => this.createItem(file, options));
   }
 
   public createItem(file: File, options: FileUploadValidationOptions = {}): FileUploadItem {

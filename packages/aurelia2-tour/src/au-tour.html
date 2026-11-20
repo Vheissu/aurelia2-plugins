@@ -86,7 +86,7 @@
     <h2 class="au-tour-title">${current.title}</h2>
     <p class="au-tour-content">${current.content}</p>
     <div class="au-tour-actions">
-      <span class="au-tour-progress">${index + 1} / ${steps.length}</span>
+      <span class="au-tour-progress">${index + 1} / ${stepCount}</span>
       <span class="au-tour-buttons">
         <button type="button" class="au-tour-button" click.trigger="stop()">${closeLabel}</button>
         <button type="button" class="au-tour-button" disabled.bind="index === 0" click.trigger="previous()">${previousLabel}</button>

@@ -130,6 +130,7 @@ export class MachineSend {
   @bindable event: MachineEvent = { type: '' };
   @bindable on = 'click';
   private readonly host = resolve(INode) as HTMLElement;
+  private active = false;
   private listening = '';
   private readonly handle = (event: Event) => {
     if (event.defaultPrevented || !this.machine) return;
@@ -144,18 +145,22 @@ export class MachineSend {
     }
   };
   attached(): void {
-    this.listening = this.on;
-    this.host.addEventListener(this.listening, this.handle);
+    this.active = true;
+    this.updateListener();
   }
   onChanged(): void {
-    if (this.listening) {
-      this.detaching();
-      this.attached();
-    }
+    this.updateListener();
   }
   detaching(): void {
+    this.active = false;
+    this.updateListener();
+  }
+  private updateListener(): void {
+    const eventType = this.active ? this.on : '';
+    if (eventType === this.listening) return;
     if (this.listening) this.host.removeEventListener(this.listening, this.handle);
-    this.listening = '';
+    this.listening = eventType;
+    if (eventType) this.host.addEventListener(eventType, this.handle);
   }
 }
 export const AureliaStateMachineConfiguration = {

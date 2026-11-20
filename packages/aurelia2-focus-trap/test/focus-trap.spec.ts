@@ -14,6 +14,9 @@ describe('aurelia2-focus-trap', () => {
       <button id="b" disabled></button>
       <a id="c" href="#"></a>
       <div id="d" tabindex="-1"></div>
+      <input type="hidden" tabindex="0">
+      <div hidden><button></button></div>
+      <fieldset disabled><button></button></fieldset>
     `;
 
     expect(findFocusable(host).map((element) => element.id)).toEqual(['a', 'c']);
@@ -97,5 +100,73 @@ describe('aurelia2-focus-trap', () => {
 
     outside.remove();
     await tearDown();
+  });
+
+  test('only the newest trap handles Tab and Escape', async () => {
+    const fixture = createFixture(
+      `<button id="outside"></button>
+      <div id="outer"><button id="outer-first"></button><button id="outer-last"></button></div>
+      <div id="inner"><button id="inner-button"></button></div>`,
+      class {},
+      [AureliaFocusTrapConfiguration],
+    );
+    await fixture.startPromise;
+    const service = fixture.container.get(IFocusTrapService);
+    const find = <T extends HTMLElement>(id: string) => fixture.appHost.querySelector<T>('#' + id)!;
+    const outer = service.create(find('outer'));
+    let inner: ReturnType<typeof service.create> | undefined;
+    try {
+      await flush();
+      inner = service.create(find('inner'));
+      await flush();
+      expect(document.activeElement).toBe(find('inner-button'));
+
+      find('outside').focus();
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', cancelable: true }));
+      expect(document.activeElement).toBe(find('inner-button'));
+
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+      expect(document.activeElement).toBe(find('outer-first'));
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, cancelable: true }));
+      expect(document.activeElement).toBe(find('outer-last'));
+    } finally {
+      inner?.dispose();
+      outer.dispose();
+      await fixture.tearDown();
+    }
+  });
+
+  test('deactivating before initial focus prevents the queued refocus', async () => {
+    const fixture = createFixture(
+      '<button id="outside"></button><div id="dialog"></div>',
+      class {},
+      [AureliaFocusTrapConfiguration],
+    );
+    await fixture.startPromise;
+    const outside = fixture.appHost.querySelector<HTMLButtonElement>('#outside')!;
+    const dialog = fixture.appHost.querySelector<HTMLElement>('#dialog')!;
+    outside.focus();
+    const handle = fixture.container.get(IFocusTrapService).create(dialog);
+    handle.deactivate();
+    await flush();
+
+    expect(document.activeElement).toBe(outside);
+    expect(dialog.hasAttribute('tabindex')).toBe(false);
+    await fixture.tearDown();
+  });
+
+  test('tearing down the attribute removes the document key handler', async () => {
+    const onEscape = jest.fn();
+    const fixture = createFixture(
+      '<div focus-trap="escape.bind: onEscape"><button></button></div>',
+      class { onEscape = onEscape; },
+      [AureliaFocusTrapConfiguration],
+    );
+    await fixture.startPromise;
+    await flush();
+    await fixture.tearDown();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', cancelable: true }));
+    expect(onEscape).not.toHaveBeenCalled();
   });
 });

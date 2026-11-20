@@ -2,7 +2,6 @@ import { DI } from 'aurelia';
 import { BrowserNetworkStatusProvider } from './network';
 import { BrowserStorageOfflineSyncStore } from './stores';
 import type {
-  NetworkStatusProvider,
   OfflineEnqueueOptions,
   OfflineOperation,
   OfflineOperationStatus,
@@ -11,7 +10,6 @@ import type {
   OfflineSyncEvent,
   OfflineSyncHandler,
   OfflineSyncListener,
-  OfflineSyncStore,
 } from './types';
 
 export class OfflineSyncService {
@@ -21,7 +19,10 @@ export class OfflineSyncService {
   private handlers = new Map<string, OfflineSyncHandler>();
   private listeners = new Set<OfflineSyncListener>();
   private networkSubscription: OfflineSyncDispose | null = null;
-  private syncing = false;
+  private hydration?: Promise<OfflineOperation[]>;
+  private writes = Promise.resolve();
+  private syncing: Promise<OfflineOperation[]> | null = null;
+  private syncRequested = false;
 
   public configure(options: OfflineSyncConfigurationOptions = {}): void {
     this.networkSubscription?.dispose();
@@ -30,13 +31,12 @@ export class OfflineSyncService {
       ...options,
     };
 
-    this.networkSubscription = this.options.network.subscribe((online) => {
-      if (online && this.options.autoSync) {
-        void this.sync();
-      }
+    void this.hydrate().catch(() => {
+      // Queue operations surface load failures to callers.
     });
-
-    void this.hydrate();
+    this.networkSubscription = this.options.network.subscribe((online) => {
+      if (online) this.requestAutoSync();
+    });
   }
 
   public registerHandler<TPayload = unknown>(type: string, handler: OfflineSyncHandler<TPayload>): OfflineSyncDispose {
@@ -50,9 +50,19 @@ export class OfflineSyncService {
     };
   }
 
-  public async hydrate(): Promise<OfflineOperation[]> {
-    this.operations = await this.options.store.load();
-    return this.getOperations();
+  public hydrate(): Promise<OfflineOperation[]> {
+    const store = this.options.store;
+    const hydration = this.writes.then(() => store.load()).then((operations) => {
+      if (this.hydration === hydration) {
+        this.operations = operations.map((operation) => ({
+          ...operation,
+          status: operation.status === 'syncing' ? 'queued' : operation.status,
+        }));
+      }
+      return this.getOperations();
+    });
+    this.hydration = hydration;
+    return hydration;
   }
 
   public async enqueue<TPayload = unknown>(
@@ -60,18 +70,25 @@ export class OfflineSyncService {
     payload: TPayload,
     options: OfflineEnqueueOptions = {}
   ): Promise<OfflineOperation<TPayload>> {
+    await this.waitForHydration();
     const now = Date.now();
     const existing = options.dedupeKey
-      ? this.operations.find((operation) => operation.dedupeKey === options.dedupeKey && operation.status !== 'synced')
+      ? this.operations.find((operation) =>
+        operation.type === type &&
+        operation.dedupeKey === options.dedupeKey &&
+        (operation.status === 'queued' || operation.status === 'failed')
+      )
       : undefined;
 
     if (existing) {
       existing.payload = payload;
       existing.status = 'queued';
+      existing.attempts = 0;
       existing.updatedAt = now;
       existing.error = undefined;
       await this.persist();
       this.emit({ type: 'queued', operation: existing });
+      this.requestAutoSync();
       return existing as OfflineOperation<TPayload>;
     }
 
@@ -90,59 +107,82 @@ export class OfflineSyncService {
     await this.persist();
     this.emit({ type: 'queued', operation: operation as OfflineOperation });
 
-    if (this.options.autoSync && this.options.network.isOnline()) {
-      void this.sync();
-    }
+    this.requestAutoSync();
 
     return operation;
   }
 
-  public async sync(): Promise<OfflineOperation[]> {
-    if (this.syncing || !this.options.network.isOnline()) {
-      return this.getOperations();
-    }
+  public sync(): Promise<OfflineOperation[]> {
+    if (this.syncing) return this.syncing;
+    if (!this.options.network.isOnline()) return Promise.resolve(this.getOperations());
 
-    this.syncing = true;
-    try {
-      for (const operation of this.operations.filter((entry) => shouldSync(entry, this.options.maxAttempts))) {
-        const handler = this.handlers.get(operation.type);
-        if (!handler) continue;
+    this.syncing = this.syncOperations().finally(() => {
+      this.syncing = null;
+      if (this.syncRequested) {
+        this.syncRequested = false;
+        this.requestAutoSync();
+      }
+    });
+    return this.syncing;
+  }
 
-        operation.status = 'syncing';
-        operation.updatedAt = Date.now();
+  private async syncOperations(): Promise<OfflineOperation[]> {
+    await this.waitForHydration();
+    const options = this.options;
+    for (const operation of this.operations.filter((entry) => shouldSync(entry, options.maxAttempts))) {
+      if (options !== this.options || !options.network.isOnline()) break;
+      const handler = this.handlers.get(operation.type);
+      if (!handler || !this.operations.includes(operation)) continue;
+
+      const previousStatus = operation.status;
+      operation.status = 'syncing';
+      operation.updatedAt = Date.now();
+      try {
         this.emit({ type: 'sync-started', operation });
         await this.persist();
-
-        try {
-          await handler.handle(operation);
-          operation.status = 'synced';
-          operation.error = undefined;
-          operation.updatedAt = Date.now();
-          this.emit({ type: 'synced', operation });
-        } catch (error) {
-          operation.status = 'failed';
-          operation.attempts += 1;
-          operation.error = stringifyError(error);
-          operation.updatedAt = Date.now();
-          this.emit({ type: 'failed', operation, error });
-        }
-
+      } catch (error) {
+        operation.status = previousStatus;
+        throw error;
+      }
+      if (options !== this.options || !this.operations.includes(operation)) continue;
+      if (!options.network.isOnline()) {
+        operation.status = previousStatus;
         await this.persist();
+        break;
       }
 
-      if (this.options.removeSynced) {
-        this.operations = this.operations.filter((operation) => operation.status !== 'synced');
-        await this.persist();
+      let failure: { error: unknown } | undefined;
+      try {
+        await handler.handle(operation);
+      } catch (error) {
+        failure = { error };
       }
+      if (options !== this.options || !this.operations.includes(operation)) continue;
 
-      if (this.operations.every((operation) => operation.status === 'synced')) {
-        this.emit({ type: 'drained' });
+      operation.updatedAt = Date.now();
+      if (failure) {
+        operation.status = 'failed';
+        operation.attempts += 1;
+        operation.error = stringifyError(failure.error);
+        this.emit({ type: 'failed', operation, error: failure.error });
+      } else {
+        operation.status = 'synced';
+        operation.error = undefined;
+        this.emit({ type: 'synced', operation });
       }
-
-      return this.getOperations();
-    } finally {
-      this.syncing = false;
+      await this.persist();
     }
+
+    if (options !== this.options) return this.getOperations();
+
+    if (options.removeSynced && this.operations.some((operation) => operation.status === 'synced')) {
+      this.operations = this.operations.filter((operation) => operation.status !== 'synced');
+      await this.persist();
+    }
+    if (this.operations.every((operation) => operation.status === 'synced')) {
+      this.emit({ type: 'drained' });
+    }
+    return this.getOperations();
   }
 
   public getOperations(status?: OfflineOperationStatus): OfflineOperation[] {
@@ -153,13 +193,16 @@ export class OfflineSyncService {
   }
 
   public async remove(id: string): Promise<void> {
+    await this.waitForHydration();
     this.operations = this.operations.filter((operation) => operation.id !== id);
     await this.persist();
   }
 
   public async clear(): Promise<void> {
+    await this.waitForHydration();
     this.operations = [];
-    await this.options.store.clear();
+    const store = this.options.store;
+    await this.write(() => store.clear());
   }
 
   public onEvent(listener: OfflineSyncListener): OfflineSyncDispose {
@@ -171,8 +214,39 @@ export class OfflineSyncService {
     };
   }
 
+  private async waitForHydration(): Promise<void> {
+    do {
+      const hydration = this.hydration ?? this.hydrate();
+      try {
+        await hydration;
+      } catch (error) {
+        if (this.hydration === hydration) throw error;
+      }
+      if (this.hydration === hydration) return;
+    } while (true);
+  }
+
   private async persist(): Promise<void> {
-    await this.options.store.save(this.operations);
+    const store = this.options.store;
+    const operations = this.getOperations();
+    await this.write(() => store.save(operations));
+  }
+
+  private write(callback: () => Promise<void>): Promise<void> {
+    const writing = this.writes.then(callback);
+    this.writes = writing.catch(() => {});
+    return writing;
+  }
+
+  private requestAutoSync(): void {
+    if (!this.options.autoSync || !this.options.network.isOnline()) return;
+    if (this.syncing) {
+      this.syncRequested = true;
+      return;
+    }
+    void this.sync().catch((error: unknown) => {
+      this.emit({ type: 'failed', error });
+    });
   }
 
   private emit(event: OfflineSyncEvent): void {

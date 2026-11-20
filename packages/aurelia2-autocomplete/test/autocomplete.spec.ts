@@ -146,4 +146,40 @@ describe('aurelia2-autocomplete', () => {
 
     await tearDown();
   });
+
+  test('applies minimum query length and keeps local results after a remote search fails', async () => {
+    const error = new Error('Search unavailable');
+    const remote = jest.fn(async () => { throw error; });
+    const fixture = await createFixture(
+      `<au-autocomplete
+        options.bind="options" search.bind="remote" query.two-way="query" min-length.bind="2"
+        autocomplete-search-error.trigger="error = $event.detail">
+      </au-autocomplete>`,
+      class { options = options; remote = remote; query = 'a'; error: unknown; },
+      [AureliaAutocompleteConfiguration],
+    ).started;
+    fixture.appHost.querySelector('input')!.dispatchEvent(new FocusEvent('focus'));
+    expect(remote).not.toHaveBeenCalled();
+
+    fixture.component.query = 'ada';
+    await flush();
+    expect(remote).toHaveBeenCalledTimes(1);
+    expect(fixture.appHost.querySelector('.au-ac-option')?.textContent).toContain('Ada Lovelace');
+    expect(fixture.component.error).toBe(error);
+    await fixture.tearDown();
+  });
+
+  test('Enter leaves selection alone while the list is closed', async () => {
+    const fixture = await createFixture(
+      '<au-autocomplete options.bind="options" selected.two-way="selected"></au-autocomplete>',
+      class { options = options; selected: AutocompleteOption<number> | null = null; },
+      [AureliaAutocompleteConfiguration],
+    ).started;
+    const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    fixture.appHost.querySelector('input')!.dispatchEvent(enter);
+
+    expect(enter.defaultPrevented).toBe(false);
+    expect(fixture.component.selected).toBeNull();
+    await fixture.tearDown();
+  });
 });

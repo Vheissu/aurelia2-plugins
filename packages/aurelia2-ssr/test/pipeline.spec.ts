@@ -403,6 +403,21 @@ describe('request-time handler', () => {
     expect((await handler({ url: '/about' })).source).toBe('render');
   });
 
+  test('caches the full response when a conditional request renders a 304', async () => {
+    const original = await handler({ url: '/about?conditional=1' });
+    await handler.invalidate();
+    const conditional = await handler({
+      url: '/about?conditional=1',
+      headers: { 'if-none-match': original.headers.etag },
+    });
+    expect(conditional).toMatchObject({ status: 304, body: '' });
+
+    const cached = await handler({ url: '/about?conditional=1' });
+    expect(cached).toMatchObject({ status: 200, source: 'cache' });
+    expect(cached.headers.etag).toBe(original.headers.etag);
+    expect(cached.body).toContain('<h1><!--au-->/about</h1>');
+  });
+
   test('handles config redirects, component redirects, component 404s, and fallbacks', async () => {
     const redirect = await handler({ url: '/old?keep=1' });
     expect(redirect.status).toBe(301);

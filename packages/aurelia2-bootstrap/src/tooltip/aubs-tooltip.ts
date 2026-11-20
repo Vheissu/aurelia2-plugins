@@ -47,7 +47,7 @@ export class AubsTooltipCustomAttribute {
         };
     }
 
-    bind() {
+    bound() {
         if (!this.validPositions.includes(this.position)) {
             this.position = 'top';
         }
@@ -66,7 +66,7 @@ export class AubsTooltipCustomAttribute {
         }
     }
 
-    detached() {
+    detaching() {
         if (this.listeners) {
             this.tooltipService.removeTriggers(this.element, this.triggers, this.listeners);
         }
@@ -82,7 +82,7 @@ export class AubsTooltipCustomAttribute {
         this.tooltip = null;
         this.popper = null;
         this.body = null;
-        this.listeners = null;
+        this.visible = false;
         this.isAttached = false;
     }
 
@@ -99,6 +99,7 @@ export class AubsTooltipCustomAttribute {
     }
 
     triggerChanged() {
+        if (!this.isAttached) return;
         if (this.listeners) {
             this.tooltipService.removeTriggers(this.element, this.triggers, this.listeners);
         }

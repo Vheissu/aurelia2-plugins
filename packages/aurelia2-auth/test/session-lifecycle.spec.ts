@@ -90,6 +90,34 @@ describe('AuthService session lifecycle', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 
+  test('a refresh that finishes after logout cannot restore the session', async () => {
+    const { auth, http, service } = create({ refreshTokens: true, logoutUrl: null });
+    let finish!: (response: Response) => void;
+    http.fetch.mockReturnValueOnce(new Promise<Response>((resolve) => { finish = resolve; }));
+    auth.setToken({ access_token: 'old', refresh_token: 'refresh' });
+
+    const refresh = service.refreshToken();
+    await service.logout();
+    finish(jsonResponse({ access_token: 'stale' }));
+
+    await expect(refresh).rejects.toMatchObject({ code: 'session-changed' });
+    expect(auth.getToken()).toBeNull();
+  });
+
+  test('a rejected refresh from an old session leaves newer credentials intact', async () => {
+    const { auth, http, service } = create({ refreshTokens: true });
+    let finish!: (response: Response) => void;
+    http.fetch.mockReturnValueOnce(new Promise<Response>((resolve) => { finish = resolve; }));
+    auth.setToken({ access_token: 'old', refresh_token: 'refresh' });
+
+    const refresh = service.refreshToken();
+    service.setToken('new');
+    finish(new Response(null, { status: 401 }));
+
+    await expect(refresh).rejects.toMatchObject({ code: 'session-changed' });
+    expect(auth.getToken()).toBe('new');
+  });
+
   test('applies login and logout storage events once and removes the tab listener', async () => {
     const add = jest.spyOn(window, 'addEventListener');
     const remove = jest.spyOn(window, 'removeEventListener');

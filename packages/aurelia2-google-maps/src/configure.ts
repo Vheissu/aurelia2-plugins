@@ -114,8 +114,8 @@ export class Configure {
 
         const merged = Object.assign({}, loaderOptions, this._config.loaderOptions);
 
-        if (this._config.client && !(merged as any).client) {
-            (merged as any).client = this._config.client;
+        if (this._config.client && !merged.client) {
+            merged.client = this._config.client;
         }
 
         return merged;

@@ -1,6 +1,7 @@
-import { EventAggregator } from '@aurelia/kernel';
+import { DI, ILogger, Registration, customElement, IEventAggregator } from 'aurelia';
+import { IRouter, route, RouterConfiguration } from '@aurelia/router';
 import { createFixture } from '@aurelia/testing';
-import { Analytics } from '../src/google-analytics';
+import { IGoogleAnalytics, GoogleAnalyticsConfiguration } from '../src';
 
 type LoggerStub = {
   scopeTo: jest.Mock;
@@ -21,18 +22,10 @@ function createLogger(): LoggerStub {
 }
 
 function createAnalytics() {
-  const eventAggregator = new EventAggregator();
+  const container = DI.createContainer();
   const logger = createLogger();
-  const analytics = new Analytics(eventAggregator as never, logger as never);
-
-  return { analytics, eventAggregator, logger };
-}
-
-function detachClickTracker(analytics: Analytics) {
-  const handler = (analytics as Analytics & { _clickDelegateHandler?: EventListener })._clickDelegateHandler;
-  if (handler) {
-    document.body.removeEventListener('click', handler);
-  }
+  container.register(Registration.instance(ILogger, logger));
+  return { analytics: container.get(IGoogleAnalytics), eventAggregator: container.get(IEventAggregator), logger };
 }
 
 describe('Analytics', () => {
@@ -110,7 +103,7 @@ describe('Analytics', () => {
       '1'
     );
 
-    detachClickTracker(analytics);
+    analytics.detach();
     await tearDown();
   });
 
@@ -168,5 +161,55 @@ describe('Analytics', () => {
       anonymizeIp: false,
     });
     expect(gaSpy).toHaveBeenNthCalledWith(2, 'send', 'pageview');
+    analytics.detach();
+  });
+
+  test('tracks a real router navigation once after reconfiguration and stops after detach', async () => {
+    @customElement({ name: 'analytics-page', template: 'Reports' })
+    class Reports {}
+
+    @route({ routes: [{ id: 'report-list', path: ['', 'reports'], component: Reports, title: 'Reports' }] })
+    class App {}
+
+    const track = jest.fn();
+    const fixture = createFixture('<au-viewport></au-viewport>', App, [
+      RouterConfiguration, GoogleAnalyticsConfiguration,
+    ]);
+    await fixture.startPromise;
+    try {
+      const analytics = fixture.container.get(IGoogleAnalytics);
+      const options = { useNativeGaScript: false, pageTracking: { enabled: true, customFnTrack: track } };
+      analytics.attach(options);
+      analytics.attach(options);
+      const router = fixture.container.get(IRouter);
+      await router.load('reports?period=weekly');
+      expect(track).toHaveBeenCalledTimes(1);
+      expect(track).toHaveBeenCalledWith({ page: '/reports?period=weekly', title: document.title, anonymizeIp: false });
+
+      analytics.attach({ ...options, pageTracking: { ...options.pageTracking, ignore: { routeNames: ['report-list'] } } });
+      await router.load('reports?period=daily');
+      expect(track).toHaveBeenCalledTimes(1);
+      analytics.attach(options);
+      analytics.detach();
+      await router.load('reports?period=monthly');
+      expect(track).toHaveBeenCalledTimes(1);
+    } finally {
+      await fixture.tearDown();
+    }
+  });
+
+  test('detaches error tracking without replacing the application error handler', () => {
+    const { analytics } = createAnalytics();
+    const ga = jest.fn();
+    Object.assign(window, { ga });
+    const onError = jest.fn();
+    window.onerror = onError;
+    analytics.attach({ useNativeGaScript: false });
+    window.dispatchEvent(new ErrorEvent('error', { message: 'first' }));
+    analytics.detach();
+    window.dispatchEvent(new ErrorEvent('error', { message: 'second' }));
+    expect(onError).toHaveBeenCalledTimes(2);
+    expect(ga).toHaveBeenCalledTimes(1);
+    expect(ga).toHaveBeenCalledWith('send', 'exception', expect.objectContaining({ exDescription: expect.stringContaining('first') }));
   });
 });

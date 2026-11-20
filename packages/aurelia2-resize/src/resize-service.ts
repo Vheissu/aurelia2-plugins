@@ -15,8 +15,8 @@ export class ResizeService {
   }
 
   public observe(element: Element, callback: ResizeCallback, box = this.box): ResizeDispose {
+    let disposed = false;
     if (!this.isSupported()) {
-      let disposed = false;
       queueMicrotask(() => {
         if (!disposed) {
           callback(createFallbackChange(element));
@@ -31,6 +31,7 @@ export class ResizeService {
 
     const observer = this.createObserver((entries) => {
       for (const entry of entries) {
+        if (disposed) break;
         callback(createChange(entry));
       }
     });
@@ -39,6 +40,8 @@ export class ResizeService {
 
     return {
       dispose() {
+        if (disposed) return;
+        disposed = true;
         observer.unobserve(element);
         observer.disconnect();
       },

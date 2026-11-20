@@ -9,7 +9,7 @@ export const IGoogleMapsAPI = DI.createInterface<IGoogleMapsAPI>(
 export interface IGoogleMapsAPI extends GoogleMapsAPI {}
 @inject(IGoogleMapsConfiguration)
 export class GoogleMapsAPI {
-  private _scriptPromise: Promise<void> | null = null;
+  private lastRequest: { key: string; ready: Promise<void> } | null = null;
   private _loaderConfigured = false;
   private _libraryPromises = new Map<string, Promise<unknown>>();
 
@@ -20,7 +20,7 @@ export class GoogleMapsAPI {
       return;
     }
 
-    setOptions(this.config.getLoaderOptions() as any);
+    setOptions(this.config.getLoaderOptions());
     this._loaderConfigured = true;
   }
 
@@ -31,28 +31,28 @@ export class GoogleMapsAPI {
     }
 
     this.configureLoader();
-    const promise = importLibrary(normalized as any);
+    const promise = importLibrary(normalized as keyof google.maps.ImportLibraryMap).catch(error => {
+      this._libraryPromises.delete(normalized);
+      throw error;
+    });
     this._libraryPromises.set(normalized, promise);
     return promise;
   }
 
   getMapsInstance(libraries?: string[]) {
-    if (this._scriptPromise) {
-      return this._scriptPromise;
-    }
+    const requested = (libraries ?? this.config.getLibraries());
+    const extras = [...new Set(requested.map(name => name.trim()))].filter(name => name && name !== 'maps').sort();
+    const key = JSON.stringify(extras);
+    if (this.lastRequest?.key === key) return this.lastRequest.ready;
 
-    this._scriptPromise = Promise.resolve().then(async () => {
-      await this.importLibrary("maps");
-      const extraLibraries = libraries ?? this.config.getLibraries();
-      if (extraLibraries.length) {
-        await Promise.all(
-          extraLibraries
-            .filter(Boolean)
-            .map((library) => this.importLibrary(library))
-        );
-      }
+    const ready = Promise.resolve().then(async () => {
+      await this.importLibrary('maps');
+      await Promise.all(extras.map(name => this.importLibrary(name)));
+    }).catch(error => {
+      if (this.lastRequest?.ready === ready) this.lastRequest = null;
+      throw error;
     });
-
-    return this._scriptPromise;
+    this.lastRequest = { key, ready };
+    return ready;
   }
 }

@@ -70,6 +70,7 @@ export class AuthService implements IAuthService {
   private readonly eventAggregator = resolve(IEventAggregator);
   private readonly window = resolve(optional(IWindow));
   private refreshPromise: Promise<unknown> | null = null;
+  private statusBeforeRefresh: 'authenticated' | 'anonymous' = 'anonymous';
   private autoRefreshTimer: ReturnType<typeof setTimeout> | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private idleCleanup: (() => void) | null = null;
@@ -136,7 +137,7 @@ export class AuthService implements IAuthService {
     const record = isRecord(response) ? response : null;
     if (record?.authenticated === false) {
       this.auth.clearTokens();
-      this.publishState('session');
+      this.onDeauthenticated('session');
       return response;
     }
     this.auth.setToken(response);
@@ -326,13 +327,18 @@ export class AuthService implements IAuthService {
         ...(refreshToken ? { [this.config.refreshTokenName ?? 'refresh_token']: refreshToken } : {}),
         ...this.config.refreshTokenPayload,
       };
+    const statusBeforeRefresh = this.auth.isAuthenticated() ? 'authenticated' : 'anonymous';
+    this.statusBeforeRefresh = statusBeforeRefresh;
     this.auth.setStatus('refreshing');
-    this.refreshPromise = this.fetchJson<T>(this.auth.getRefreshUrl(), {
+    const refresh = this.fetchJson<T>(this.auth.getRefreshUrl(), {
       method: 'POST',
       headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
       body: json(payload),
     }, true)
       .then(response => {
+        if (this.refreshPromise !== refresh) {
+          throw new AuthError('session-changed', 'The session changed during token refresh.');
+        }
         this.auth.setToken(response);
         if (this.config.mode === 'cookie') this.auth.setSession(extractUser(response));
         this.onAuthenticated('refresh');
@@ -340,19 +346,24 @@ export class AuthService implements IAuthService {
         return response;
       })
       .catch(error => {
+        if (this.refreshPromise !== refresh) {
+          if (error instanceof AuthError && error.code === 'session-changed') throw error;
+          throw new AuthError('session-changed', 'The session changed during token refresh.', error);
+        }
         if (isResponse(error) && (error.status === 400 || error.status === 401 || error.status === 403)) {
           this.auth.clearTokens();
           this.onDeauthenticated('logout');
           this.eventAggregator.publish(AuthEvents.sessionExpired, error);
         } else {
-          this.auth.setStatus(this.auth.getToken() ? 'authenticated' : 'anonymous');
+          this.auth.setStatus(statusBeforeRefresh);
         }
         throw error;
       })
       .finally(() => {
-        this.refreshPromise = null;
+        if (this.refreshPromise === refresh) this.refreshPromise = null;
       });
-    return this.refreshPromise as Promise<T>;
+    this.refreshPromise = refresh;
+    return refresh;
   }
 
   public forgotPassword<T = unknown>(email: string): Promise<T> {
@@ -443,19 +454,25 @@ export class AuthService implements IAuthService {
   }
 
   public dispose(): void {
+    if (this.refreshPromise) {
+      this.refreshPromise = null;
+      this.auth.setStatus(this.statusBeforeRefresh);
+    }
     this.clearAutoRefresh();
     this.stopIdleTracking();
     this.stopTabSync();
   }
 
   private onAuthenticated(reason: 'login' | 'refresh' | 'session' | 'token' | 'tab-sync'): void {
+    if (reason !== 'refresh') this.refreshPromise = null;
     this.auth.setStatus('authenticated');
     this.scheduleAutoRefresh();
     this.resetIdleTimer();
     this.publishState(reason);
   }
 
-  private onDeauthenticated(reason: 'logout' | 'tab-sync'): void {
+  private onDeauthenticated(reason: 'logout' | 'session' | 'tab-sync'): void {
+    this.refreshPromise = null;
     this.clearAutoRefresh();
     this.clearIdleTimer();
     this.publishState(reason);

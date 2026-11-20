@@ -1,18 +1,24 @@
-import { bindable, CustomAttribute, customAttribute } from 'aurelia';
+import { bindable, CustomAttribute, customAttribute, type IController } from 'aurelia';
 
-import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
+import {
+    AureliaTableCustomAttribute,
+    type DefaultTableValue,
+    type TableComparator,
+    type TableSortKey,
+} from './aurelia-table-attribute.js';
 
 @customAttribute('aut-sort')
-export class AutSortCustomAttribute {
-    @bindable key;
-    @bindable custom;
-    @bindable default;
+export class AutSortCustomAttribute<TRow = DefaultTableValue> {
+    @bindable key?: TableSortKey<TRow> | null;
+    @bindable custom?: TableComparator<TRow> | null;
+    @bindable default?: string | boolean;
 
-    private rowSelectedListener;
-    private sortChangedListener;
+    private readonly rowSelectedListener = () => this.handleHeaderClicked();
+    private readonly sortChangedListener = () => this.handleSortChanged();
     private element!: HTMLElement;
-    private controller: any;
-    private auTable: AureliaTableCustomAttribute | null = null;
+    private controller?: IController;
+    private auTable: AureliaTableCustomAttribute<TRow> | null = null;
+    private isAttached = false;
 
     order = 0;
     orderClasses = ['aut-desc', 'aut-sortable', 'aut-asc'];
@@ -20,17 +26,7 @@ export class AutSortCustomAttribute {
     ignoreEvent = false;
     isInitialized = false;
 
-    constructor() {
-        this.rowSelectedListener = () => {
-            this.handleHeaderClicked();
-        };
-
-        this.sortChangedListener = () => {
-            this.handleSortChanged();
-        };
-    }
-
-    created(controller) {
+    created(controller: IController) {
         this.controller = controller;
         this.element = controller.host as HTMLElement;
     }
@@ -58,8 +54,8 @@ export class AutSortCustomAttribute {
             ? CustomAttribute.for(tableElement, 'aurelia-table')
             : null;
 
-        this.auTable = tableController?.viewModel as AureliaTableCustomAttribute | null
-            ?? CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel as AureliaTableCustomAttribute | null;
+        const table = tableController ?? CustomAttribute.closest(this.element, AureliaTableCustomAttribute);
+        this.auTable = table === null ? null : table.viewModel as AureliaTableCustomAttribute<TRow>;
     }
 
     handleSortChanged() {
@@ -72,22 +68,23 @@ export class AutSortCustomAttribute {
     }
 
     attached() {
+        this.isAttached = true;
         this.initializeSorting();
     }
 
-    detached() {
+    detaching() {
+        this.isAttached = false;
         if (this.isInitialized) {
             this.element?.removeEventListener('click', this.rowSelectedListener);
             this.auTable?.removeSortChangedListener(this.sortChangedListener);
         }
 
         this.auTable = null;
-        this.controller = null;
         this.isInitialized = false;
     }
 
     initializeSorting() {
-        if (this.isInitialized || !(this.key || this.custom) || !this.element) {
+        if (!this.isAttached || this.isInitialized || !(this.key || this.custom) || !this.element) {
             return;
         }
 

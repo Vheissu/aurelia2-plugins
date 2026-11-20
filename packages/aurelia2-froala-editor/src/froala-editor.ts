@@ -1,15 +1,14 @@
-import { IHydratedController } from '@aurelia/runtime-html';
-import { customElement, bindable, INode, ICustomElementViewModel, inject } from 'aurelia';
-import { IFroalaConfig, FroalaOptions } from './froala-editor-config';
-
-// Import Froala Editor
+import { customElement, bindable, INode, type ICustomElementViewModel, inject } from 'aurelia';
 import FroalaEditorLib from 'froala-editor';
+import { IFroalaConfig, type FroalaOptions } from './froala-editor-config';
 
 interface FroalaEditorInstance {
 	html: { get(): string; set(html: string): void };
 	events: { on(name: string, callback: (...args: unknown[]) => unknown): void };
 	destroy(): void;
 }
+
+type BoundHookArgs = Parameters<NonNullable<ICustomElementViewModel['bound']>>;
 
 @customElement('froala-editor')
 @inject(INode, IFroalaConfig)
@@ -26,66 +25,58 @@ export class FroalaEditor implements ICustomElementViewModel {
 		this.defaultConfig = froalaConfig.options() ?? {};
 	}
 
-	bound(_initiator: IHydratedController, parent: IHydratedController): void | Promise<void> {
-		this.parent = parent.viewModel;
+	bound(_initiator: BoundHookArgs[0], parent: BoundHookArgs[1]): void {
+		while (parent && parent.vmKind !== 'customElement') {
+			parent = parent.parent;
+		}
+		this.parent = parent?.viewModel;
 	}
 
-    valueChanged(newValue: string, _oldValue: string | undefined): void {
-        if (this.editor?.html.get() != newValue) {
-            this.editor?.html.set(newValue);
-        }
-    }
+	valueChanged(value: string): void {
+		if (this.editor && this.editor.html.get() !== value) {
+			this.editor.html.set(value);
+		}
+	}
 
-	// Setup
 	attached(): void {
-		// Merge default config from DI with bindable config overrides
-		const mergedConfig: FroalaOptions = { ...this.defaultConfig, ...this.config };
-		const self = this;
+		if (this.editor) return;
 
-		// Check if editor isn't already initialized.
-		if (this.editor != null) {
-            return;
-        }
-
-		// Will be registered when editor is initialized.
-		mergedConfig.events = {
-			contentChanged: function contentChanged(this: FroalaEditorInstance['html'] & { html: FroalaEditorInstance['html'] }) {
-			        self.value = this.html.get();
-			},
-			blur: function blur(this: FroalaEditorInstance['html'] & { html: FroalaEditorInstance['html'] }) {
-			        self.value = this.html.get();
-			}
+		const events = { ...this.defaultConfig.events, ...this.config?.events };
+		const updateValue = (html: string): void => { this.value = html; };
+		const syncValue = (handler?: (...args: unknown[]) => unknown) => {
+			return function (this: FroalaEditorInstance, ...args: unknown[]) {
+				updateValue(this.html.get());
+				return handler?.apply(this, args);
+			};
 		};
 
-		// Initialize editor.
-		this.editor = new FroalaEditorLib(this.element, Object.assign({}, mergedConfig)) as unknown as FroalaEditorInstance;
+		const config: FroalaOptions = {
+			...this.defaultConfig,
+			...this.config,
+			events: {
+				...events,
+				contentChanged: syncValue(events.contentChanged),
+				blur: syncValue(events.blur),
+			},
+		};
 
-		// Set initial HTML value.
+		this.editor = new FroalaEditorLib(this.element, config) as unknown as FroalaEditorInstance;
 		this.editor.html.set(this.value);
-
-		// Set Events
-		if (this.eventHandlers && Object.keys(this.eventHandlers).length !== 0) {
-			for(const eventHandlerName in this.eventHandlers) {
-				const handler = this.eventHandlers[eventHandlerName];
-				if (eventHandlerName === 'initialized') {
-					handler.apply(this.parent);
-				} else {
-					this.editor.events.on(`${eventHandlerName}`, (...args: unknown[]) => {
-						return handler.apply(this.parent, args);
-					});
-				}
+		for (const [name, handler] of Object.entries(this.eventHandlers ?? {})) {
+			if (name === 'initialized') {
+				handler.apply(this.parent);
+			} else {
+				this.editor.events.on(name, (...args) => handler.apply(this.parent, args));
 			}
 		}
-
-        // Change callback needs to be fired on attached to set initial value
-        this.valueChanged(this.value, undefined);
 	}
 
-	// Destroy
-	detached(): void {
-		if (this.editor != null) {
-			this.editor.destroy();
-			this.editor = null;
-		}
+	detaching(): void {
+		this.editor?.destroy();
+		this.editor = null;
+	}
+
+	unbinding(): void {
+		this.parent = null;
 	}
 }

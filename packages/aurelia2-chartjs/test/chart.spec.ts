@@ -238,16 +238,48 @@ describe('aurelia2-chartjs', () => {
 
     const chartVm = getChartVm(appHost);
     const chart = chartVm.chart as any;
-    chartVm.detached();
+    await tearDown();
 
     expect(chart.destroy).not.toHaveBeenCalled();
 
     jest.advanceTimersByTime(60);
 
     expect(chart.destroy).toHaveBeenCalledTimes(1);
+    expect(chartVm.chart).toBeNull();
 
-    await tearDown();
     jest.useRealTimers();
+  });
+
+  test('reattaching before a delayed destroy keeps the replacement chart alive', async () => {
+    jest.useFakeTimers();
+    const fixture = createFixture(
+      '<au-chart type="bar" data.bind="data" destroy-delay.bind="50"></au-chart>',
+      class App {
+        data: ChartData<'bar'> = { labels: ['A'], datasets: [{ data: [1] }] };
+      },
+      [AuChartCustomElement],
+    );
+    try {
+      await fixture.startPromise;
+      const original = getChartVm(fixture.appHost).chart;
+
+      await fixture.stop();
+      expect(original?.destroy).not.toHaveBeenCalled();
+      await fixture.au.start();
+
+      const vm = getChartVm(fixture.appHost);
+      const replacement = vm.chart;
+      expect(replacement).toBeTruthy();
+      expect(replacement).not.toBe(original);
+      jest.advanceTimersByTime(50);
+      expect(original?.destroy).toHaveBeenCalledTimes(1);
+      expect(replacement?.destroy).not.toHaveBeenCalled();
+      expect(vm.chart).toBe(replacement);
+    } finally {
+      await fixture.tearDown();
+      jest.runOnlyPendingTimers();
+      jest.useRealTimers();
+    }
   });
 
   test('typed chart element renders a canvas', async () => {

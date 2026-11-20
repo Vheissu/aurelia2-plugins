@@ -38,6 +38,17 @@ describe('aurelia2-wizard', () => {
       steps[2],
     ]);
     expect(wizard.nextIndex(disabledState)).toBe(2);
+    expect(wizard.createState([{ ...steps[0], disabled: true }, steps[1]])).toMatchObject({
+      index: 1,
+      activeStep: steps[1],
+      canGoPrevious: false,
+      canGoNext: false,
+    });
+    expect(wizard.createState([{ ...steps[0], disabled: true }])).toMatchObject({
+      activeStep: null,
+      canGoPrevious: false,
+      canGoNext: false,
+    });
 
     await tearDown();
   });
@@ -109,5 +120,31 @@ describe('aurelia2-wizard', () => {
     expect(updatedButtons[2].disabled).toBe(false);
 
     await tearDown();
+  });
+
+  test('completes at the last enabled step and updates its button label', async () => {
+    const fixture = createFixture(
+      '<au-wizard steps.bind="steps" complete-label.bind="label" wizard-complete.trigger="onComplete($event.detail)"></au-wizard>',
+      {
+        steps: [steps[0], { ...steps[1], disabled: true }],
+        label: 'Finish',
+        onComplete: jest.fn(),
+      },
+      [AureliaWizardConfiguration],
+    );
+    await fixture.started;
+    const button = fixture.getBy('.au-wizard-button.primary') as HTMLButtonElement;
+    expect(button.textContent).toBe('Finish');
+
+    fixture.component.label = 'Save';
+    await flush();
+    expect(button.textContent).toBe('Save');
+    button.click();
+    expect(fixture.component.onComplete).toHaveBeenCalledWith({
+      index: 0,
+      step: steps[0],
+      completed: ['profile'],
+    });
+    await fixture.tearDown();
   });
 });

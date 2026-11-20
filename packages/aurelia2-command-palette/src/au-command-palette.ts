@@ -54,7 +54,7 @@ export class AuCommandPaletteCustomElement {
     }
   }
 
-  public detached(): void {
+  public unbinding(): void {
     this.subscription?.dispose();
     this.subscription = null;
   }
@@ -125,7 +125,9 @@ export class AuCommandPaletteCustomElement {
 
   public async select(command: CommandPaletteCommand): Promise<void> {
     if (command.disabled) return;
+    const subscription = this.subscription;
     await command.action?.(command);
+    if (subscription !== this.subscription) return;
     this.host.dispatchEvent(new CustomEvent('command-palette-select', {
       bubbles: true,
       detail: command,
@@ -157,8 +159,11 @@ export class AuCommandPaletteCustomElement {
   }
 
   private focusInput(): void {
+    const subscription = this.subscription;
     queueMicrotask(() => {
-      this.host.querySelector<HTMLInputElement>('.au-cp-input')?.focus();
+      if (subscription === this.subscription && this.open) {
+        this.host.querySelector<HTMLInputElement>('.au-cp-input')?.focus();
+      }
     });
   }
 }

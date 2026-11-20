@@ -1,7 +1,9 @@
 import { createFixture } from '@aurelia/testing';
+import { Registration } from 'aurelia';
 import {
   AureliaNotificationConfiguration,
   INotificationService,
+  INotificationTranslator,
   type NotificationConfigOptions,
 } from '../src/index';
 
@@ -39,6 +41,28 @@ function getHostRoot(appHost: HTMLElement): ParentNode {
 }
 
 describe('aurelia2-notification', () => {
+  test('disposes the host translation subscription when it unbinds', async () => {
+    const dispose = jest.fn();
+    const subscribe = jest.fn(() => ({ dispose }));
+    const { component, startPromise, tearDown } = createFixture(
+      '<au-notification-host if.bind="visible"></au-notification-host>',
+      class App {
+        visible = true;
+      },
+      [
+        Registration.instance(INotificationTranslator, { translate: String, subscribe }),
+        AureliaNotificationConfiguration,
+      ]
+    );
+
+    await startPromise;
+    expect(subscribe).toHaveBeenCalledTimes(1);
+    component.visible = false;
+    await flush();
+    expect(dispose).toHaveBeenCalledTimes(1);
+    await tearDown();
+  });
+
   test('renders notifications in the host', async () => {
     const { appHost, container, startPromise, tearDown } = createNotificationFixture();
 
@@ -110,6 +134,30 @@ describe('aurelia2-notification', () => {
     expect(items).toHaveLength(1);
     expect(items[0].textContent).toContain('Two');
 
+    await tearDown();
+  });
+
+  test('clears visible and queued notifications without promoting the queue', async () => {
+    const { container, startPromise, tearDown } = createNotificationFixture({
+      maxItems: 1,
+      overflow: 'queue',
+    });
+
+    await startPromise;
+    const service = container.get(INotificationService);
+    const onOpen = jest.fn();
+    const onClose = jest.fn();
+    service.notify('Visible', { onClose });
+    service.notify('Queued', { onOpen, onClose });
+
+    service.clear();
+
+    expect(service.items).toEqual([]);
+    expect(onOpen).not.toHaveBeenCalled();
+    expect(onClose.mock.calls.map(([item, reason]) => [item.message, reason])).toEqual([
+      ['Visible', 'clear'],
+      ['Queued', 'clear'],
+    ]);
     await tearDown();
   });
 

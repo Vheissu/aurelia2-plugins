@@ -111,4 +111,47 @@ describe('aurelia2-file-upload', () => {
 
     await tearDown();
   });
+
+  test('enforces the configured file limit across drops and preserves duplicate files on removal', async () => {
+    const fixture = await createFixture(
+      '<au-file-upload files.two-way="files"></au-file-upload>',
+      class { files: File[] = []; },
+      [AureliaFileUploadConfiguration.configure({ maxFiles: 2 })],
+    ).started;
+    const zone = fixture.appHost.querySelector('.au-upload-dropzone')!;
+    const file = new File(['abc'], 'same.txt');
+    drop(zone, [file]);
+    drop(zone, [file, new File(['123'], 'excess.txt')]);
+    await flush();
+    expect(fixture.component.files).toEqual([file, file]);
+
+    fixture.appHost.querySelector<HTMLButtonElement>('.au-upload-item button')!.click();
+    expect(fixture.component.files).toEqual([file]);
+    await fixture.tearDown();
+  });
+
+  test('removing an uploading item discards late progress and completion events', async () => {
+    let finish!: () => void;
+    let progress!: (value: number) => void;
+    const upload = jest.fn((_item, report) => new Promise<void>((resolve) => {
+      progress = report;
+      finish = resolve;
+    }));
+    const fixture = await createFixture(
+      `<au-file-upload auto-upload.bind="true" upload.bind="upload"
+        file-upload-success.trigger="success($event.detail)"></au-file-upload>`,
+      class { upload = upload; success = jest.fn(); },
+      [AureliaFileUploadConfiguration],
+    ).started;
+    drop(fixture.appHost.querySelector('.au-upload-dropzone')!, [new File(['a'], 'file.txt')]);
+    await flush();
+    fixture.appHost.querySelector<HTMLButtonElement>('.au-upload-item button')!.click();
+    progress(90);
+    finish();
+    await flush();
+
+    expect(fixture.appHost.querySelector('.au-upload-item')).toBeNull();
+    expect(fixture.component.success).not.toHaveBeenCalled();
+    await fixture.tearDown();
+  });
 });

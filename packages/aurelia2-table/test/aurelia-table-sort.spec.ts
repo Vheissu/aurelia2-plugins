@@ -1,58 +1,67 @@
-﻿import { describe, expect, test } from '@jest/globals';
+import { describe, expect, test } from '@jest/globals';
+import { tasksSettled } from '@aurelia/runtime';
+import { createFixture } from '@aurelia/testing';
+import { CustomAttribute } from 'aurelia';
 
-import { AureliaTableCustomAttribute } from '../src/aurelia-table-attribute';
-import { AutSortCustomAttribute } from '../src/aurelia-table-sort';
+import { AureliaTableConfiguration, AureliaTableCustomAttribute } from '../src/index';
 
 describe('aurelia2-table sort', () => {
-  test('aut-sort initializes after key arrives and sorts on click', () => {
-    const tableViewModel = new AureliaTableCustomAttribute();
-    tableViewModel.isAttached = true;
-    tableViewModel.data = [
-      { name: 'Charlie' },
-      { name: 'Alice' },
-      { name: 'Bob' }
-    ] as any;
+  test('initializes after the key arrives, sorts, and removes listeners on teardown', async () => {
+    const fixture = await createFixture(
+      `<table aurelia-table="data.bind: rows; display-data.two-way: displayRows">
+        <thead><tr><th aut-sort="key.bind: key">Name</th></tr></thead>
+      </table>`,
+      {
+        rows: ['Charlie', 'Alice', 'Bob'].map((name) => ({ name })),
+        displayRows: [] as Array<{ name: string }>,
+        key: '',
+      },
+      [AureliaTableConfiguration],
+    ).started;
+    const { component } = fixture;
+    const header = fixture.getBy('th')!;
+    const table = CustomAttribute.for(fixture.getBy('table')!, 'aurelia-table')!
+      .viewModel as AureliaTableCustomAttribute;
 
-    const header = document.createElement('th');
-    const sortViewModel = new AutSortCustomAttribute();
-
-    sortViewModel.created({
-      host: header,
-      parent: {
-        viewModel: tableViewModel,
-        parent: null
-      }
-    } as any);
-
-    sortViewModel.attached();
-
-    expect(tableViewModel.sortKey).toBeNull();
     expect(header.classList.contains('aut-sort')).toBe(false);
-
-    sortViewModel.key = 'name';
-    sortViewModel.keyChanged();
-
+    component.key = 'name';
+    await tasksSettled();
     expect(header.classList.contains('aut-sort')).toBe(true);
 
-    header.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    header.click();
+    expect(component.displayRows.map((row) => row.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    expect(header.classList.contains('aut-asc')).toBe(true);
 
-    expect(tableViewModel.sortKey).toBe('name');
-    expect(tableViewModel.sortOrder).toBe(1);
-    expect(tableViewModel.displayData.map((row: any) => row.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    await fixture.tearDown();
+    expect(table.sortChangedListeners).toHaveLength(0);
+    header.click();
     expect(header.classList.contains('aut-asc')).toBe(true);
   });
 
-  test('sortChanged sorts local data ascending', () => {
-    const tableViewModel = new AureliaTableCustomAttribute();
-    tableViewModel.isAttached = true;
-    tableViewModel.data = [
-      { name: 'Charlie' },
-      { name: 'Alice' },
-      { name: 'Bob' }
-    ] as any;
+  test('changes sort state without sorting the data in server mode', async () => {
+    const fixture = await createFixture(
+      `<table aurelia-table="data-source: server; data.bind: rows; display-data.two-way: displayRows">
+        <thead><tr><th aut-sort="key: name">Name</th></tr></thead>
+      </table>`,
+      {
+        rows: [{ name: 'Alpha' }],
+        displayRows: [] as Array<{ name: string }>,
+      },
+      [AureliaTableConfiguration],
+    ).started;
+    const header = fixture.getBy('th')!;
+    const table = CustomAttribute.for(fixture.getBy('table')!, 'aurelia-table')!
+      .viewModel as AureliaTableCustomAttribute;
 
-    tableViewModel.sortChanged('name', undefined, 1);
+    header.click();
+    expect(table.sortKey).toBe('name');
+    expect(table.sortOrder).toBe(1);
+    expect(fixture.component.displayRows).toEqual([]);
+    expect(header.classList.contains('aut-asc')).toBe(true);
 
-    expect(tableViewModel.displayData.map((row: any) => row.name)).toEqual(['Alice', 'Bob', 'Charlie']);
+    header.click();
+    expect(table.sortOrder).toBe(-1);
+    expect(header.classList.contains('aut-desc')).toBe(true);
+    await fixture.tearDown();
   });
 });

@@ -17,7 +17,7 @@ export class AubsPaginationCustomElement {
   totalPages = 1;
   displayPages: { title: string; value: number }[] = [];
 
-  bind() {
+  bound() {
     if (
       this.currentPage === undefined ||
       this.currentPage == null ||
@@ -33,6 +33,11 @@ export class AubsPaginationCustomElement {
     ) {
       this.pageSize = 5;
     }
+    this.calculatePages();
+  }
+
+  paginationSizeChanged() {
+    this.calculatePages();
   }
 
   totalItemsChanged() {
@@ -48,24 +53,26 @@ export class AubsPaginationCustomElement {
   }
 
   calculatePages() {
-    this.totalPages =
-      this.totalItems <= this.pageSize
-        ? 1
-        : Math.ceil(this.totalItems / this.pageSize);
+    const pageSize = Number(this.pageSize);
+    const totalItems = Number(this.totalItems);
+    this.totalPages = Number.isFinite(pageSize) && pageSize >= 1 && Number.isFinite(totalItems)
+      ? Math.max(1, Math.ceil(totalItems / pageSize))
+      : 1;
 
-    if (this.currentPage > this.totalPages) {
+    if (!(this.currentPage >= 1 && this.currentPage <= this.totalPages)) {
       this.currentPage = 1;
     }
 
-    if (isNaN(this.paginationSize) || this.paginationSize <= 0) {
+    const paginationSize = Math.floor(Number(this.paginationSize));
+    if (!Number.isFinite(paginationSize) || paginationSize <= 0) {
       this.displayAllPages();
     } else {
-      this.limitVisiblePages();
+      this.limitVisiblePages(paginationSize);
     }
   }
 
   displayAllPages() {
-    let displayPages = [];
+    const displayPages = [];
 
     for (let i = 1; i <= this.totalPages; i++) {
       displayPages.push({
@@ -76,15 +83,15 @@ export class AubsPaginationCustomElement {
     this.displayPages = displayPages;
   }
 
-  limitVisiblePages() {
-    let displayPages = [];
+  limitVisiblePages(paginationSize = Number(this.paginationSize)) {
+    const displayPages = [];
 
-    let totalTiers = Math.ceil(this.totalPages / this.paginationSize);
+    const totalTiers = Math.ceil(this.totalPages / paginationSize);
 
-    let activeTier = Math.ceil(this.currentPage / this.paginationSize);
+    const activeTier = Math.ceil(this.currentPage / paginationSize);
 
-    let start = (activeTier - 1) * this.paginationSize + 1;
-    let end = start + this.paginationSize;
+    const start = (activeTier - 1) * paginationSize + 1;
+    const end = start + paginationSize;
 
     if (activeTier > 1) {
       displayPages.push({

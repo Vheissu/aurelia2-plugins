@@ -60,7 +60,7 @@ export class AubsPopoverCustomAttribute {
     };
   }
 
-  bind() {
+  bound() {
     if (!this.validPositions.includes(this.position)) {
       this.position = "top";
     }
@@ -89,7 +89,7 @@ export class AubsPopoverCustomAttribute {
     }
   }
 
-  detached() {
+  detaching() {
     if (this.listeners) {
       this.tooltipService.removeTriggers(
         this.element,
@@ -114,7 +114,7 @@ export class AubsPopoverCustomAttribute {
     this.popper = null;
     this.titleElement = null;
     this.bodyElement = null;
-    this.listeners = null;
+    this.visible = false;
     this.isAttached = false;
   }
 
@@ -157,6 +157,7 @@ export class AubsPopoverCustomAttribute {
   }
 
   triggerChanged(_newValue: string, _oldValue: string) {
+    if (!this.isAttached) return;
     if (this.listeners) {
       this.tooltipService.removeTriggers(
         this.element,
@@ -261,7 +262,7 @@ export class AubsPopoverCustomAttribute {
   }
 
   createPopover() {
-    let arrow = document.createElement("div");
+    const arrow = document.createElement("div");
     arrow.classList.add("popover-arrow");
 
     if (this.customPopover) {

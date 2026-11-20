@@ -25,11 +25,15 @@ export class AuFieldCustomAttribute {
 
   public binding(): void {
     if (!this.name) {
-      this.name = this.element.getAttribute('name') ?? this.element.id ?? 'field';
+      this.name = this.element.getAttribute('name') || this.element.id || 'field';
     }
 
     const form = this.form ?? this.tryResolveForm();
     this.form = form;
+
+    if (this.value === undefined) {
+      this.value = this.readElementValue();
+    }
 
     const validation = this.createValidationConfig(form);
     this.field = form.registerField({
@@ -38,10 +42,6 @@ export class AuFieldCustomAttribute {
       validators: this.validators,
       validation,
     });
-
-    if (this.value === undefined) {
-      this.value = this.readElementValue();
-    }
 
     this.writeElementValue(this.value);
   }
@@ -52,14 +52,17 @@ export class AuFieldCustomAttribute {
     this.element.addEventListener('blur', this.onBlur, true);
   }
 
-  public detached(): void {
+  public detaching(): void {
     this.element.removeEventListener('input', this.onInput);
     this.element.removeEventListener('change', this.onInput);
     this.element.removeEventListener('blur', this.onBlur, true);
+  }
 
+  public unbinding(): void {
     if (this.field && this.form) {
       this.form.unregisterField(this.field.name);
     }
+    this.field = null;
   }
 
   public valueChanged(newValue: unknown): void {
@@ -145,7 +148,7 @@ export class AuFieldCustomAttribute {
       return this.element.value;
     }
 
-    return (this.element as any).value ?? null;
+    return (this.element as HTMLElement & { value?: unknown }).value ?? null;
   }
 
   private writeElementValue(value: unknown): void {
@@ -179,6 +182,6 @@ export class AuFieldCustomAttribute {
       return;
     }
 
-    (this.element as any).value = value;
+    (this.element as HTMLElement & { value?: unknown }).value = value;
   }
 }

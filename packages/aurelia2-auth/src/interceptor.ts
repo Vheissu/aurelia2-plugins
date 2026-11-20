@@ -89,7 +89,6 @@ export class AuthInterceptor implements IFetchInterceptor {
       await this.authService.refreshToken();
       return retry;
     } catch {
-      this.auth.clearTokens();
       return response;
     }
   }

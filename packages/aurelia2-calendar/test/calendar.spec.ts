@@ -3,6 +3,7 @@ import { CustomElement } from '@aurelia/runtime-html';
 import {
   AureliaCalendarConfiguration,
   AuCalendarCustomElement,
+  CalendarMath,
   CalendarItem,
 } from '../src/index';
 
@@ -26,7 +27,31 @@ describe('aurelia2-calendar', () => {
     const weeks = appHost.querySelectorAll('.cv-week');
     expect(weeks.length).toBe(5);
 
+    const host = appHost.querySelector('au-calendar')!;
+    const vm = CustomElement.for(host).viewModel as AuCalendarCustomElement;
+    expect(CalendarMath.isoYearMonthDay(vm.headerProps.displayLastDate)).toBe('2024-02-03');
+
     await tearDown();
+  });
+
+  test('navigates to the corresponding week of the previous and next year', async () => {
+    const fixture = await createFixture(
+      '<au-calendar show-date.bind="date" display-period-uom="week" locale="en-US"></au-calendar>',
+      class { date = new Date(2024, 0, 15); },
+      [AureliaCalendarConfiguration],
+    ).started;
+    const host = fixture.appHost.querySelector('au-calendar')!;
+    const vm = CustomElement.for(host).viewModel as AuCalendarCustomElement;
+    const previous = vm.headerProps.previousYear;
+    expect(previous.getFullYear()).toBe(2023);
+    expect(previous.getMonth()).toBe(0);
+
+    vm.previousYear();
+    expect(vm.headerProps.displayFirstDate.getTime()).toBe(previous.getTime());
+    vm.nextYear();
+    expect(vm.headerProps.displayFirstDate.getFullYear()).toBe(2024);
+    expect(vm.headerProps.displayFirstDate.getMonth()).toBe(0);
+    await fixture.tearDown();
   });
 
   test('places multi-day items with offset and span classes', async () => {

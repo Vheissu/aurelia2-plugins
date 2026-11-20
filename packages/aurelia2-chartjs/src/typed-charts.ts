@@ -23,8 +23,8 @@ const normalizeRegisterables = (
 
 export function createTypedChart<
   TType extends ChartType = ChartType,
-  TData = DefaultDataPoint<TType>,
-  TLabel = unknown
+  _TData = DefaultDataPoint<TType>,
+  _TLabel = unknown
 >(
   name: string,
   type: TType,

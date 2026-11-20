@@ -40,10 +40,9 @@ export class AubsCarouselCustomAttribute {
     }
   }
 
-  detached() {
+  detaching() {
     this.removeListeners();
     this.disposeInstance();
-    this.listeners = null;
     this.isAttached = false;
   }
 

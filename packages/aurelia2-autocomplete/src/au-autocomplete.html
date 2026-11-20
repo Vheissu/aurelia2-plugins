@@ -88,7 +88,7 @@
     <div if.bind="multiple && selectedItems.length > 0" class="au-ac-chips">
       <span repeat.for="item of selectedItems" class="au-ac-chip">
         ${item.label}
-        <button type="button" click.trigger="remove(item)" aria-label.bind="'Remove ' + item.label">×</button>
+        <button type="button" click.trigger="remove(item)" disabled.bind="disabled" aria-label.bind="'Remove ' + item.label">×</button>
       </span>
     </div>
 

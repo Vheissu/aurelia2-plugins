@@ -186,6 +186,7 @@ describe('aurelia2-router-extras', () => {
 
   test('updates on navigation-end events', async () => {
     let navCallback: (() => void) | null = null;
+    const dispose = jest.fn();
 
     const first = createNode({
       title: 'First',
@@ -194,6 +195,7 @@ describe('aurelia2-router-extras', () => {
 
     const second = createNode({
       title: 'Second',
+      data: { meta: { 'router-extras-test': 'Second' } },
       computeAbsolutePath: () => '/second',
     });
 
@@ -201,7 +203,7 @@ describe('aurelia2-router-extras', () => {
     const eventsStub = {
       subscribe: (_event: string, callback: () => void) => {
         navCallback = callback;
-        return { dispose() {} };
+        return { dispose };
       }
     };
 
@@ -224,8 +226,11 @@ describe('aurelia2-router-extras', () => {
     navCallback?.();
 
     expect(extras.breadcrumbs.map((crumb) => crumb.title)).toEqual(['Second']);
+    expect(document.head.querySelector('meta[name="router-extras-test"]')).not.toBeNull();
 
     await tearDown();
+    expect(dispose).toHaveBeenCalledTimes(1);
+    expect(document.head.querySelector('meta[name="router-extras-test"]')).toBeNull();
   });
 
   test('reflects active state on breadcrumb links', async () => {

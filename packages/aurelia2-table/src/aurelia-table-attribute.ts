@@ -1,30 +1,46 @@
 import { bindable, BindingMode, customAttribute, watch } from 'aurelia';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- Direct consumers can still use arbitrary row and filter shapes without type arguments.
+export type DefaultTableValue = any;
+
+export interface TableApi<TRow = DefaultTableValue> {
+    revealItem(item: TRow): boolean;
+}
+
+export interface TableFilter<TRow = DefaultTableValue, TValue = DefaultTableValue> {
+    value?: TValue;
+    keys?: readonly string[];
+    custom?(value: TValue, item: TRow): unknown;
+}
+
+export type TableSortKey<TRow = DefaultTableValue> = string | ((item: TRow, order: number) => unknown);
+export type TableComparator<TRow = DefaultTableValue> = (left: TRow, right: TRow, order: number) => number;
+
 @customAttribute('aurelia-table')
-export class AureliaTableCustomAttribute {
+export class AureliaTableCustomAttribute<TRow = DefaultTableValue> {
     @bindable dataSource = 'local';
     
-    @bindable data = [];
-    @bindable({ mode: BindingMode.twoWay }) displayData;
+    @bindable data: TRow[] = [];
+    @bindable({ mode: BindingMode.twoWay }) displayData!: TRow[];
 
-    @bindable filters = [];
+    @bindable filters: TableFilter<TRow>[] = [];
 
-    @bindable({ mode: BindingMode.twoWay }) currentPage;
-    @bindable pageSize;
-    @bindable({ mode: BindingMode.twoWay }) totalItems;
+    @bindable({ mode: BindingMode.twoWay }) currentPage!: number;
+    @bindable pageSize!: number;
+    @bindable({ mode: BindingMode.twoWay }) totalItems!: number;
 
-    @bindable({ mode: BindingMode.twoWay }) api;
+    @bindable({ mode: BindingMode.twoWay }) api!: TableApi<TRow>;
 
     isAttached = false;
 
-    sortKey: string | ((item: any, order: number) => any) | null = null;
+    sortKey?: TableSortKey<TRow> | null = null;
     sortOrder: number = 0;
-    sortChangedListeners: any[] = [];
-    beforePagination: any[] = [];
+    sortChangedListeners: Array<() => void> = [];
+    beforePagination: TRow[] = [];
 
-    private customSort: ((a: any, b: any, order: number) => number) | null = null;
+    private customSort?: TableComparator<TRow> | null = null;
 
-    bind() {
+    binding() {
         this.api = {
             revealItem: (item) => this.revealItem(item),
         };
@@ -35,15 +51,17 @@ export class AureliaTableCustomAttribute {
         this.applyPlugins();
     }
 
-    bound() {
-        this.applyPlugins();
+    detaching() {
+        this.isAttached = false;
     }
 
     dataChanged() {
         this.applyPlugins();
     }
 
-    @watch((x: AureliaTableCustomAttribute) => x.filters?.map((f:any) => f.value).join(''))
+    @watch(({ filters }: AureliaTableCustomAttribute) => filters?.map(
+        ({ value, keys, custom }) => [value, Array.isArray(keys) ? keys.slice() : keys, custom],
+    ))
     filterChanged() {
         if (this.dataSource === 'server') {
             return;
@@ -71,7 +89,7 @@ export class AureliaTableCustomAttribute {
         return [...this.data];
     }
 
-    getPageData(localData) {
+    getPageData(localData: TRow[]) {
         if (this.hasPagination()) {
             this.beforePagination = [...localData];
             return this.doPaginate(localData);
@@ -89,7 +107,7 @@ export class AureliaTableCustomAttribute {
             return;
         }
 
-        let localData: any[] = this.getDataCopy();
+        let localData = this.getDataCopy();
 
         if (this.hasFilter()) {
             localData = this.doFilter(localData);
@@ -103,13 +121,13 @@ export class AureliaTableCustomAttribute {
         this.displayData = this.getPageData(localData);
     }
 
-    doFilter(toFilter: any[]) {
-        let filteredData: any[] = [];
+    doFilter(toFilter: TRow[]) {
+        const filteredData: TRow[] = [];
 
-        for (let item of toFilter) {
+        for (const item of toFilter) {
             let passed = true;
             
-            for (let filter of this.filters) {
+            for (const filter of this.filters) {
                 if (!this.passFilter(item, filter)) {
                     passed = false;
                     break;
@@ -124,7 +142,7 @@ export class AureliaTableCustomAttribute {
         return filteredData;
     }
 
-    passFilter(item: any, filter: any) {
+    passFilter(item: TRow, filter: TableFilter<TRow>) {
         if (typeof filter.custom === 'function' && !filter.custom(filter.value, item)) {
             return false;
         }
@@ -133,13 +151,12 @@ export class AureliaTableCustomAttribute {
             return true;
         }
 
-        for (let key of filter.keys) {
-            let value = this.getPropertyValue(item, key);
+        for (const key of filter.keys) {
+            const value: unknown = this.getPropertyValue(item, key);
 
             if (value !== null && value !== undefined) {
-                value = value.toString().toLowerCase();
-
-                if (value.indexOf(filter.value.toString().toLowerCase()) > -1) {
+                const searchableValue = value.toString().toLowerCase();
+                if (searchableValue.indexOf(filter.value.toString().toLowerCase()) > -1) {
                     return true;
                 }
             }
@@ -147,14 +164,14 @@ export class AureliaTableCustomAttribute {
         return false;
     }
 
-    doSort(toSort: any[]) {
+    doSort(toSort: TRow[]) {
         toSort.sort((a, b) => {
             if (typeof this.customSort === 'function') {
                 return this.customSort(a, b, this.sortOrder);
             }
 
-            let val1;
-            let val2;
+            let val1: unknown;
+            let val2: unknown;
 
             if (typeof this.sortKey === 'function') {
                 val1 = this.sortKey(a, this.sortOrder);
@@ -169,11 +186,11 @@ export class AureliaTableCustomAttribute {
             if (val2 === null || val2 === undefined) val2 = '';
 
             if (this.isNumeric(val1) && this.isNumeric(val2)) {
-                return (val1 - val2) * this.sortOrder;
+                return ((val1 as number) - (val2 as number)) * this.sortOrder;
             }
 
-            let str1 = val1.toString();
-            let str2 = val2.toString();
+            const str1 = val1.toString();
+            const str2 = val2.toString();
 
             return str1.localeCompare(str2) * this.sortOrder;
         });
@@ -183,35 +200,32 @@ export class AureliaTableCustomAttribute {
      * Retrieves the value in the object specified by the key path
      * @param object the object
      * @param keyPath the path
-     * @returns {*} the value
+     * @returns the value
      */
-    getPropertyValue(object: any, keyPath: string) {
+    getPropertyValue<TKey extends Extract<keyof TRow, string>>(object: TRow, keyPath: TKey): TRow[TKey];
+    getPropertyValue(object: unknown, keyPath: string): DefaultTableValue;
+    getPropertyValue(object: unknown, keyPath: string): unknown {
         keyPath = keyPath.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
         keyPath = keyPath.replace(/^\./, ''); // strip a leading dot
-        let a = keyPath.split('.');
-        for (let i = 0, n = a.length; i < n; ++i) {
-            let k = a[i];
-            if (k in object) {
-                object = object[k];
-            } else {
-                return;
-            }
+        for (const key of keyPath.split('.')) {
+            if (object == null) return undefined;
+            object = (object as Record<string, unknown>)[key];
         }
         return object;
     }
 
-    isNumeric(toCheck: any) {
-        return !isNaN(parseFloat(toCheck)) && Number.isFinite(Number(toCheck));
+    isNumeric(toCheck: unknown) {
+        return !isNaN(parseFloat(toCheck as string)) && Number.isFinite(Number(toCheck));
     }
 
-    doPaginate(toPaginate) {
+    doPaginate(toPaginate: TRow[]) {
         if (toPaginate.length <= this.pageSize) {
             return toPaginate;
         }
 
-        let start = (this.currentPage - 1) * this.pageSize;
+        const start = (this.currentPage - 1) * this.pageSize;
 
-        let end = start + this.pageSize;
+        const end = start + this.pageSize;
 
         return toPaginate.slice(start, end);
     }
@@ -224,7 +238,7 @@ export class AureliaTableCustomAttribute {
         return this.currentPage > 0 && this.pageSize > 0;
     }
 
-    sortChanged(key: any, custom: any, order: number) {
+    sortChanged(key: TableSortKey<TRow> | null | undefined, custom: TableComparator<TRow> | null | undefined, order: number) {
         this.sortKey = key;
         this.customSort = custom;
         this.sortOrder = order;
@@ -232,34 +246,34 @@ export class AureliaTableCustomAttribute {
         this.emitSortChanged();
     }
 
-    addSortChangedListener(callback) {
+    addSortChangedListener(callback: () => void) {
         this.sortChangedListeners.push(callback);
     }
 
-    removeSortChangedListener(callback) {
+    removeSortChangedListener(callback: () => void) {
         this.removeListener(callback, this.sortChangedListeners);
     }
 
     emitSortChanged() {
-        for (let listener of this.sortChangedListeners) {
+        for (const listener of this.sortChangedListeners) {
             listener();
         }
     }
 
-    removeListener(callback, listeners) {
-        let index = listeners.indexOf(callback);
+    removeListener<T>(callback: T, listeners: T[]) {
+        const index = listeners.indexOf(callback);
 
         if (index > -1) {
             listeners.splice(index, 1);
         }
     }
 
-    revealItem(item) {
+    revealItem(item: TRow) {
         if (!this.hasPagination()) {
             return true;
         }
 
-        let index = this.beforePagination.indexOf(item);
+        const index = this.beforePagination.indexOf(item);
 
         if (index === -1) {
             return false;

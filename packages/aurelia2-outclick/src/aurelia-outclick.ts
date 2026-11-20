@@ -11,16 +11,16 @@ export class Outclick implements ICustomAttributeViewModel {
     }
 
     attached(): void {
-        document.addEventListener('click', this.handleClick);
+        this.element.ownerDocument.addEventListener('click', this.handleClick);
     }
 
-    detached(): void {
-        document.removeEventListener('click', this.handleClick);
+    detaching(): void {
+        this.element.ownerDocument.removeEventListener('click', this.handleClick);
     }
 
     handleClick = (event: MouseEvent): void => {
         // Click is outside of element
-        if (!this.element.contains(event.target as Node)) {
+        if (!event.composedPath().includes(this.element)) {
             this.fn(event);
         }
     }

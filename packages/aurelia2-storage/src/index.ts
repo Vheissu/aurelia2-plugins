@@ -17,7 +17,7 @@ function createConfiguration(options?: StorageConfigOptions) {
       return container.register(
         Registration.instance(IStorageConfig, config),
         Registration.singleton(AureliaStorage, AureliaStorage),
-        IStorage,
+        Registration.aliasTo(AureliaStorage, IStorage),
         ...DefaultComponents
       );
     },

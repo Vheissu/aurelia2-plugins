@@ -22,7 +22,7 @@ export class MediaCustomAttribute {
     this.restart();
   }
 
-  public detached(): void {
+  public detaching(): void {
     this.isAttached = false;
     this.stop();
   }

@@ -38,7 +38,9 @@ export class QueryObserver<T = unknown> implements IQueryObserver<T> {
     this.client.subscribe(this.entry, this);
 
     if (normalized.enabled && this.client.isStale(this.entry, normalized)) {
-      void this.client.fetch(this.entry, normalized);
+      void this.client.fetch(this.entry, normalized).catch(() => {
+        // Automatic fetch errors are exposed through the query result.
+      });
     }
   }
 

@@ -82,4 +82,36 @@ describe('aurelia2-tour', () => {
 
     await tearDown();
   });
+
+  test('removing the component clears its highlight and stops reacting to service changes', async () => {
+    const fixture = createFixture(
+      `<button id="tour-target">Target</button>
+      <au-tour if.bind="showTour" tour-next.trigger="onNext($event.detail)"></au-tour>`,
+      { showTour: true, onNext: jest.fn() },
+      [AureliaTourConfiguration],
+    );
+    await fixture.started;
+    const target = fixture.getBy('#tour-target');
+    const service = fixture.container.get(ITourService);
+    const activeSteps = [
+      { id: 'one', title: 'One', content: 'First', target },
+      { id: 'two', title: 'Two', content: 'Second', target },
+    ];
+
+    service.start(activeSteps);
+    await flush();
+    expect(target.hasAttribute('data-au-tour-active')).toBe(true);
+    expect(fixture.getBy('.au-tour-progress')?.textContent).toBe('1 / 2');
+    expect(fixture.getBy('.au-tour-button.primary')?.textContent).toBe('Next');
+    fixture.getBy('.au-tour-button.primary')!.click();
+    expect(fixture.component.onNext).toHaveBeenCalledWith({ index: 1, step: activeSteps[1] });
+
+    fixture.component.showTour = false;
+    await flush();
+    expect(target.hasAttribute('data-au-tour-active')).toBe(false);
+
+    service.start(activeSteps);
+    expect(target.hasAttribute('data-au-tour-active')).toBe(false);
+    await fixture.tearDown();
+  });
 });

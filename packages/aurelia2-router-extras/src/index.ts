@@ -11,7 +11,8 @@ export const AureliaRouterExtrasConfiguration: IRegistry = {
   register(container: IContainer): IContainer {
     return container.register(
       Registration.singleton(RouterExtras, RouterExtras),
-      AppTask.hydrating(RouterExtras, (extras) => extras.init()),
+      AppTask.activating(RouterExtras, (extras) => extras.init()),
+      AppTask.deactivated(RouterExtras, (extras) => extras.dispose()),
       ...DefaultComponents
     );
   }

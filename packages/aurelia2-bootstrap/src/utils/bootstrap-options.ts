@@ -1,4 +1,4 @@
-export let bootstrapOptions = {
+export const bootstrapOptions = {
     version: 5,
     accordionCloseOthers: true,
     accordionGroupPanelClass: '',

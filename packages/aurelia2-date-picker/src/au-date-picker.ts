@@ -32,21 +32,25 @@ export class AuDatePickerCustomElement {
 
   private readonly host = resolve(INode) as HTMLElement;
   private readonly dates = resolve(IDatePickerService) as DatePickerService;
+  private isBound = false;
   private syncing = false;
 
-  public binding(): void {
-    this.syncFromValue();
+  public bound(): void {
+    this.isBound = true;
+    this.syncSelection(this.value ?? this.selectedDate);
+  }
+
+  public unbinding(): void {
+    this.isBound = false;
+    this.closePicker();
   }
 
   public valueChanged(): void {
-    if (!this.syncing) this.syncFromValue();
+    if (this.isBound && !this.syncing) this.syncSelection(this.value);
   }
 
   public selectedDateChanged(): void {
-    if (!this.syncing && this.selectedDate) {
-      this.value = this.dates.formatIso(this.selectedDate);
-      this.syncFromValue();
-    }
+    if (this.isBound && !this.syncing) this.syncSelection(this.selectedDate);
   }
 
   public minChanged(): void {
@@ -58,11 +62,16 @@ export class AuDatePickerCustomElement {
   }
 
   public localeChanged(): void {
+    this.displayValue = this.dates.formatDisplay(this.selectedDate, this.locale ?? undefined);
     this.recompute();
   }
 
   public firstDayOfWeekChanged(): void {
     this.recompute();
+  }
+
+  public disabledChanged(): void {
+    if (this.disabled) this.closePicker();
   }
 
   public openPicker(): void {
@@ -86,25 +95,17 @@ export class AuDatePickerCustomElement {
   }
 
   public previousMonth(): void {
-    this.displayDate = new Date(this.displayDate.getFullYear(), this.displayDate.getMonth() - 1, 1);
-    this.recompute();
+    this.shiftMonth(-1);
   }
 
   public nextMonth(): void {
-    this.displayDate = new Date(this.displayDate.getFullYear(), this.displayDate.getMonth() + 1, 1);
-    this.recompute();
+    this.shiftMonth(1);
   }
 
   public select(day: DatePickerDay): void {
-    if (day.disabled) return;
-
-    this.syncing = true;
-    this.selectedDate = day.date;
-    this.value = day.iso;
-    this.displayValue = this.dates.formatDisplay(day.date, this.locale ?? this.dates.options.locale);
-    this.syncing = false;
+    if (this.disabled || day.disabled) return;
+    this.syncSelection(day.date);
     this.closePicker();
-    this.recompute();
 
     this.host.dispatchEvent(new CustomEvent('date-picker-select', {
       bubbles: true,
@@ -124,14 +125,21 @@ export class AuDatePickerCustomElement {
     ].filter(Boolean).join(' ');
   }
 
-  private syncFromValue(): void {
-    const date = this.dates.parse(this.value ?? this.selectedDate);
+  private syncSelection(value: DatePickerValue): void {
+    const date = this.dates.parse(value);
     this.syncing = true;
     this.selectedDate = date;
-    this.value = date ? this.dates.formatIso(date) : this.value;
+    this.value = date ? this.dates.formatIso(date) : typeof value === 'string' ? value : null;
     this.displayDate = date ?? new Date();
     this.displayValue = this.dates.formatDisplay(date, this.locale ?? this.dates.options.locale);
     this.syncing = false;
+    this.recompute();
+  }
+
+  private shiftMonth(delta: number): void {
+    const date = new Date(this.displayDate);
+    date.setMonth(date.getMonth() + delta, 1);
+    this.displayDate = date;
     this.recompute();
   }
 

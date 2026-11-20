@@ -1,7 +1,6 @@
 import { createFixture, onFixtureCreated } from '@aurelia/testing';
 import FroalaEditorLib from 'froala-editor';
 import { FroalaConfiguration } from '../src/index';
-import { FroalaEditor } from '../src/froala-editor';
 
 type MockFroalaInstance = {
   config: Record<string, unknown>;
@@ -80,11 +79,10 @@ describe('FroalaEditor', () => {
 
   test('renders the default div branch and initializes the editor with merged config', async () => {
     const fixture = createFixture(
-      '<froala-editor component.ref="froalaVm" value.two-way="content" config.bind="config" event-handlers.bind="handlers"></froala-editor>',
+      '<froala-editor if.bind="true" value.two-way="content" config.bind="config" event-handlers.bind="handlers"></froala-editor>',
       class App {
         content = '<p>Initial content</p>';
         config = { toolbarInline: true };
-        froalaVm!: FroalaEditor;
         initializedCalls = 0;
         handlers = {
           initialized(this: App) {
@@ -132,19 +130,18 @@ describe('FroalaEditor', () => {
     await flush(2);
 
     expect(instance.html.set).toHaveBeenCalledWith('<p>Updated from app</p>');
-    component.froalaVm.detached();
-    expect(instance.destroy).toHaveBeenCalledTimes(1);
-
     await tearDown();
+    expect(instance.destroy).toHaveBeenCalledTimes(1);
     fixtures.splice(fixtures.indexOf(fixture), 1);
   });
 
   test('renders the iframe branch and syncs editor events back to the app', async () => {
+    const contentChanged = jest.fn();
     const fixture = createFixture(
       '<froala-editor value.two-way="content" config.bind="config" event-handlers.bind="handlers"></froala-editor>',
       class App {
         content = '<p>Start</p>';
-        config = { iframe: true };
+        config = { iframe: true, events: { contentChanged } };
         initializedCalls = 0;
         focusArgs: unknown[] = [];
         handlers = {
@@ -177,12 +174,16 @@ describe('FroalaEditor', () => {
       };
     };
 
-    config.events.contentChanged.call({
+    const editor = {
       html: {
         get: () => '<p>Changed by editor</p>',
       },
-    });
+    };
+    config.events.contentChanged.call(editor);
     await flush();
+
+    expect(contentChanged).toHaveBeenCalledTimes(1);
+    expect(contentChanged.mock.contexts[0]).toBe(editor);
 
     expect(component.content).toBe('<p>Changed by editor</p>');
 

@@ -19,22 +19,27 @@ export class WebSocketRealtimeTransport implements RealtimeTransport {
       this.socket = socket;
 
       socket.addEventListener('open', () => {
+        if (this.socket !== socket) return;
         this.status = 'open';
-        this.emit({ type: 'open' });
         resolve();
+        this.emit({ type: 'open' });
       });
       socket.addEventListener('message', (event) => {
-        this.emit({ type: 'message', data: event.data as string });
+        if (this.socket === socket) this.emit({ type: 'message', data: event.data as string });
       });
       socket.addEventListener('close', (event) => {
+        reject(new Error(`Realtime WebSocket closed before opening (${event.code}).`));
+        if (this.socket !== socket) return;
+        this.socket = null;
         this.status = 'closed';
         this.emit({ type: 'close', code: event.code, reason: event.reason });
       });
       socket.addEventListener('error', (event) => {
+        reject(event);
+        if (this.socket !== socket) return;
         this.status = 'error';
         this.emit({ type: 'error', error: event });
-        reject(event);
-      }, { once: true });
+      });
     });
   }
 

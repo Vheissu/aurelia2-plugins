@@ -97,4 +97,42 @@ describe('aurelia2-aurafall', () => {
 
     await tearDown();
   });
+
+  test('updates cached layouts after in-place edits to the array prefix', async () => {
+    const fixture = await createFixture(
+      '<au-aurafall items.bind="items" virtual.bind="false"></au-aurafall>',
+      class { items = ['first', 'second']; },
+      [AureliaAurafallConfiguration],
+    ).started;
+    const host = fixture.appHost.querySelector('au-aurafall')!;
+    const content = host.querySelector<HTMLDivElement>('.au-aurafall-content')!;
+    const vm = CustomElement.for(host).viewModel as AuAurafallCustomElement;
+    setClientSize(content, 500, 0);
+    vm.refreshLayout();
+
+    fixture.component.items.splice(0, 1, 'replacement', 'inserted');
+    await flush();
+    expect(vm.itemRenderList.map((space) => space.item)).toEqual(['replacement', 'inserted', 'second']);
+
+    fixture.component.items.reverse();
+    await flush();
+    expect(vm.itemRenderList.map((space) => space.item)).toEqual(['second', 'inserted', 'replacement']);
+    await fixture.tearDown();
+  });
+
+  test('removes the window resize listener when Aurelia tears down the view', async () => {
+    const fixture = await createFixture(
+      '<au-aurafall></au-aurafall>',
+      class {},
+      [AureliaAurafallConfiguration],
+    ).started;
+    const content = fixture.appHost.querySelector<HTMLElement>('.au-aurafall-content')!;
+    const measure = jest.spyOn(content, 'getBoundingClientRect');
+    window.dispatchEvent(new Event('resize'));
+    expect(measure).toHaveBeenCalledTimes(1);
+
+    await fixture.tearDown();
+    window.dispatchEvent(new Event('resize'));
+    expect(measure).toHaveBeenCalledTimes(1);
+  });
 });

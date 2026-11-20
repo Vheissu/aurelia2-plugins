@@ -106,4 +106,28 @@ describe('aurelia2-command-palette', () => {
 
     await tearDown();
   });
+
+  test('unsubscribes and leaves the service open when an old selection completes after teardown', async () => {
+    let finish!: () => void;
+    const action = jest.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const fixture = createFixture(
+      '<au-command-palette open.two-way="open"></au-command-palette>',
+      class { open = false; },
+      [AureliaCommandPaletteConfiguration],
+    );
+    await fixture.startPromise;
+    const palette = fixture.container.get(ICommandPaletteService);
+    const subscription = palette.register({ id: 'slow', title: 'Slow', action });
+    palette.open();
+    await flush();
+    fixture.appHost.querySelector<HTMLButtonElement>('.au-cp-item')!.click();
+    expect(action).toHaveBeenCalledTimes(1);
+
+    await fixture.tearDown();
+    palette.open('next');
+    finish();
+    await flush();
+    expect(palette.getState()).toMatchObject({ open: true, query: 'next' });
+    subscription.dispose();
+  });
 });

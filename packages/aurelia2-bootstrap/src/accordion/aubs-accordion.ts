@@ -10,7 +10,7 @@ export class AubsAccordionCustomElement {
 
   groupToggled(group: AubsAccordionGroupCustomElement) {
     if (group.isOpen && this.closeOthers) {
-      for (let next of this.groups) {
+      for (const next of this.groups) {
         if (next !== group) {
           next.isOpen = false;
         }

@@ -1,5 +1,5 @@
 import { bindable, customAttribute, INode, resolve } from 'aurelia';
-import { IHotkeyService, hotkeyMatches, normalizeKeys } from './hotkey-service';
+import { IHotkeyService, normalizeKeys } from './hotkey-service';
 import type { HotkeyCallback, HotkeyDispose, HotkeyEventName, HotkeyTarget } from './types';
 
 @customAttribute({ name: 'hotkey', defaultProperty: 'keys' })
@@ -23,7 +23,7 @@ export class HotkeyCustomAttribute {
     this.restart();
   }
 
-  public detached(): void {
+  public detaching(): void {
     this.isAttached = false;
     this.stop();
   }
@@ -41,6 +41,14 @@ export class HotkeyCustomAttribute {
   }
 
   public disabledChanged(): void {
+    this.restart();
+  }
+
+  public preventDefaultChanged(): void {
+    this.restart();
+  }
+
+  public stopPropagationChanged(): void {
     this.restart();
   }
 
@@ -65,8 +73,6 @@ export class HotkeyCustomAttribute {
   }
 
   private handleHotkey = (event: KeyboardEvent, combo: string): void => {
-    if (!hotkeyMatches(event, combo)) return;
-
     if (this.click) {
       this.element.click();
     }

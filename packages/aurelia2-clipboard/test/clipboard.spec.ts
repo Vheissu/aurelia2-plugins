@@ -130,4 +130,31 @@ describe('aurelia2-clipboard', () => {
 
     await tearDown();
   });
+
+  test('uses configured trim, switches events, and drops callbacks after teardown', async () => {
+    let finish!: () => void;
+    const writeText = jest.fn(() => new Promise<void>((resolve) => { finish = resolve; }));
+    const success = jest.fn();
+    setNativeClipboard({ writeText });
+    const fixture = createFixture(
+      '<button copy="text.bind: text; event.bind: event; success.bind: success">Copy</button>',
+      class { text = '  example  '; event = 'click'; success = success; },
+      [AureliaClipboardConfiguration.configure({ trim: true })],
+    );
+    await fixture.startPromise;
+    const button = fixture.appHost.querySelector('button')!;
+    fixture.component.event = 'dblclick';
+    await flush();
+    button.click();
+    expect(writeText).not.toHaveBeenCalled();
+    button.dispatchEvent(new MouseEvent('dblclick'));
+    expect(writeText).toHaveBeenCalledWith('example');
+
+    await fixture.tearDown();
+    finish();
+    button.dispatchEvent(new MouseEvent('dblclick'));
+    await flush();
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(success).not.toHaveBeenCalled();
+  });
 });

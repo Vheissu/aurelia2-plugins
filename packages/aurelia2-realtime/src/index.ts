@@ -1,4 +1,4 @@
-import { IContainer, Registration } from 'aurelia';
+import { AppTask, IContainer, Registration } from 'aurelia';
 import { IRealtime, RealtimeService } from './realtime-service';
 import type { RealtimeConfigurationOptions } from './types';
 
@@ -10,7 +10,13 @@ function createConfiguration(options: RealtimeConfigurationOptions = {}) {
 
       return container.register(
         Registration.instance(IRealtime, service),
-        Registration.instance(RealtimeService, service)
+        Registration.instance(RealtimeService, service),
+        AppTask.activated(IRealtime, (realtime) => {
+          if (realtime.options.autoConnect && realtime.status === 'closed') {
+            void realtime.connect().catch(() => {});
+          }
+        }),
+        AppTask.deactivated(IRealtime, (realtime) => realtime.disconnect()),
       );
     },
     configure(newOptions: RealtimeConfigurationOptions = {}) {

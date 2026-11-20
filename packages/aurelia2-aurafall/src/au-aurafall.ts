@@ -34,6 +34,7 @@ export class AuAurafallCustomElement {
   private cacheValid = false;
   private isAttached = false;
   private isVisible = true;
+  private attachment = 0;
   private idleHandle?: number;
   private resizeObserver?: ResizeObserver;
   private containerResizeObserver?: ResizeObserver;
@@ -70,6 +71,7 @@ export class AuAurafallCustomElement {
 
   public attached(): void {
     this.isAttached = true;
+    this.isVisible = true;
     this.ensureHost();
     this.bindScrollContainer();
     this.bindIntersectionObserver();
@@ -79,8 +81,11 @@ export class AuAurafallCustomElement {
     this.scheduleLayout();
   }
 
-  public detached(): void {
+  public detaching(): void {
     this.isAttached = false;
+    this.attachment++;
+    this.pendingLayout = false;
+    this.pendingScroll = false;
     this.unbindScrollContainer();
     this.disconnectObservers();
   }
@@ -89,6 +94,7 @@ export class AuAurafallCustomElement {
     if (!this.isAttached) return;
     this.bindScrollContainer();
     this.bindIntersectionObserver();
+    this.bindContainerResizeObserver();
     this.updateScrollMetrics(true);
     this.updateRenderList();
   }
@@ -98,8 +104,8 @@ export class AuAurafallCustomElement {
     this.scheduleLayout();
   }
 
-  @watch((x: AuAurafallCustomElement) => x.items?.length)
-  protected handleItemsLengthChanged(): void {
+  @watch((x: AuAurafallCustomElement) => x.items?.slice())
+  protected handleItemsMutated(): void {
     this.scheduleLayout();
   }
 
@@ -144,6 +150,7 @@ export class AuAurafallCustomElement {
   public refreshLayout(): void {
     this.updateContentWidth();
     this.updateScrollMetrics(true);
+    this.cacheValid = false;
     this.recalculateSpaces();
   }
 
@@ -165,9 +172,12 @@ export class AuAurafallCustomElement {
   }
 
   private bindResizeObservers(): void {
+    window.addEventListener('resize', this.handleWindowResize, { passive: true });
     if (!this.content || typeof ResizeObserver === 'undefined') return;
 
+    const attachment = this.attachment;
     this.resizeObserver = new ResizeObserver((entries) => {
+      if (attachment !== this.attachment) return;
       const entry = entries[0];
       if (!entry) return;
       const width = entry.contentRect?.width ?? this.measureContentWidth();
@@ -178,17 +188,21 @@ export class AuAurafallCustomElement {
     });
 
     this.resizeObserver.observe(this.content);
+    this.bindContainerResizeObserver();
+  }
 
+  private bindContainerResizeObserver(): void {
+    this.containerResizeObserver?.disconnect();
+    this.containerResizeObserver = undefined;
     const container = this.scrollContainer;
-    if (container instanceof HTMLElement) {
-      this.containerResizeObserver = new ResizeObserver(() => {
-        this.updateScrollMetrics(true);
-        this.updateRenderList();
-      });
-      this.containerResizeObserver.observe(container);
-    }
-
-    window.addEventListener('resize', this.handleWindowResize, { passive: true });
+    if (typeof ResizeObserver === 'undefined' || !(container instanceof HTMLElement)) return;
+    const observer = new ResizeObserver(() => {
+      if (this.containerResizeObserver !== observer) return;
+      this.updateScrollMetrics(true);
+      this.updateRenderList();
+    });
+    this.containerResizeObserver = observer;
+    observer.observe(container);
   }
 
   private disconnectObservers(): void {
@@ -235,7 +249,9 @@ export class AuAurafallCustomElement {
     }
     this.pendingScroll = true;
 
+    const attachment = this.attachment;
     this.requestFrame(() => {
+      if (attachment !== this.attachment) return;
       this.pendingScroll = false;
       this.updateScrollMetrics(false);
       this.updateRenderList();
@@ -318,10 +334,12 @@ export class AuAurafallCustomElement {
   }
 
   private scheduleLayout(): void {
-    if (this.pendingLayout) return;
+    if (!this.isAttached || this.pendingLayout) return;
     this.pendingLayout = true;
 
+    const attachment = this.attachment;
     const run = (): void => {
+      if (attachment !== this.attachment) return;
       this.pendingLayout = false;
       this.recalculateSpaces();
     };
@@ -371,7 +389,8 @@ export class AuAurafallCustomElement {
       this.enableCache &&
       this.cacheValid &&
       this.itemSpaces.length > 0 &&
-      this.items.length > this.itemSpaces.length;
+      this.items.length > this.itemSpaces.length &&
+      this.itemSpaces.every((space, index) => Object.is(space.item, this.items[index]));
 
     const startIndex = useCache ? this.itemSpaces.length : 0;
 
@@ -458,13 +477,16 @@ export class AuAurafallCustomElement {
       return;
     }
     this.cancelIdle();
-    this.idleHandle = ric(() => cb(), { timeout });
+    this.idleHandle = ric.call(globalThis, () => {
+      this.idleHandle = undefined;
+      cb();
+    }, { timeout });
   }
 
   private cancelIdle(): void {
     const cancel = (globalThis as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback;
     if (this.idleHandle != null && cancel) {
-      cancel(this.idleHandle);
+      cancel.call(globalThis, this.idleHandle);
     }
     this.idleHandle = undefined;
   }
@@ -486,8 +508,9 @@ export class AuAurafallCustomElement {
         ? this.scrollContainer
         : null;
 
-    this.intersectionObserver = new IntersectionObserver(
+    const observer = new IntersectionObserver(
       (entries) => {
+        if (this.intersectionObserver !== observer) return;
         const entry = entries[0];
         if (!entry) return;
         const wasVisible = this.isVisible;
@@ -500,7 +523,8 @@ export class AuAurafallCustomElement {
       { root }
     );
 
-    this.intersectionObserver.observe(this.host);
+    this.intersectionObserver = observer;
+    observer.observe(this.host);
   }
 
   private ensureHost(): void {

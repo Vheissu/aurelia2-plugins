@@ -18,7 +18,7 @@ export class AubsBtnRadioCustomAttribute {
   }
 
   bound() {
-    if (this.value == null || this.value == undefined) {
+    if (this.value == null) {
       throw new Error("Must provide a value for the radio button");
     }
   }
@@ -30,11 +30,10 @@ export class AubsBtnRadioCustomAttribute {
     this.setClass();
   }
 
-  detached() {
+  detaching() {
     if (this.clickedListener) {
       this.element.removeEventListener("click", this.clickedListener);
     }
-    this.clickedListener = null;
   }
 
   modelChanged() {

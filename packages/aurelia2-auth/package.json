@@ -6,6 +6,7 @@
   "types": "./dist/types/index.d.ts",
   "files": [
     "dist",
+    "!dist/**/*.tsbuildinfo",
     "README.md",
     "LICENSE"
   ],
@@ -22,8 +23,8 @@
     "watch:ts": "tsc --watch --preserveWatchOutput",
     "watch:other": "cpx \"./src/**/*.{html,css}\" ./dist --watch",
     "test:debug": "cross-env DEBUG=true npm run test",
-    "test:watch": "cross-env DEV=true npm run test",
-    "test": "jest --passWithNoTests",
+    "test:watch": "jest --watch",
+    "test": "jest",
     "test:coverage": "jest --coverage --runInBand"
   },
   "devDependencies": {

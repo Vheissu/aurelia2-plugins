@@ -47,6 +47,15 @@ describe('AureliaCookie', () => {
     expect(AureliaCookie.get('missing')).toBeNull();
   });
 
+  test('preserves empty values and equals signs inside a cookie value', () => {
+    cookieValue = 'token=abc==; empty=; constructor=literal';
+
+    expect(AureliaCookie.get('token')).toBe('abc==');
+    expect(AureliaCookie.get('empty')).toBe('');
+    expect(AureliaCookie.get('constructor')).toBe('literal');
+    expect(AureliaCookie.get('toString')).toBeNull();
+  });
+
   test('serializes cookie options when setting a cookie', () => {
     const expires = new Date('2026-04-10T12:00:00.000Z');
 
@@ -66,17 +75,18 @@ describe('AureliaCookie', () => {
   test('converts expiry hours into an expires date when setting a cookie', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-04-09T10:00:00.000Z'));
 
-    AureliaCookie.set('token', 'abc', { expiry: 2 });
+    const options = Object.freeze({ expiry: 2 });
+    AureliaCookie.set('token', 'abc', options);
 
     expect(cookieValue).toContain('token=abc');
     expect(cookieValue).toContain('expires=Thu, 09 Apr 2026 12:00:00 GMT');
   });
 
   test('deletes a cookie by writing an expired cookie string', () => {
-    AureliaCookie.delete('session', 'example.test', '/admin');
+    AureliaCookie.delete('user name', 'example.test', '/admin');
 
     expect(cookieValue).toBe(
-      'session=;expires=Thu, 01 Jan 1970 00:00:01 GMT;; domain=example.test; path=/admin'
+      'user%20name=; path=/admin; domain=example.test; expires=Thu, 01 Jan 1970 00:00:00 GMT'
     );
   });
 

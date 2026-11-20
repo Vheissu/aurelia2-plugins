@@ -34,13 +34,14 @@ export class AuQueryCustomElement {
   }
 
   public resultChanged(newValue: QueryResult | null): void {
-    if (!newValue) return;
-    this.observer?.dispose();
+    if (!newValue || !this.observer) return;
+    this.observer.dispose();
     this.observer = new QueryObserver(this.client, newValue);
     this.observer.setOptions(this.query);
   }
 
-  public detached(): void {
+  public unbinding(): void {
     this.observer?.dispose();
+    this.observer = null;
   }
 }

@@ -1,5 +1,6 @@
+import { DI } from 'aurelia';
 import { importLibrary, setOptions } from "@googlemaps/js-api-loader";
-import { Configure } from "../src/configure";
+import { IGoogleMapsConfiguration } from "../src/configure";
 import { GoogleMapsAPI } from "../src/google-maps-api";
 import { installGoogleMapsMock, teardownGoogleMapsMock } from "./google-maps.mock";
 
@@ -19,13 +20,14 @@ describe("GoogleMapsAPI", () => {
   });
 
   test("configures loader and imports libraries once", async () => {
-    const config = new Configure();
+    const container = DI.createContainer();
+    const config = container.get(IGoogleMapsConfiguration);
     config.options({
       apiKey: "test-key",
       libraries: ["places", "geometry"],
     });
 
-    const api = new GoogleMapsAPI(config);
+    const api = container.get(GoogleMapsAPI);
     const first = api.getMapsInstance();
     const second = api.getMapsInstance();
 
@@ -46,5 +48,17 @@ describe("GoogleMapsAPI", () => {
     expect(mockedImportLibrary).toHaveBeenCalledWith("maps");
     expect(mockedImportLibrary).toHaveBeenCalledWith("places");
     expect(mockedImportLibrary).toHaveBeenCalledWith("geometry");
+  });
+
+  test('retries a failed library and loads additional libraries on later requests', async () => {
+    const api = DI.createContainer().get(GoogleMapsAPI);
+    const loader = jest.mocked(importLibrary);
+    loader.mockRejectedValueOnce(new Error('network unavailable'));
+    await expect(api.getMapsInstance()).rejects.toThrow('network unavailable');
+    await api.getMapsInstance();
+    await api.getMapsInstance(['geometry']);
+    expect(loader.mock.calls.filter(([name]) => name === 'maps')).toHaveLength(2);
+    expect(loader.mock.calls.filter(([name]) => name === 'geometry')).toHaveLength(1);
+    expect(setOptions).toHaveBeenCalledTimes(1);
   });
 });

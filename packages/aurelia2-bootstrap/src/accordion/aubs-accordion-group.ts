@@ -23,7 +23,7 @@ export class AubsAccordionGroupCustomElement {
     this.accordion = accordion;
   }
 
-  bind() {
+  bound() {
     if (typeof this.isOpen !== "boolean") {
       this.isOpen = false;
     }
@@ -38,11 +38,12 @@ export class AubsAccordionGroupCustomElement {
     }
   }
 
-  detached() {
+  detaching() {
     this.accordion.unregisterGroup(this);
   }
 
   isOpenChanged() {
+    if (!this.$collapse) return;
     this.animate();
 
     if (this.isOpen) {

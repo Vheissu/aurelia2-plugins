@@ -8,7 +8,6 @@ import type {
   FeatureFlagListener,
   FeatureFlagMap,
   FeatureFlagPrimitive,
-  FeatureFlagProvider,
   FeatureFlagsConfigurationOptions,
   FeatureFlagVariant,
 } from './types';
@@ -28,8 +27,13 @@ export class FeatureFlagsService {
   private context: FeatureFlagContext = {};
   private listeners = new Set<FeatureFlagListener>();
   private providerSubscriptions: FeatureFlagDispose[] = [];
+  private revision = 0;
+  private configuration = 0;
 
   public configure(options: FeatureFlagsConfigurationOptions = {}): void {
+    const previousFlags = this.flags;
+    const configuration = ++this.configuration;
+    this.revision++;
     this.providerSubscriptions.forEach((subscription) => subscription.dispose());
     this.providerSubscriptions = [];
 
@@ -51,12 +55,17 @@ export class FeatureFlagsService {
 
     for (const provider of this.options.providers) {
       const subscription = provider.subscribe?.(() => {
-        void this.refresh();
+        if (configuration === this.configuration) {
+          void this.refresh().catch(() => {
+            // Provider notifications have no caller to receive the rejection.
+          });
+        }
       });
       if (subscription) {
         this.providerSubscriptions.push(subscription);
       }
     }
+    this.emitAll(previousFlags);
   }
 
   public getContext(): FeatureFlagContext {
@@ -81,20 +90,27 @@ export class FeatureFlagsService {
   }
 
   public async refresh(context: FeatureFlagContext = this.context): Promise<FeatureFlagMap> {
-    const providerFlags: FeatureFlagMap = {};
+    const revision = ++this.revision;
+    const providerFlags: FeatureFlagMap = Object.create(null);
     for (const provider of this.options.providers) {
       Object.assign(providerFlags, await provider.load(context));
+      if (revision !== this.revision) return { ...this.flags };
     }
+    const previousFlags = this.flags;
     this.flags = {
       ...this.options.flags,
       ...providerFlags,
     };
-    this.emitAll();
+    this.emitAll(previousFlags);
     return { ...this.flags };
   }
 
   public evaluate(key: string, context: FeatureFlagContext = this.context): FeatureFlagEvaluation {
-    const input = this.flags[key];
+    return this.evaluateFlag(key, context, new Set());
+  }
+
+  private evaluateFlag(key: string, context: FeatureFlagContext, dependencies: Set<string>): FeatureFlagEvaluation {
+    const input = Object.hasOwn(this.flags, key) ? this.flags[key] : undefined;
     if (input === undefined) {
       return {
         key,
@@ -112,11 +128,17 @@ export class FeatureFlagsService {
       return result(key, false, flag.defaultValue ?? false, null, 'disabled', null);
     }
 
+    if (dependencies.has(key)) {
+      return result(key, false, flag.defaultValue ?? false, null, 'dependency', null);
+    }
+    dependencies.add(key);
     for (const dependency of flag.requires ?? []) {
-      if (!this.isEnabled(dependency, context)) {
+      if (!this.evaluateFlag(dependency, context, dependencies).enabled) {
+        dependencies.delete(key);
         return result(key, false, flag.defaultValue ?? false, null, 'dependency', null);
       }
     }
+    dependencies.delete(key);
 
     for (const rule of flag.rules ?? []) {
       if (!ruleMatches(rule.when, rule.operator ?? 'equals', rule.value, rule.values, context)) continue;
@@ -153,7 +175,7 @@ export class FeatureFlagsService {
     context: FeatureFlagContext = this.context
   ): T | FeatureFlagPrimitive {
     const evaluation = this.evaluate(key, context);
-    return evaluation.value ?? fallback;
+    return evaluation.reason === 'missing' ? fallback : evaluation.value ?? fallback;
   }
 
   public onChange(listener: FeatureFlagListener): FeatureFlagDispose {
@@ -165,8 +187,10 @@ export class FeatureFlagsService {
     };
   }
 
-  private emitAll(): void {
-    for (const key of Object.keys(this.flags)) {
+  private emitAll(previousFlags?: FeatureFlagMap): void {
+    if (!this.listeners.size) return;
+    const keys = new Set([...Object.keys(previousFlags ?? {}), ...Object.keys(this.flags)]);
+    for (const key of keys) {
       const evaluation = this.evaluate(key);
       for (const listener of this.listeners) {
         listener(evaluation);
@@ -222,7 +246,7 @@ function ruleMatches(
 
 function readPath(source: FeatureFlagContext, path: string): unknown {
   return path.split('.').reduce<unknown>((value, segment) => {
-    if (value === null || typeof value !== 'object') return undefined;
+    if (value === null || typeof value !== 'object' || !Object.hasOwn(value, segment)) return undefined;
     return (value as Record<string, unknown>)[segment];
   }, source);
 }

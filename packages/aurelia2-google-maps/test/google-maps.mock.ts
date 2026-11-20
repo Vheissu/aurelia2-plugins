@@ -44,6 +44,9 @@ export class MVCArray<T> {
   getArray() {
     return this.items;
   }
+  forEach(callback: (item: T, index: number) => void) {
+    this.items.forEach(callback);
+  }
 }
 
 export class MapMock extends EventTargetStub {

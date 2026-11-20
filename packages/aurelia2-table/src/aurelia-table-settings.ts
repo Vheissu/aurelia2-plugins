@@ -1,14 +1,27 @@
-import { observable } from '@aurelia/runtime';
+import { observable } from 'aurelia';
+import type { DefaultTableValue } from './aurelia-table-attribute.js';
 
-export class TableSettings {
+export interface TableQuery<TFilter = unknown> {
+    draw: number;
+    start: number;
+    pageSize: number;
+    filter: TFilter | null;
+}
+
+export interface TablePage<TRow = unknown> {
+    items: TRow[];
+    totalItems: number;
+}
+
+export class TableSettings<TRow = DefaultTableValue, TFilter = DefaultTableValue> {
     @observable pageSize = 10;
     @observable currentPage = 1;
 
-    private getItems: (query: any) => Promise<any>;
+    private loadVersion = 0;
 
-    totalItems: number = 0;
-    items: any[] = [];
-    filter: any = null;
+    totalItems = 0;
+    items: TRow[] = [];
+    filter: TFilter | null = null;
 
     draw: number = 0;
 
@@ -16,11 +29,9 @@ export class TableSettings {
         return (this.currentPage - 1) * this.pageSize;
     }
 
-    constructor(getItems) {
-        this.getItems = getItems;
-    }
+    constructor(private readonly getItems: (query: TableQuery<TFilter>) => Promise<TablePage<TRow>>) {}
 
-    pageSizeChanged(newValue, oldValue) {
+    pageSizeChanged(_newValue: number, oldValue: number | undefined) {
         if (oldValue === undefined) {
             return;
         }
@@ -28,7 +39,7 @@ export class TableSettings {
         this.loadItems();
     }
 
-    currentPageChanged(newValue, oldValue) {
+    currentPageChanged(_newValue: number, oldValue: number | undefined) {
         if (oldValue === undefined) {
             return;
         }
@@ -37,17 +48,19 @@ export class TableSettings {
     }
 
     loadItems() {
-        let query = this.buildQuery();
+        const query = this.buildQuery();
+        const version = ++this.loadVersion;
 
         return this
             .getItems(query)
             .then(result => {
+                if (version !== this.loadVersion) return;
                 this.items = result.items;
                 this.totalItems = result.totalItems;
             });
     }
 
-    buildQuery() {
+    buildQuery(): TableQuery<TFilter> {
         return {
             draw: this.draw++,
             start: this.start,
@@ -57,12 +70,12 @@ export class TableSettings {
     }
 }
 
-export class TableResult {
+export class TableResult<TRow = DefaultTableValue> implements TablePage<TRow> {
     draw: number;
     totalItems: number;
-    items: any[];
+    items: TRow[];
 
-    constructor(result) {
+    constructor(result: TablePage<TRow> & { draw: number }) {
         this.draw = result.draw;
         this.totalItems = result.totalItems;
         this.items = result.items;

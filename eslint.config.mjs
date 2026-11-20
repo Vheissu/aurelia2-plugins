@@ -18,6 +18,8 @@ export default tseslint.config(
       'import-x': eslintPluginImportX,
     },
     rules: {
+      // Aurelia's named DI interfaces extend their implementation and can be augmented by consumers.
+      '@typescript-eslint/no-empty-object-type': ['error', { allowInterfaces: 'with-single-extends' }],
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       '@typescript-eslint/no-empty-function': 'off',

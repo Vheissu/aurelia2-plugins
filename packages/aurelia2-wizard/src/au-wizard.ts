@@ -58,12 +58,25 @@ export class AuWizardCustomElement {
     this.recompute();
   }
 
+  public previousLabelChanged(): void {
+    this.updateLabels();
+  }
+
+  public nextLabelChanged(): void {
+    this.updateLabels();
+  }
+
+  public completeLabelChanged(): void {
+    this.updateLabels();
+  }
+
   public next(): void {
+    if (!this.state.activeStep) return;
     this.completed = this.wizard.markCompleted(this.state);
 
-    if (this.index >= this.steps.length - 1) {
-      this.dispatch('wizard-complete');
+    if (!this.state.canGoNext) {
       this.recompute();
+      this.dispatch('wizard-complete');
       return;
     }
 
@@ -73,6 +86,7 @@ export class AuWizardCustomElement {
   }
 
   public previous(): void {
+    if (!this.state.canGoPrevious) return;
     this.index = this.wizard.previousIndex(this.state);
     this.recompute();
     this.dispatch('wizard-previous');
@@ -110,10 +124,14 @@ export class AuWizardCustomElement {
     this.activeStep = this.state.activeStep ?? { id: '', title: '' };
     this.enterable = this.state.steps.map((_, stepIndex) => this.canEnter(stepIndex));
     this.stepClasses = this.state.steps.map((step, stepIndex) => this.stepClass(step, stepIndex));
+    this.updateLabels();
+  }
+
+  private updateLabels(): void {
     this.previousLabelText = this.previousLabel ?? this.wizard.options.previousLabel;
-    this.nextLabelText = this.index >= this.steps.length - 1
-      ? this.completeLabel ?? this.wizard.options.completeLabel
-      : this.nextLabel ?? this.wizard.options.nextLabel;
+    this.nextLabelText = this.state.canGoNext
+      ? this.nextLabel ?? this.wizard.options.nextLabel
+      : this.completeLabel ?? this.wizard.options.completeLabel;
   }
 
   private dispatch(name: string): void {

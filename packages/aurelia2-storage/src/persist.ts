@@ -23,38 +23,41 @@ export class PersistCustomAttribute {
     if (!this.key) return;
 
     this.hydrating = true;
-    const stored = await this.store.get(this.key, { storage: this.storage });
-    if (stored !== null && stored !== undefined) {
-      this.value = stored;
+    try {
+      const stored = await this.store.get(this.key, { storage: this.storage });
+      if (stored !== null && stored !== undefined) {
+        this.value = stored;
+      }
+    } finally {
+      this.hydrating = false;
     }
-    this.hydrating = false;
   }
 
   public valueChanged(newValue: unknown): void {
-    if (this.hydrating || !this.key) return;
+    const key = this.key;
+    if (this.hydrating || !key) return;
 
+    const options = { storage: this.storage, ttl: this.ttl };
+    this.clearPendingWrite();
     if (this.delay > 0) {
-      if (this.pendingTimer) {
-        clearTimeout(this.pendingTimer);
-      }
       this.pendingTimer = setTimeout(() => {
-        this.persistValue(newValue);
+        this.pendingTimer = null;
+        void this.store.set(key, newValue, options);
       }, this.delay);
       return;
     }
 
-    void this.persistValue(newValue);
+    void this.store.set(key, newValue, options);
   }
 
-  public detached(): void {
-    if (this.pendingTimer) {
+  public unbinding(): void {
+    this.clearPendingWrite();
+  }
+
+  private clearPendingWrite(): void {
+    if (this.pendingTimer !== null) {
       clearTimeout(this.pendingTimer);
       this.pendingTimer = null;
     }
-  }
-
-  private async persistValue(value: unknown): Promise<void> {
-    if (!this.key) return;
-    await this.store.set(this.key, value, { storage: this.storage, ttl: this.ttl });
   }
 }

@@ -10,6 +10,7 @@ import { AubsDropdownCustomAttribute } from '../src/dropdown/aubs-dropdown';
 import { AubsDropdownToggleCustomAttribute } from '../src/dropdown/aubs-dropdown-toggle';
 import { AubsModalCustomAttribute } from '../src/modal/aubs-modal';
 import { AubsOffcanvasCustomAttribute } from '../src/offcanvas/aubs-offcanvas';
+import { AubsPaginationCustomElement } from '../src/pagination/aubs-pagination';
 import { AubsPopoverCustomAttribute } from '../src/popover/aubs-popover';
 import { AubsScrollspyCustomAttribute } from '../src/scrollspy/aubs-scrollspy';
 import { AubsTabCustomElement } from '../src/tabs/aubs-tab';
@@ -120,6 +121,7 @@ const bootstrapRegistrations = [
   AubsDropdownToggleCustomAttribute,
   AubsModalCustomAttribute,
   AubsOffcanvasCustomAttribute,
+  AubsPaginationCustomElement,
   AubsPopoverCustomAttribute,
   AubsScrollspyCustomAttribute,
   AubsTabCustomElement,
@@ -420,6 +422,45 @@ describe('aurelia2-bootstrap (Bootstrap 5)', () => {
     expect(component.active).toBe(false);
 
     await tearDown();
+  });
+
+  test('disposes Bootstrap buttons and restores click handling after a restart', async () => {
+    const fixture = createFixture(
+      '<button type="button" aubs-button-toggle></button>',
+      class {},
+      bootstrapRegistrations,
+    );
+    await fixture.startPromise;
+    const oldButton = getFixtureRoot(fixture.appHost).querySelector('button')!;
+
+    await fixture.stop();
+    const instance = buttonInstances[0];
+    expect(instance.dispose).toHaveBeenCalledTimes(1);
+    oldButton.click();
+    expect(instance.toggle).not.toHaveBeenCalled();
+
+    await fixture.au.start();
+    getFixtureRoot(fixture.appHost).querySelector('button')!.click();
+    expect(buttonInstances[1].toggle).toHaveBeenCalledTimes(1);
+    await fixture.tearDown();
+  });
+
+  test('calculates pages at bind time and reacts to the visible page limit', async () => {
+    const fixture = createFixture(
+      '<aubs-pagination total-items.bind="30" page-size.bind="0" pagination-size.bind="limit"></aubs-pagination>',
+      class App { limit = 2; },
+      bootstrapRegistrations,
+    );
+    await fixture.startPromise;
+    const host = getFixtureRoot(fixture.appHost).querySelector('aubs-pagination')!;
+    const vm = CustomElement.for(host).viewModel as AubsPaginationCustomElement;
+    expect(vm.totalPages).toBe(6);
+    expect(vm.displayPages.map(({ title }) => title)).toEqual(['1', '2', '...']);
+
+    fixture.component.limit = 3;
+    await flush();
+    expect(vm.displayPages.map(({ title }) => title)).toEqual(['1', '2', '3', '...']);
+    await fixture.tearDown();
   });
 
   test('tab toggle shows on click and syncs active binding', async () => {

@@ -41,9 +41,8 @@ export class AuFileUploadCustomElement {
   }
 
   public onDragOver(event: DragEvent): void {
-    if (this.disabled) return;
     event.preventDefault();
-    this.dragging = true;
+    this.dragging = !this.disabled;
   }
 
   public onDragLeave(event: DragEvent): void {
@@ -52,7 +51,6 @@ export class AuFileUploadCustomElement {
   }
 
   public onDrop(event: DragEvent): void {
-    if (this.disabled) return;
     event.preventDefault();
     this.dragging = false;
     if (event.dataTransfer?.files) {
@@ -61,15 +59,17 @@ export class AuFileUploadCustomElement {
   }
 
   public addFiles(files: File[] | FileList): void {
+    if (this.disabled) return;
     const created = this.uploads.createItems(files, {
       accept: this.accept,
       maxSize: this.maxSize ?? undefined,
-      maxFiles: this.remainingSlots(),
+      maxFiles: this.maxFiles ?? undefined,
       multiple: this.multiple,
-    });
+    }, this.items.length);
+    if (created.length === 0) return;
 
-    this.items = this.multiple ? [...this.items, ...created] : created.slice(0, 1);
-    this.files = this.items.filter((item) => item.status !== 'rejected').map((item) => item.file);
+    this.items = this.multiple ? [...this.items, ...created] : created;
+    this.syncFiles();
 
     this.dispatch('file-upload-change', this.items);
 
@@ -81,8 +81,9 @@ export class AuFileUploadCustomElement {
   }
 
   public remove(item: FileUploadItem): void {
+    if (this.disabled || !this.items.includes(item)) return;
     this.items = this.items.filter((entry) => entry !== item);
-    this.files = this.files.filter((file) => file !== item.file);
+    this.syncFiles();
     this.dispatch('file-upload-remove', item);
     this.dispatch('file-upload-change', this.items);
   }
@@ -92,7 +93,7 @@ export class AuFileUploadCustomElement {
   }
 
   private async uploadItem(item: FileUploadItem): Promise<void> {
-    if (!this.upload) return;
+    if (!this.upload || !this.items.includes(item)) return;
 
     item.status = 'uploading';
     item.progress = 0;
@@ -100,14 +101,17 @@ export class AuFileUploadCustomElement {
 
     try {
       const url = await this.upload(item, (progress) => {
+        if (item.status !== 'uploading' || !this.items.includes(item)) return;
         item.progress = Math.max(0, Math.min(100, progress));
         this.items = [...this.items];
       });
+      if (!this.items.includes(item)) return;
       item.status = 'uploaded';
       item.progress = 100;
       if (url) item.url = url;
       this.dispatch('file-upload-success', item);
     } catch (error) {
+      if (!this.items.includes(item)) return;
       item.status = 'error';
       item.error = error instanceof Error ? error.message : String(error);
       this.dispatch('file-upload-error', item);
@@ -116,10 +120,8 @@ export class AuFileUploadCustomElement {
     this.items = [...this.items];
   }
 
-  private remainingSlots(): number | undefined {
-    if (!this.multiple) return 1;
-    if (this.maxFiles == null) return undefined;
-    return Math.max(0, this.maxFiles - this.items.length);
+  private syncFiles(): void {
+    this.files = this.items.filter((item) => item.status !== 'rejected').map((item) => item.file);
   }
 
   private dispatch(name: string, detail: unknown): void {

@@ -72,7 +72,14 @@ export class AureliaStorage {
 
   public async clear(options: StorageOptions = {}): Promise<void> {
     const driver = this.getDriver(options.storage);
-    await driver.clear();
+    const prefix = this.config.options.prefix;
+    if (!prefix) {
+      await driver.clear();
+      return;
+    }
+
+    const keys = await driver.keys();
+    await Promise.all(keys.filter((key) => key.startsWith(prefix)).map((key) => driver.removeItem(key)));
   }
 
   public async keys(options: StorageOptions = {}): Promise<string[]> {

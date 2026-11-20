@@ -1,4 +1,4 @@
-import { DI, IContainer, IRegistry } from '@aurelia/kernel';
+import type { IContainer, IRegistry } from '@aurelia/kernel';
 import {AubsAccordionCustomElement} from "./accordion/aubs-accordion.js";
 import {AubsAccordionGroupCustomElement} from "./accordion/aubs-accordion-group.js";
 import { AubsAlertCustomAttribute } from "./alert/aubs-alert.js";

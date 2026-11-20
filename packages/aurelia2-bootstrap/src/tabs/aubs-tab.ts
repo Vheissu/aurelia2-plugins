@@ -34,12 +34,12 @@ export class AubsTabCustomElement {
     this.tabset.registerTab(this);
   }
 
-  detached() {
+  detaching() {
     this.tabset.unregisterTab(this);
   }
 
   handleTabChanged(index: number) {
-    let isSelected = index === this.index;
+    const isSelected = index === this.index;
 
     if (isSelected === this.active) {
       return;

@@ -22,6 +22,9 @@ describe('aurelia2-date-picker', () => {
     expect(parsed.getMonth()).toBe(3);
     expect(parsed.getDate()).toBe(25);
     expect(service.formatIso(parsed)).toBe('2026-04-25');
+    expect(service.parse('2026-02-29')).toBeNull();
+    expect(service.parse(new Date(NaN))).toBeNull();
+    expect(service.formatIso(service.parse('0004-02-29')!)).toBe('0004-02-29');
 
     const month = service.createMonth({
       displayDate: new Date(2026, 3, 1),
@@ -105,5 +108,33 @@ describe('aurelia2-date-picker', () => {
     expect(aprilFifteen.disabled).toBe(false);
 
     await tearDown();
+  });
+
+  test('clearing either two-way date binding clears the displayed selection', async () => {
+    const fixture = await createFixture(
+      '<au-date-picker value.two-way="value" selected-date.two-way="date"></au-date-picker>',
+      class {
+        value: string | null = '2026-04-15';
+        date: Date | null = null;
+      },
+      [AureliaDatePickerConfiguration],
+    ).started;
+    const input = fixture.appHost.querySelector('input')!;
+    expect(fixture.component.date?.getDate()).toBe(15);
+
+    fixture.component.value = null;
+    await flush();
+    expect(fixture.component.date).toBeNull();
+    expect(input.value).toBe('');
+
+    fixture.component.date = new Date(2026, 3, 16);
+    await flush();
+    expect(fixture.component.value).toBe('2026-04-16');
+
+    fixture.component.date = null;
+    await flush();
+    expect(fixture.component.value).toBeNull();
+    expect(input.value).toBe('');
+    await fixture.tearDown();
   });
 });

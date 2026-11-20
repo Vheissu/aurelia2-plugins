@@ -92,7 +92,7 @@ export function hotkeyMatches(event: KeyboardEvent, combo: string): boolean {
   if (event.metaKey !== expected.meta) return false;
   if (event.shiftKey !== expected.shift) return false;
 
-  return !key || normalizePart(event.key) === key;
+  return !key || (event.key === ' ' ? ' ' : normalizePart(event.key)) === key;
 }
 
 function normalizePart(part: string): string {

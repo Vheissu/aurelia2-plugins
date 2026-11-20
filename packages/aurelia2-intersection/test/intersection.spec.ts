@@ -153,6 +153,10 @@ describe('aurelia2-intersection', () => {
     expect(component.eventChange?.target).toBe(target);
 
     await tearDown();
+    expect(observer.disconnected).toBe(true);
+
+    observer.emit(target, false);
+    expect(component.callbackChange?.visible).toBe(true);
   });
 
   test('intersect once disconnects after the first visible entry', async () => {

@@ -47,14 +47,12 @@ export class AubsTabToggleCustomAttribute {
     }
   }
 
-  detached() {
+  detaching() {
     if (this.clickListener) {
       this.element.removeEventListener("click", this.clickListener);
     }
     this.removeListeners();
     this.disposeInstance();
-    this.listeners = null;
-    this.clickListener = null;
     this.isAttached = false;
   }
 

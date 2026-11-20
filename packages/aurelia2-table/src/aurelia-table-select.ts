@@ -1,25 +1,23 @@
-import { bindable, BindingMode, customAttribute, CustomAttribute, watch } from 'aurelia';
-import { AureliaTableCustomAttribute } from './aurelia-table-attribute.js';
+import { bindable, BindingMode, customAttribute, CustomAttribute, watch, type IController } from 'aurelia';
+import { AureliaTableCustomAttribute, type DefaultTableValue } from './aurelia-table-attribute.js';
+
+interface SelectableRow {
+  $isSelected?: boolean;
+}
 
 @customAttribute('aut-select')
-export class AutSelectCustomAttribute {
-  @bindable({mode: BindingMode.twoWay}) row;
+export class AutSelectCustomAttribute<TRow extends object = DefaultTableValue> {
+  @bindable({ mode: BindingMode.twoWay }) row?: TRow | null;
   @bindable mode = 'single';
   @bindable selectedClass = 'aut-row-selected';
   @bindable custom = false;
 
-  private rowSelectedListener;
+  private readonly rowSelectedListener = (event: MouseEvent) => this.handleRowSelected(event);
   private element!: HTMLElement;
-  private controller: any;
-  private auTable: AureliaTableCustomAttribute | null = null;
+  private controller?: IController;
+  private auTable: AureliaTableCustomAttribute<TRow & SelectableRow> | null = null;
 
-  constructor() {
-    this.rowSelectedListener = event => {
-      this.handleRowSelected(event);
-    };
-  }
-
-  created(controller) {
+  created(controller: IController) {
     this.controller = controller;
     this.element = controller.host as HTMLElement;
   }
@@ -39,8 +37,8 @@ export class AutSelectCustomAttribute {
       ? CustomAttribute.for(tableElement, 'aurelia-table')
       : null;
 
-    this.auTable = tableController?.viewModel as AureliaTableCustomAttribute | null
-      ?? CustomAttribute.closest(this.element, AureliaTableCustomAttribute)?.viewModel as AureliaTableCustomAttribute | null;
+    const table = tableController ?? CustomAttribute.closest(this.element, AureliaTableCustomAttribute);
+    this.auTable = table === null ? null : table.viewModel as AureliaTableCustomAttribute<TRow & SelectableRow>;
   }
 
   attached() {
@@ -54,26 +52,23 @@ export class AutSelectCustomAttribute {
     this.setClass();
   }
 
-  detached() {
-    if (!this.custom) {
-      this.element?.removeEventListener('click', this.rowSelectedListener);
-    }
+  detaching() {
+    this.element?.removeEventListener('click', this.rowSelectedListener);
 
     this.auTable = null;
-    this.controller = null;
   }
 
   setClass() {
     if (!this.element) return;
-    if (this.row?.$isSelected) {
+    if (this.isSelected) {
       this.element.classList.add(this.selectedClass);
     } else {
       this.element.classList.remove(this.selectedClass);
     }
   }
 
-  handleRowSelected(event) {
-    if (!this.row) {
+  handleRowSelected(event: Event) {
+    if (this.custom || !this.row) {
       return;
     }
 
@@ -81,7 +76,7 @@ export class AutSelectCustomAttribute {
     if (!(source instanceof HTMLElement) || !source.closest('td')) {
       return;
     }
-    this.row.$isSelected = this.row.$isSelected ? false : true;
+    (this.row as SelectableRow).$isSelected = !this.isSelected;
   }
 
   dispatchSelectedEvent() {
@@ -91,7 +86,11 @@ export class AutSelectCustomAttribute {
     }));
   }
 
-  @watch((x: AutSelectCustomAttribute) => x.row?.$isSelected)
+  private get isSelected() {
+    return (this.row as SelectableRow | null | undefined)?.$isSelected;
+  }
+
+  @watch((x: AutSelectCustomAttribute) => x.isSelected)
   isSelectedChanged() {
     if (!this.row) {
       return;
@@ -99,7 +98,7 @@ export class AutSelectCustomAttribute {
 
     this.setClass();
 
-    if (this.row.$isSelected) {
+    if (this.isSelected) {
       if (this.mode === 'single') {
         this.deselectAll();
       }
@@ -109,7 +108,7 @@ export class AutSelectCustomAttribute {
   }
 
   deselectAll() {
-    this.auTable?.data?.forEach((item: any) => {
+    this.auTable?.data?.forEach((item) => {
       if (item !== this.row) {
         item.$isSelected = false;
       }

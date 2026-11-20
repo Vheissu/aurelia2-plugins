@@ -8,6 +8,7 @@ export type AuthErrorCode =
   | 'oauth-popup-timeout'
   | 'oauth-transaction-expired'
   | 'oauth-transaction-mismatch'
+  | 'session-changed'
   | 'unknown-provider';
 
 export class AuthError extends Error {

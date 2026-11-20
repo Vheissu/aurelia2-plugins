@@ -153,6 +153,37 @@ it('reactively observes can and matches in templates', async () => {
     await f.tearDown();
   }
 });
+
+it('moves the machine listener when its event type changes', async () => {
+  const machine = new StateMachine({
+    initial: 'ready',
+    context: {},
+    states: { ready: { on: { ACT: { target: 'ready' } } } },
+  });
+  const fixture = await createFixture(
+    '<button machine-send="machine.bind: machine; event.bind: event; on.bind: eventType">Act</button>',
+    { machine, event: { type: 'ACT' }, eventType: '' },
+    [AureliaStateMachineConfiguration],
+  ).started;
+  const button = fixture.getBy('button');
+
+  button.click();
+  expect(machine.revision).toBe(0);
+  fixture.component.eventType = 'click';
+  button.click();
+  expect(machine.revision).toBe(1);
+
+  fixture.component.eventType = 'keydown';
+  button.click();
+  expect(machine.revision).toBe(1);
+  button.dispatchEvent(new KeyboardEvent('keydown'));
+  expect(machine.revision).toBe(2);
+
+  await fixture.tearDown();
+  button.dispatchEvent(new KeyboardEvent('keydown'));
+  expect(machine.revision).toBe(2);
+});
+
 it('snapshots the definition so later caller edits cannot introduce invalid targets', () => {
   const definition = {
     initial: 'a',

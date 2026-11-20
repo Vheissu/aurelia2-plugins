@@ -1,4 +1,4 @@
-import { bindable, BindingMode, ICustomElementViewModel, customElement } from 'aurelia';
+import { bindable, BindingMode, customElement, type IController, type ICustomElementViewModel } from 'aurelia';
 
 import template from './aurelia-table-pagination.html';
 
@@ -7,11 +7,11 @@ import template from './aurelia-table-pagination.html';
   template
 })
 export class AutPaginationCustomElement implements ICustomElementViewModel {
-    @bindable({mode: BindingMode.twoWay}) currentPage;
-    @bindable pageSize;
+    @bindable({mode: BindingMode.twoWay}) currentPage!: number;
+    @bindable pageSize!: number;
     @bindable totalItems = 0;
     @bindable hideSinglePage = true;
-    @bindable paginationSize;
+    @bindable paginationSize?: number;
     @bindable boundaryLinks = false;
     @bindable firstText = 'First';
     @bindable lastText = 'Last';
@@ -24,11 +24,11 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
 
     private element!: HTMLElement;
 
-    created(controller) {
+    created(controller: IController) {
       this.element = controller.host as HTMLElement;
     }
 
-    bind() {
+    binding() {
         if (this.currentPage === undefined || this.currentPage === null || this.currentPage < 1) {
             this.currentPage = 1;
         }
@@ -99,7 +99,7 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
     }
 
     displayAllPages() {
-        let displayPages: { title: string; value: number; }[] = [];
+        const displayPages: { title: string; value: number; }[] = [];
 
         for (let i = 1; i <= this.totalPages; i++) {
             displayPages.push({
@@ -112,14 +112,14 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
     }
 
     limitVisiblePages() {
-        let displayPages: { title: string; value: number; }[] = [];
+        const displayPages: { title: string; value: number; }[] = [];
 
-        let totalTiers = Math.ceil(this.totalPages / this.paginationSize);
+        const totalTiers = Math.ceil(this.totalPages / this.paginationSize);
 
-        let activeTier = Math.ceil(this.currentPage / this.paginationSize);
+        const activeTier = Math.ceil(this.currentPage / this.paginationSize);
 
-        let start = ((activeTier - 1) * this.paginationSize) + 1;
-        let end = start + this.paginationSize;
+        const start = ((activeTier - 1) * this.paginationSize) + 1;
+        const end = start + this.paginationSize;
 
         if (activeTier > 1) {
             displayPages.push({
@@ -149,7 +149,7 @@ export class AutPaginationCustomElement implements ICustomElementViewModel {
         this.displayPages = displayPages;
     }
 
-    selectPage(page) {
+    selectPage(page: number) {
         if (page < 1 || page > this.totalPages || page === this.currentPage) {
             return;
         }

@@ -3,12 +3,13 @@
   "version": "1.0.1",
   "description": "A collection of Aurelia 2 plugins",
   "repository": "https://github.com/Vheissu/aurelia2-plugins",
-  "author": "Dwayne Charrington <dwaynecharrington@gmail.com",
+  "author": "Dwayne Charrington <dwaynecharrington@gmail.com>",
   "license": "MIT",
   "scripts": {
     "build": "npm run build --workspaces",
     "lint": "eslint \"packages/*/src/**/*.ts\"",
-    "test": "cross-env JEST_PROJECTS=1 jest --config ./jest.projects.cjs --passWithNoTests",
+    "test": "jest --config ./jest.projects.cjs",
+    "check:packages": "node scripts/check-packages.mjs",
     "release": "node scripts/release.mjs",
     "release:dry-run": "node scripts/release.mjs --dry-run"
   },

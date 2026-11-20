@@ -161,4 +161,17 @@ describe('GooglePlaces', () => {
       country: 'us',
     });
   });
+
+  test('removes the Google Maps listener when the attribute detaches', async () => {
+    const { fixture, onPlaceChanged } = createPlacesFixture();
+    await fixture.startPromise;
+    await flushPromises();
+
+    const [autocomplete] = AutocompleteMock.instances;
+    await fixture.stop(true);
+    fixtures.splice(fixtures.indexOf(fixture), 1);
+
+    autocomplete.trigger('place_changed');
+    expect(onPlaceChanged).not.toHaveBeenCalled();
+  });
 });

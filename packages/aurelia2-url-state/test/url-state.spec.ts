@@ -452,6 +452,25 @@ describe('url-state with the history adapter', () => {
 });
 
 describe('url-state with injected adapters', () => {
+  it('releases query keys when adapter subscription fails during connect', async () => {
+    const adapter = new MemoryUrlStateAdapter('q=orders');
+    jest.spyOn(adapter, 'subscribe').mockImplementationOnce(() => {
+      throw new Error('Subscription failed');
+    });
+    const fixture = await createFixture('<div></div>', {}, [
+      AureliaUrlStateConfiguration.configure({ adapter }),
+    ]).started;
+    const state = fixture.container.get(IUrlState);
+    const filters = { q: '' };
+    const params = { q: param.string() };
+
+    expect(() => state.connect(filters, params)).toThrow('Subscription failed');
+    const handle = state.connect(filters, params);
+    expect(filters.q).toBe('orders');
+    handle.dispose();
+    await fixture.tearDown();
+  });
+
   it('serializes asynchronous writes so concurrent models never clobber each other', async () => {
     const adapter = new DeferredAdapter();
     adapter.search = 'other=1';

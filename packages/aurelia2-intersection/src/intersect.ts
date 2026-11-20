@@ -23,7 +23,7 @@ export class IntersectCustomAttribute {
     this.restart();
   }
 
-  public detached(): void {
+  public detaching(): void {
     this.isAttached = false;
     this.stop();
   }

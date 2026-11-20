@@ -17,11 +17,14 @@ export class DatePickerService {
 
   public parse(value: DatePickerValue): Date | null {
     if (!value) return null;
-    if (value instanceof Date) return startOfDay(value);
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : startOfDay(value);
 
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
     if (match) {
-      return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      const date = new Date(0);
+      date.setFullYear(Number(match[1]), Number(match[2]) - 1, Number(match[3]));
+      date.setHours(0, 0, 0, 0);
+      return this.formatIso(date) === value ? date : null;
     }
 
     const parsed = new Date(value);
@@ -29,14 +32,14 @@ export class DatePickerService {
   }
 
   public formatIso(date: Date): string {
-    const year = date.getFullYear();
+    const year = String(date.getFullYear()).padStart(4, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   }
 
   public formatDisplay(date: Date | null, locale = this.options.locale): string {
-    if (!date) return '';
+    if (!date || Number.isNaN(date.getTime())) return '';
     return new Intl.DateTimeFormat(locale, this.options.dateFormat).format(date);
   }
 
@@ -49,9 +52,12 @@ export class DatePickerService {
     firstDayOfWeek?: number;
   }): DatePickerMonth {
     const locale = options.locale ?? this.options.locale;
-    const firstDayOfWeek = options.firstDayOfWeek ?? this.options.firstDayOfWeek;
-    const display = new Date(options.displayDate.getFullYear(), options.displayDate.getMonth(), 1);
+    const configuredDay = Number(options.firstDayOfWeek ?? this.options.firstDayOfWeek);
+    const firstDayOfWeek = Number.isFinite(configuredDay) ? ((Math.trunc(configuredDay) % 7) + 7) % 7 : 0;
+    const display = startOfDay(options.displayDate);
+    display.setDate(1);
     const start = startOfGrid(display, firstDayOfWeek);
+    const today = new Date();
     const days: DatePickerDay[] = [];
 
     for (let index = 0; index < 42; index += 1) {
@@ -61,7 +67,7 @@ export class DatePickerService {
         iso: this.formatIso(date),
         label: String(date.getDate()),
         outsideMonth: date.getMonth() !== display.getMonth(),
-        today: isSameDay(date, new Date()),
+        today: isSameDay(date, today),
         selected: Boolean(options.selected && isSameDay(date, options.selected)),
         disabled: isDisabled(date, options.min, options.max),
       });
@@ -81,7 +87,9 @@ export const IDatePickerService = DI.createInterface<IDatePickerService>('IDateP
 export interface IDatePickerService extends DatePickerService {}
 
 export function startOfDay(date: Date): Date {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const result = new Date(date);
+  result.setHours(0, 0, 0, 0);
+  return result;
 }
 
 export function addDays(date: Date, days: number): Date {
@@ -112,8 +120,9 @@ function isDisabled(date: Date, min?: Date | null, max?: Date | null): boolean {
 
 function createWeekdays(locale: string, firstDayOfWeek: number): string[] {
   const base = new Date(2024, 0, 7);
+  const formatter = new Intl.DateTimeFormat(locale, { weekday: 'short' });
   return Array.from({ length: 7 }, (_value, index) => {
     const date = addDays(base, firstDayOfWeek + index);
-    return new Intl.DateTimeFormat(locale, { weekday: 'short' }).format(date);
+    return formatter.format(date);
   });
 }

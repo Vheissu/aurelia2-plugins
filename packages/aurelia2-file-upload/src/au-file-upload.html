@@ -112,7 +112,7 @@
           <span class="au-upload-meta">${formatSize(item.size)} · ${item.status}</span>
           <span if.bind="item.error" class="au-upload-error">${item.error}</span>
         </span>
-        <button type="button" click.trigger="remove(item)" aria-label.bind="'Remove ' + item.name">Remove</button>
+        <button type="button" click.trigger="remove(item)" disabled.bind="disabled" aria-label.bind="'Remove ' + item.name">Remove</button>
         <progress if.bind="item.status === 'uploading'" class="au-upload-progress" max="100" value.bind="item.progress"></progress>
       </li>
     </ul>

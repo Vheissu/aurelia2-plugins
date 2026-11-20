@@ -126,14 +126,12 @@ export class NotificationService {
   }
 
   public clear(reason: NotificationCloseReason = 'clear'): void {
+    const queued = Array.from(this.queues.values()).flatMap((queue) => queue.splice(0));
     for (const item of [...this.items]) {
       this.dismiss(item.id, reason);
     }
-    for (const position of POSITIONS) {
-      const queue = this.queues.get(position);
-      if (queue?.length) {
-        queue.splice(0, queue.length);
-      }
+    for (const item of queued) {
+      this.finalizeRemoval(item, reason);
     }
   }
 
@@ -604,7 +602,7 @@ export class NotificationService {
       item.removalTimeoutId = null;
     }
 
-    if (item.dedupeKey) {
+    if (item.dedupeKey && this.dedupeIndex.get(item.dedupeKey) === item) {
       this.dedupeIndex.delete(item.dedupeKey);
     }
 

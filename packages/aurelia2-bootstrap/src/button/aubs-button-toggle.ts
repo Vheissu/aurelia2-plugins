@@ -29,12 +29,11 @@ export class AubsButtonToggleCustomAttribute {
     this.syncState();
   }
 
-  detached() {
+  detaching() {
     if (this.clickListener) {
       this.element.removeEventListener("click", this.clickListener);
     }
     this.disposeInstance();
-    this.clickListener = null;
     this.isAttached = false;
   }
 

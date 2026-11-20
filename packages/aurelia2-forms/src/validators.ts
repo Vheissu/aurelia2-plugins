@@ -41,9 +41,11 @@ export function max(maxValue: number, message?: string): ValidatorFn<number> {
 }
 
 export function pattern(regex: RegExp, message = 'Invalid format'): ValidatorFn<string> {
+  const matcher = new RegExp(regex.source, regex.flags);
   return (value) => {
     if (value == null || value === '') return null;
-    return regex.test(value) ? null : message;
+    matcher.lastIndex = 0;
+    return matcher.test(value) ? null : message;
   };
 }
 

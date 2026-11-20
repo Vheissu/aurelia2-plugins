@@ -21,11 +21,10 @@ export class AubsDropdownToggleCustomAttribute {
     }
   }
 
-  detached() {
+  detaching() {
     if (this.dropdown && this.clickedListener) {
       this.element.removeEventListener("click", this.clickedListener);
     }
     this.dropdown = null;
-    this.clickedListener = null;
   }
 }

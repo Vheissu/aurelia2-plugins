@@ -219,6 +219,7 @@ class Session implements UrlStateHandle {
   start(listener: ((event: UrlStateEvent) => void) | undefined): void {
     if (listener) this.listeners.add(listener);
     const corrected = this.apply(this.service.read(), 'connect', this.entries);
+    if (this.disposed) return;
     const observerLocator = this.service.observerLocator;
     for (const entry of this.entries) {
       const observer = observerLocator.getObserver(this.model, entry.name);
@@ -247,7 +248,7 @@ class Session implements UrlStateHandle {
       );
       return;
     }
-    if (correct) for (const entry of corrected) this.mark(entry, 'replace', 0);
+    if (correct && !this.disposed) for (const entry of corrected) this.mark(entry, 'replace', 0);
   }
 
   /** Re-schedule model values that differ from the URL, after a cancelled navigation. @internal */
@@ -511,8 +512,8 @@ export class UrlStateService {
     const session = new Session(this, model, specs);
     for (const key of keys) this.owners.set(key, session);
     this.sessions.add(session);
-    this.subscription ??= this.adapter.subscribe((event) => this.onAdapterEvent(event));
     try {
+      this.subscription ??= this.adapter.subscribe((event) => this.onAdapterEvent(event));
       session.start(options.listener);
     } catch (error) {
       session.dispose();

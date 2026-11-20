@@ -1,5 +1,6 @@
 import { INode, bindable, BindingMode, inject } from "aurelia";
 import { Modal } from "bootstrap";
+import { OverlayLifecycle } from "../utils/overlay-lifecycle.js";
 
 type ModalOptions = ConstructorParameters<typeof Modal>[1];
 
@@ -17,6 +18,8 @@ export class AubsModalCustomAttribute {
   @bindable onHidden: ((payload: ModalEventCallbackPayload) => void) | undefined;
 
   private instance: InstanceType<typeof Modal> | null = null;
+  private readonly lifecycle: OverlayLifecycle;
+  private retiring?: Promise<void>;
   private isAttached = false;
   private suppressToggle = false;
 
@@ -28,6 +31,7 @@ export class AubsModalCustomAttribute {
   } | null;
 
   constructor(private element: HTMLElement) {
+    this.lifecycle = new OverlayLifecycle(element, "modal");
     this.listeners = {
       show: (event: Event) => this.handleShow(event),
       shown: (event: Event) => this.handleShown(event),
@@ -46,27 +50,25 @@ export class AubsModalCustomAttribute {
     }
   }
 
-  detached() {
-    this.removeListeners();
-    this.disposeInstance();
-    this.listeners = null;
+  detaching(): void | Promise<void> {
     this.isAttached = false;
+    this.suppressToggle = false;
+    const retire = this.disposeInstance();
+    if (retire) return retire.finally(() => this.removeListeners());
+    this.removeListeners();
   }
 
-  optionsChanged() {
-    if (!this.isAttached) {
-      return;
-    }
+  optionsChanged(): void {
+    if (!this.isAttached || this.retiring) return;
 
-    const shouldBeOpen = this.isOpen;
-    this.removeListeners();
-    this.disposeInstance();
-    this.createInstance();
-    this.addListeners();
-
-    if (shouldBeOpen) {
-      this.instance?.show();
-    }
+    const recreate = () => {
+      if (!this.isAttached) return;
+      this.createInstance();
+      if (this.isOpen) this.instance?.show();
+    };
+    const retire = this.disposeInstance();
+    if (retire) void retire.then(recreate);
+    else recreate();
   }
 
   isOpenChanged() {
@@ -102,20 +104,36 @@ export class AubsModalCustomAttribute {
     this.instance = new Modal(this.element, this.options ?? undefined);
   }
 
-  disposeInstance() {
-    if (this.instance?.dispose) {
-      this.instance.dispose();
-    }
+  disposeInstance(): void | Promise<void> {
+    if (this.retiring) return this.retiring;
+    const instance = this.instance;
     this.instance = null;
+    if (!instance) return;
+
+    const close = this.lifecycle.close(() => instance.hide());
+    if (close) {
+      this.retiring = close.finally(() => {
+        this.retiring = undefined;
+        instance.dispose();
+      });
+      return this.retiring;
+    }
+    instance.dispose();
   }
 
   private handleShow(event: Event) {
+    if (event.target !== this.element) return;
+    this.lifecycle.begin("show", event);
+    if (!this.isAttached || !this.instance) return;
     if (typeof this.onShow === "function") {
       this.onShow({ event });
     }
   }
 
   private handleShown(event: Event) {
+    if (event.target !== this.element) return;
+    this.lifecycle.complete("show");
+    if (!this.isAttached || !this.instance) return;
     this.suppressToggle = true;
     this.isOpen = true;
 
@@ -125,12 +143,18 @@ export class AubsModalCustomAttribute {
   }
 
   private handleHide(event: Event) {
+    if (event.target !== this.element) return;
+    this.lifecycle.begin("hide", event);
+    if (!this.isAttached || !this.instance) return;
     if (typeof this.onHide === "function") {
       this.onHide({ event });
     }
   }
 
   private handleHidden(event: Event) {
+    if (event.target !== this.element) return;
+    this.lifecycle.complete("hide");
+    if (!this.isAttached || !this.instance) return;
     this.suppressToggle = true;
     this.isOpen = false;
 
